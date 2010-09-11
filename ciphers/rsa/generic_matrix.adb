@@ -14,8 +14,6 @@
 --  OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 
-with Interfaces; use Interfaces;
-
 package body Generic_Matrix is
 
    MatZero    : constant MatrixType := MatrixType'First;
@@ -106,7 +104,7 @@ package body Generic_Matrix is
    function Significant_Bits (data : TData; index : DigitIndex)
    return TDigit is
       i     : TDigit     := 0;
-      a     : Unsigned_64 := Unsigned_64 (data.Matrix (index));
+      a     : MatrixType := data.Matrix (index);
       found : Boolean    := False;
    begin
       while not found and (i <= TDigit'Last) loop
@@ -114,7 +112,7 @@ package body Generic_Matrix is
             found := True;
          else
             i := i + 1;
-            a := Shift_Right (a, 1);
+            a := a / 2;  -- shift right 1 bit
          end if;
       end loop;
       return i;
