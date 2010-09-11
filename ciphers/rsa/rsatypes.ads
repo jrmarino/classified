@@ -16,14 +16,15 @@
 
 package RSATypes is
 
-   type MQuadByte is range 0 .. 16#FFFFFFFF#;
-   type MByte     is range 0 .. 16#FF#;
+   type MQuadByte is mod 16#FFFFFFFF#;
+   type MDualByte is mod 16#FFFF#;
+   type MByte     is mod 16#FF#;
 
    NN_DIGIT_BITS      : constant Integer := 32;
    NN_DIGIT_BYTES     : constant Integer := NN_DIGIT_BITS / 8;
    NN_HALF_DIGIT_BITS : constant Integer := NN_DIGIT_BITS / 2;
    MAX_NN_DIGIT       : constant MQuadByte := MQuadByte'Last;
-   MAX_NN_HALF_DIGIT  : constant MQuadByte := MAX_NN_DIGIT / 2;
+   MAX_NN_HALF_DIGIT  : constant MQuadByte := MQuadByte (MDualByte'Last);
 
    L_MODULUS_BITS     : constant Integer := 1024;
    U_MODULUS_BITS     : constant Integer := 4096;

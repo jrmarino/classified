@@ -17,7 +17,7 @@
 with RSATypes; use RSATypes;
 
 generic
-   type MatrixType is range <>;
+   type MatrixType is mod <>;
    type TMatrixLen is range <>;
    type DigitIndex is range <>;
 package Generic_Matrix is
@@ -38,7 +38,6 @@ package Generic_Matrix is
    function Construct return TData;
 end Generic_Matrix;
 
---   KeySize_Bits : TKeySize;
 --   Matrix_Size  : Positive;
 --   type TMatrixLen is range 1 .. Matrix_Size;
 --   type DigitIndex is range 0 .. Matrix_Size - 1;

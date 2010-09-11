@@ -18,7 +18,7 @@ with Interfaces; use Interfaces;
 
 package body Generic_Matrix is
 
-   MatZero    : constant MatrixType := MatrixType (0);
+   MatZero    : constant MatrixType := MatrixType'First;
 
 
 
