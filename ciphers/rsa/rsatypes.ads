@@ -16,13 +16,13 @@
 
 package RSATypes is
 
-   type DoubleWord is range 0 .. 16#FFFFFFFF#;
+   type MQuadByte is range 0 .. 16#FFFFFFFF#;
 
    NN_DIGIT_BITS      : constant Integer := 32;
    NN_DIGIT_BYTES     : constant Integer := NN_DIGIT_BITS / 8;
    NN_HALF_DIGIT_BITS : constant Integer := NN_DIGIT_BITS / 2;
-   MAX_NN_DIGIT       : constant DoubleWord := DoubleWord'Last;
-   MAX_NN_HALF_DIGIT  : constant DoubleWord := MAX_NN_DIGIT / 2;
+   MAX_NN_DIGIT       : constant MQuadByte := MQuadByte'Last;
+   MAX_NN_HALF_DIGIT  : constant MQuadByte := MAX_NN_DIGIT / 2;
 
    L_MODULUS_BITS     : constant Integer := 1024;
    U_MODULUS_BITS     : constant Integer := 4096;

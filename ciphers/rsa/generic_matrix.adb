@@ -18,8 +18,10 @@ With Interfaces; Use Interfaces;
 
 package body Generic_Matrix is
 
-   Matrix     : TMatrix;
-   CurrentLen : TMatrixLen;
+   MatZero    : constant MatrixType := MatrixType (0);
+
+   Matrix     : TMatrix := (others => MatZero);
+   CurrentLen : TMatrixLen := 0;
 
    ------------------
    --  Zero_Array  --
@@ -27,11 +29,8 @@ package body Generic_Matrix is
 
    procedure Zero_Array
    is
-      zero : constant MatrixType := MatrixType (0);
    begin
-      for index in DigitIndex loop
-         Matrix (index) := zero;
-      end loop;
+      Matrix := (others => MatZero);
    end Zero_Array;
 
 
