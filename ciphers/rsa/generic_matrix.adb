@@ -14,23 +14,39 @@
 --  OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 
-With Interfaces; Use Interfaces;
+with Interfaces; use Interfaces;
 
 package body Generic_Matrix is
 
    MatZero    : constant MatrixType := MatrixType (0);
 
-   Matrix     : TMatrix := (others => MatZero);
-   CurrentLen : TMatrixLen := 0;
+
+
+   -----------------
+   --  Construct  --
+   -----------------
+
+   function Construct
+   return TData is
+      result : TData;
+   begin
+      result := (
+         Matrix     => (others => MatZero),
+         CurrentLen => 0
+      );
+      return result;
+   end Construct;
+
+
 
    ------------------
    --  Zero_Array  --
    ------------------
 
-   procedure Zero_Array
+   procedure Zero_Array (data : out TData)
    is
    begin
-      Matrix := (others => MatZero);
+      data.Matrix := (others => MatZero);
    end Zero_Array;
 
 
@@ -39,12 +55,12 @@ package body Generic_Matrix is
    --  Assign_Zero_Digit  --
    -------------------------
 
-   procedure Assign_Zero_Digit (Value : in MatrixType)
+   procedure Assign_Zero_Digit (data : out TData; Value : in MatrixType)
    is
    begin
-      Zero_Array;
-      Matrix (0) := Value;
-      CurrentLen := 1;
+      Zero_Array (data => data);
+      data.Matrix (0) := Value;
+      data.CurrentLen := 1;
    end Assign_Zero_Digit;
 
 
@@ -53,10 +69,10 @@ package body Generic_Matrix is
    --  CopyTo  --
    --------------
 
-   procedure CopyTo (destination : in out TMatrix)
+   procedure CopyTo (origin : in TData; destination : out TData)
    is
    begin
-      destination := Matrix;
+      destination := origin;
    end CopyTo;
 
 
@@ -65,12 +81,12 @@ package body Generic_Matrix is
    --  Significant_Length  --
    --------------------------
 
-   function Significant_Length
+   function Significant_Length (data : TData)
    return Positive is
-      numDigits : TMatrixLen := CurrentLen;
+      numDigits : TMatrixLen := data.CurrentLen;
       i         : DigitIndex := DigitIndex (numDigits - 1);
    begin
-      while (numDigits > 0) and then Matrix (i) = 0 loop
+      while (numDigits > 0) and then data.Matrix (i) = 0 loop
          numDigits := numDigits - 1;
          i := i - 1;
       end loop;
@@ -87,10 +103,10 @@ package body Generic_Matrix is
    --  Significant_Bits  --
    ------------------------
 
-   function Significant_Bits (index : DigitIndex)
+   function Significant_Bits (data : TData; index : DigitIndex)
    return TDigit is
       i     : TDigit     := 0;
-      a     : Unsigned_64 := Unsigned_64 (Matrix (index));
+      a     : Unsigned_64 := Unsigned_64 (data.Matrix (index));
       found : Boolean    := False;
    begin
       while not found and (i <= TDigit'Last) loop
@@ -110,8 +126,9 @@ package body Generic_Matrix is
    --  Compared_With  --
    ---------------------
 
-   function Compared_With (index     : DigitIndex;
-                           ExtMatrix : TMatrix;
+   function Compared_With (Data      : TData;
+                           Index     : DigitIndex;
+                           ExtData   : TData;
                            ExtDigits : TMatrixLen)
    return TCompare is
       result       : TCompare := 0;
@@ -120,14 +137,14 @@ package body Generic_Matrix is
       dcIndex      : DigitIndex;
    begin
       if digitCounter > 0 then
-         Repeat_Until:
+         Repeat_Until :
             loop
                digitCounter := digitCounter - 1;
                dcIndex      := DigitIndex (digitCounter);
-               newIndex     := dcIndex + index;
-               if Matrix (newIndex) > ExtMatrix (dcIndex) then
+               newIndex     := dcIndex + Index;
+               if Data.Matrix (newIndex) > ExtData.Matrix (dcIndex) then
                   result := 1;
-               elsif Matrix (newIndex) < ExtMatrix (dcIndex) then
+               elsif Data.Matrix (newIndex) < ExtData.Matrix (dcIndex) then
                   result := -1;
                end if;
                exit Repeat_Until when (result /= 0) or (digitCounter = 0);

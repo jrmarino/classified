@@ -22,14 +22,20 @@ generic
    type DigitIndex is range <>;
 package Generic_Matrix is
    type TMatrix is array (DigitIndex) of MatrixType;
-   procedure Zero_Array;
-   procedure Assign_Zero_Digit (Value : in MatrixType);
-   procedure CopyTo (destination : in out TMatrix);
-   function Significant_Length return Positive;
-   function Significant_Bits (index : DigitIndex) return TDigit;
-   function Compared_With (index     : DigitIndex;
-                           ExtMatrix : TMatrix;
+   type TData is record
+      Matrix     : TMatrix;
+      CurrentLen : TMatrixLen;
+   end record;
+   procedure Zero_Array (data : out TData);
+   procedure Assign_Zero_Digit (data : out TData; Value : in MatrixType);
+   procedure CopyTo (origin : in TData; destination : out TData);
+   function Significant_Length (data : TData) return Positive;
+   function Significant_Bits (data : TData; index : DigitIndex) return TDigit;
+   function Compared_With (Data      : TData;
+                           Index     : DigitIndex;
+                           ExtData   : TData;
                            ExtDigits : TMatrixLen) return TCompare;
+   function Construct return TData;
 end Generic_Matrix;
 
 --   KeySize_Bits : TKeySize;

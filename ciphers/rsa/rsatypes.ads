@@ -17,6 +17,7 @@
 package RSATypes is
 
    type MQuadByte is range 0 .. 16#FFFFFFFF#;
+   type MByte     is range 0 .. 16#FF#;
 
    NN_DIGIT_BITS      : constant Integer := 32;
    NN_DIGIT_BYTES     : constant Integer := NN_DIGIT_BITS / 8;
