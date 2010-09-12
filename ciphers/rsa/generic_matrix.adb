@@ -153,4 +153,71 @@ package body Generic_Matrix is
 
 
 
+   -----------------
+   --  NN_LShift  --
+   -----------------
+
+   procedure NN_LShift (A     : out TData;
+                        B     : in  TData;
+                        bits  : in  TDigit;
+                        carry : out MatrixType)
+   is
+      t            : Natural;
+      NatBits      : constant Natural := Natural (bits);
+      DigitCounter : TMatrixLen := TMatrixLen'Last;
+      index        : DigitIndex := 0;
+   begin
+      carry := 0;
+      if bits = 0 then
+         CopyTo (origin => B, destination => A);
+         return;
+      end if;
+
+      t := NN_DIGIT_BITS - NatBits;
+      Repeat :
+         loop
+            A.Matrix (index) := (B.Matrix (index) * 2 ** NatBits) or carry;
+            index := index + 1;
+            carry := B.Matrix (index) / 2 ** t;
+            DigitCounter := DigitCounter - 1;
+            exit Repeat when DigitCounter = 0;
+         end loop Repeat;
+
+   end NN_LShift;
+
+
+
+   -----------------
+   --  NN_RShift  --
+   -----------------
+
+   procedure NN_RShift (A     : out TData;
+                        B     : in  TData;
+                        bits  : in  TDigit;
+                        carry : out MatrixType)
+   is
+      t            : Natural;
+      NatBits      : constant Natural := Natural (bits);
+      DigitCounter : TMatrixLen := TMatrixLen'Last;
+      index        : DigitIndex := 0;
+   begin
+      carry := 0;
+      if bits = 0 then
+         CopyTo (origin => B, destination => A);
+         return;
+      end if;
+
+      t := NN_DIGIT_BITS - NatBits;
+      Repeat :
+         loop
+            A.Matrix (index) := (B.Matrix (index) / 2 ** NatBits) or carry;
+            index := index + 1;
+            carry := B.Matrix (index) * 2 ** t;
+            DigitCounter := DigitCounter - 1;
+            exit Repeat when DigitCounter = 0;
+         end loop Repeat;
+
+   end NN_RShift;
+
+
 end Generic_Matrix;
