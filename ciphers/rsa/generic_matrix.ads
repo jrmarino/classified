@@ -22,7 +22,7 @@ generic
    type DigitIndex is range <>;
 package Generic_Matrix is
    type TMatrix is array (DigitIndex) of MatrixType;
-   type TData is record
+   type TData is tagged record
       Matrix     : TMatrix;
       CurrentLen : TMatrixLen;
    end record;

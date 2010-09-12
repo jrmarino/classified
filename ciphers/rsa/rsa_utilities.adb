@@ -61,4 +61,59 @@ package body RSA_Utilities is
 
 
 
+   ------------------
+   --  Digit_2MSB  --
+   ------------------
+
+   function Digit_2MSB (original : MQuadByte)
+   return MQuadByte is
+      work : MQuadByte := original;
+   begin
+      work := work / 2 ** (NN_DIGIT_BITS - 2);
+      return work;
+   end Digit_2MSB;
+
+
+
+   ---------------------
+   --  Flowguard_Add  --
+   ---------------------
+
+   function Flowguard_Add  (LHS : MQuadByte;
+                            RHS : MQuadByte)
+   return MQuadByte is
+   begin
+      return LHS + RHS;
+   end Flowguard_Add;
+
+
+
+   ---------------------
+   --  Flowguard_Sub  --
+   ---------------------
+
+   function Flowguard_Sub  (LHS : MQuadByte;
+                            RHS : MQuadByte)
+   return MQuadByte is
+   begin
+      return LHS - RHS;
+   end Flowguard_Sub;
+
+
+
+   ----------------------
+   --  Flowguard_Mult  --
+   ----------------------
+
+   function Flowguard_Mult (LHS : MDualByte;
+                            RHS : MDualByte)
+   return MQuadByte is
+      work : MQuadByte := MQuadByte (LHS);
+   begin
+      work := work * MQuadByte (RHS);
+      return work;
+   end Flowguard_Mult;
+
+
+
 end RSA_Utilities;
