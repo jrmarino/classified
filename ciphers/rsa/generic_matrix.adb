@@ -44,7 +44,8 @@ package body Generic_Matrix is
    procedure Zero_Array (data : out TData)
    is
    begin
-      data.Matrix := (others => MatZero);
+      data.Matrix     := (others => MatZero);
+      data.CurrentLen := 0;
    end Zero_Array;
 
 
@@ -164,7 +165,7 @@ package body Generic_Matrix is
    is
       t            : Natural;
       NatBits      : constant Natural := Natural (bits);
-      DigitCounter : TMatrixLen := TMatrixLen'Last;
+      DigitCounter : TMatrixLen := B.CurrentLen;
       index        : DigitIndex := 0;
    begin
       carry := 0;
@@ -198,7 +199,7 @@ package body Generic_Matrix is
    is
       t            : Natural;
       NatBits      : constant Natural := Natural (bits);
-      DigitCounter : TMatrixLen := TMatrixLen'Last;
+      DigitCounter : TMatrixLen := B.CurrentLen;
       index        : DigitIndex := 0;
    begin
       carry := 0;
