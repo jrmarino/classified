@@ -58,4 +58,12 @@ package RSA_Utilities is
    --  overflow.
 
 
+   procedure DMult (LHS        : in  MQuadByte;
+                    RHS        : in  MQuadByte;
+                    ResultHigh : out MQuadByte;
+                    ResultLow  : out MQuadByte);
+   --  Multiples two 32-bit words and returns a 64-bit word, but separately, in
+   --  a high and low 32-bit word.
+
+
 end RSA_Utilities;

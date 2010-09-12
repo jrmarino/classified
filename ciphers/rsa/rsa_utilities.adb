@@ -116,4 +116,50 @@ package body RSA_Utilities is
 
 
 
+   -------------
+   --  DMult  --
+   -------------
+
+   procedure DMult (LHS        : in  MQuadByte;
+                    RHS        : in  MQuadByte;
+                    ResultHigh : out MQuadByte;
+                    ResultLow  : out MQuadByte)
+   is
+      carry : MQuadByte := 0;
+      al    : constant MDualByte := Low_Half  (LHS);
+      ah    : constant MDualByte := High_Half (LHS);
+      bl    : constant MDualByte := Low_Half  (RHS);
+      bh    : constant MDualByte := High_Half (RHS);
+      m     : MQuadByte;
+      m1    : MQuadByte;
+      m2    : MQuadByte;
+      ml    : MQuadByte;
+      mh    : MQuadByte;
+   begin
+      ResultLow  := Flowguard_Mult (al, bl);
+      ResultHigh := Flowguard_Mult (ah, bh);
+
+      m1         := Flowguard_Mult (al, bh);
+      m2         := Flowguard_Mult (ah, bl);
+      m          := Flowguard_Add  (m1, m2);
+
+      if m < m1 then
+         --  This is equivalent to 1 shift left 16
+         carry := 1 * 2 ** NN_HALF_DIGIT_BITS;
+      end if;
+      ml := Shift_To_High_Half (MDualByte (m and MAX_NN_HALF_DIGIT));
+      mh := MQuadByte (High_Half (m));
+
+      ResultLow := Flowguard_Add (ResultLow, ml);
+      if ResultLow < ml then
+         carry := carry + 1;
+      end if;
+
+      ResultHigh := Flowguard_Add (ResultHigh, mh);
+      ResultHigh := Flowguard_Add (ResultHigh, carry);
+
+   end DMult;
+
+
+
 end RSA_Utilities;
