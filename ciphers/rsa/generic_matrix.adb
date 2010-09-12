@@ -81,7 +81,7 @@ package body Generic_Matrix is
    --------------------------
 
    function Significant_Length (data : TData)
-   return Positive is
+   return TMatrixLen is
       numDigits : TMatrixLen := data.CurrentLen;
       i         : DigitIndex := DigitIndex (numDigits - 1);
    begin
@@ -92,7 +92,7 @@ package body Generic_Matrix is
       if numDigits = 0 then
          return 1;
       else
-         return Positive (numDigits);
+         return numDigits;
       end if;
    end Significant_Length;
 
@@ -163,8 +163,9 @@ package body Generic_Matrix is
                         bits  : in  TDigit;
                         carry : out MatrixType)
    is
-      t            : Natural;
-      NatBits      : constant Natural := Natural (bits);
+      t            : constant Natural := NN_DIGIT_BITS - Natural (bits);
+      factor       : constant MatrixType := MatrixType (2 ** Natural (bits));
+      tfactor      : constant MatrixType := MatrixType (2 ** t);
       DigitCounter : TMatrixLen := B.CurrentLen;
       index        : DigitIndex := 0;
    begin
@@ -174,12 +175,11 @@ package body Generic_Matrix is
          return;
       end if;
 
-      t := NN_DIGIT_BITS - NatBits;
       Repeat :
          loop
-            A.Matrix (index) := (B.Matrix (index) * 2 ** NatBits) or carry;
+            A.Matrix (index) := (B.Matrix (index) * factor) or carry;
+            carry := B.Matrix (index) / tfactor;
             index := index + 1;
-            carry := B.Matrix (index) / 2 ** t;
             DigitCounter := DigitCounter - 1;
             exit Repeat when DigitCounter = 0;
          end loop Repeat;
@@ -197,8 +197,9 @@ package body Generic_Matrix is
                         bits  : in  TDigit;
                         carry : out MatrixType)
    is
-      t            : Natural;
-      NatBits      : constant Natural := Natural (bits);
+      t            : constant Natural := NN_DIGIT_BITS - Natural (bits);
+      factor       : constant MatrixType := MatrixType (2 ** Natural (bits));
+      tfactor      : constant MatrixType := MatrixType (2 ** t);
       DigitCounter : TMatrixLen := B.CurrentLen;
       index        : DigitIndex := 0;
    begin
@@ -208,12 +209,11 @@ package body Generic_Matrix is
          return;
       end if;
 
-      t := NN_DIGIT_BITS - NatBits;
       Repeat :
          loop
-            A.Matrix (index) := (B.Matrix (index) / 2 ** NatBits) or carry;
+            A.Matrix (index) := (B.Matrix (index) / factor) or carry;
+            carry := B.Matrix (index) * tfactor;
             index := index + 1;
-            carry := B.Matrix (index) * 2 ** t;
             DigitCounter := DigitCounter - 1;
             exit Repeat when DigitCounter = 0;
          end loop Repeat;

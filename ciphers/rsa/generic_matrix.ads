@@ -44,7 +44,7 @@ package Generic_Matrix is
    --  "destination".
 
 
-   function Significant_Length (data : TData) return Positive;
+   function Significant_Length (data : TData) return TMatrixLen;
    --  This function starts at the last element and works its way backwards to
    --  discover a non-zero value.  Once it does, it returns the array index
    --  plus 1.  If all the elements have a value of zero, the result is 1.
@@ -75,14 +75,14 @@ package Generic_Matrix is
                         B     : in  TData;
                         bits  : in  TDigit;
                         carry : out MatrixType);
-   --  This computes A := B * 2^bits, returns carry and modifies B
+   --  This computes A := B * 2^bits, returns carry and modifies A
 
 
    procedure NN_RShift (A     : out TData;
                         B     : in  TData;
                         bits  : in  TDigit;
                         carry : out MatrixType);
-   --  This computes A := B / 2^bits, returns carry and modifies B
+   --  This computes A := B / 2^bits, returns carry and modifies A
 
 
 end Generic_Matrix;
