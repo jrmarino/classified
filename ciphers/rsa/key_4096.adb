@@ -24,8 +24,12 @@ package body Key_4096 is
    Work_Dividend : QuadByteMatrix.TData := QuadByteMatrix.Construct;
    CC_Internal   : QuadByteMatrix.TData := QuadByteMatrix.Construct;
    DD_Internal   : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+   Isolation     : QuadByteMatrix.TData := QuadByteMatrix.Construct;
 
-
+   BPower        : array (0 .. 2) of QuadByteMatrix.TData := (
+                                    QuadByteMatrix.Construct,
+                                    QuadByteMatrix.Construct,
+                                    QuadByteMatrix.Construct);
 
    ---------------------
    --  NN_Sub (Quad)  --
@@ -409,6 +413,75 @@ package body Key_4096 is
       end loop;
 
    end Sub_Digit_Mult;
+
+
+   -----------------
+   --  NN_ModExp  --
+   -----------------
+
+   procedure NN_ModExp (A : out QuadByteMatrix.TData;
+                        B : in  QuadByteMatrix.TData;
+                        C : in  QuadByteMatrix.TData;
+                        D : in  QuadByteMatrix.TData)
+   is
+      numDigits : constant QuadByteDigitIndex  :=
+                           QuadByteDigitIndex (C.CurrentLen);
+      K         : QuadByteDigitIndex := numDigits - 1;
+      ci        : MQuadByte;
+      S         : MQuadByte;
+      ciBits    : Integer := NN_DIGIT_BITS;
+      J         : Integer := 0;
+   begin
+      --  Computes a = b^c mod d.  assumes d > 0.
+      Isolation.Zero_Array;
+      BPower (0).Zero_Array;
+      BPower (1).Zero_Array;
+      BPower (2).Zero_Array;
+      A.Zero_Array;
+
+      B.CopyTo (BPower (0));
+      NN_ModMult (BPower (1), BPower (0), B, D);   --  a = (b * c) mod d
+      NN_ModMult (BPower (2), BPower (1), B, D);
+      A.Assign_Zero_Digit (1);
+
+      Outer_Loop :
+         loop
+            ci := C.Matrix (K);
+
+            --  Scan past leading zero bits of most significant digit.
+            if K = numDigits - 1 then
+               while Digit_2MSB (ci) = 0 loop
+                  ci := ci * MQuadByte (4);  -- shift left 2 bits
+                  ciBits := ciBits - 2;
+               end loop;
+            end if;
+
+
+            while J < ciBits loop
+               --  Compute t = t^4 * b^s mod d, where s = two MSB's of ci.
+
+               NN_ModMult (Isolation, A, A, D);
+               Isolation.CopyTo (A);
+
+               NN_ModMult (Isolation, A, A, D);
+               Isolation.CopyTo (A);
+
+               S := Digit_2MSB (ci);
+               if S /= 0 then
+                  NN_ModMult (Isolation, A, BPower (Integer (S) - 1), D);
+                  Isolation.CopyTo (A);
+               end if;
+
+               J := J + 2;
+               ci := ci * MQuadByte (4);  -- shift left 2 bits
+            end loop;
+
+            exit Outer_Loop when K = 0;
+            K := K - 1;
+         end loop Outer_Loop;
+
+
+   end NN_ModExp;
 
 
 

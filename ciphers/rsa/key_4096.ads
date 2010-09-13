@@ -93,9 +93,6 @@ package Key_4096 is
 
 
 
-
-   --  procedure NN_ModExp (
-
    procedure NN_ModMult (A : out QuadByteMatrix.TData;
                          B : in  QuadByteMatrix.TData;
                          C : in  QuadByteMatrix.TData;
@@ -127,5 +124,10 @@ package Key_4096 is
    --  Still not sure what this does
 
 
+   procedure NN_ModExp (A : out QuadByteMatrix.TData;
+                        B : in  QuadByteMatrix.TData;
+                        C : in  QuadByteMatrix.TData;
+                        D : in  QuadByteMatrix.TData);
+   --  Computes a = b^c mod d.  assumes d > 0.
 
 end Key_4096;
