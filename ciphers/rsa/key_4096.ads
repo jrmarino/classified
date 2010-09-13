@@ -104,4 +104,68 @@ package Key_4096 is
    --  This computes A := B - C, returns borrow and modifies A (Quad)
 
 
+   procedure NN_Add (A      : out ExtendedQuadByteMatrix.TData;
+                     B      : in  ExtendedQuadByteMatrix.TData;
+                     C      : in  QuadByteMatrix.TData;
+                     index  : in  ExtQuadByteDigitIndex;
+                     matlen : in  QuadByteMatrixLen;
+                     carry  : out MQuadByte);
+   --  This computes A := B + C, returns carry and modifies A
+   --  It only has one application where B = A, so A := A + C
+
+
+
+
+   --  procedure NN_ModExp (
+
+   procedure NN_ModMult (A : out QuadByteMatrix.TData;
+                         B : in  QuadByteMatrix.TData;
+                         C : in  QuadByteMatrix.TData;
+                         D : in  QuadByteMatrix.TData);
+   --  This computes A = (b * C) mod D
+
+
+   procedure NN_ModMult (A : out QuadByteMatrix.TData;
+                         B : in  ExtendedQuadByteMatrix.TData;
+                         C : in  QuadByteMatrix.TData;
+                         D : in  QuadByteMatrix.TData);
+   --  This computes A = (b * C) mod D
+
+
+   procedure NN_Mult (A : out ExtendedQuadByteMatrix.TData;
+                      B : in  QuadByteMatrix.TData;
+                      C : in  QuadByteMatrix.TData);
+   --  This computes A = B * C
+
+
+   procedure NN_Mult (A : out ExtendedQuadByteMatrix.TData;
+                      B : in  ExtendedQuadByteMatrix.TData;
+                      C : in  QuadByteMatrix.TData);
+   --  This computes A = B * C
+
+
+   procedure NN_Divide (ResDiv : out QuadByteMatrix.TData;
+                        ResMod : out QuadByteMatrix.TData;
+                        C      : in  ExtendedQuadByteMatrix.TData;
+                        D      : in  QuadByteMatrix.TData);
+   --  This computes the modulus and dividend of C divided by D
+   --  e.g. dividend = int (C/D) and modulus = C mod D
+
+
+   procedure Sub_Digit_Mult (A      : out ExtendedQuadByteMatrix.TData;
+                             AIndex : in  ExtQuadByteDigitIndex;
+                             C      : in  MQuadByte;
+                             D      : in  ExtendedQuadByteMatrix.TData;
+                             borrow : out MQuadByte);
+   --  Still not sure what this does
+
+
+   procedure NN_RShift_Mixed (A     : out ExtendedQuadByteMatrix.TData;
+                              B     : in  QuadByteMatrix.TData;
+                              bits  : in  TDigit;
+                              carry : out MQuadByte);
+   --  This computes A := B / 2^bits, returns carry and modifies A
+   --  Normally this is an object method, but we need to mix types.
+
+
 end Key_4096;
