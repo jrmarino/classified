@@ -20,58 +20,10 @@ package body Key_4096 is
 
 
    --  Internal "scratch paper" variables, saves constant memory allocation
-   Work_Product  : ExtendedQuadByteMatrix.TData :=
-                   ExtendedQuadByteMatrix.Construct;
-   Work_Dividend : QuadByteMatrix.TData :=
-                   QuadByteMatrix.Construct;
-   CC_Internal   : ExtendedQuadByteMatrix.TData :=
-                   ExtendedQuadByteMatrix.Construct;
-   DD_Internal   : ExtendedQuadByteMatrix.TData :=
-                   ExtendedQuadByteMatrix.Construct;
-
-
-   ------------------------------
-   --  NN_Sub (Extended Quad)  --
-   ------------------------------
-
-   procedure NN_Sub (A      : out ExtendedQuadByteMatrix.TData;
-                     B      : in  ExtendedQuadByteMatrix.TData;
-                     C      : in  ExtendedQuadByteMatrix.TData;
-                     index  : in  ExtQuadByteDigitIndex;
-                     matlen : in  ExtQuadByteMatrixLen;
-                     borrow : out MQuadByte)
-   is
-      C_Index   : ExtQuadByteDigitIndex := 0;
-      AB_Index  : ExtQuadByteDigitIndex := index;
-      numDigits : ExtQuadByteMatrixLen  := matlen;
-      temp      : MQuadByte;
-   begin
-      borrow := 0;
-      if numDigits = 0 then
-         return;
-      end if;
-
-      Repeat_Until :
-         loop
-            temp := B.Matrix (AB_Index) - borrow;
-            if temp = MAX_NN_DIGIT then
-               temp := MAX_NN_DIGIT - C.Matrix (C_Index);
-            else
-               temp := Flowguard_Sub (temp, C.Matrix (C_Index));
-               if temp > Flowguard_Sub (MAX_NN_DIGIT, C.Matrix (C_Index)) then
-                  borrow := 1;
-               else
-                  borrow := 0;
-               end if;
-            end if;
-            A.Matrix (AB_Index) := temp;
-            C_Index   := C_Index + 1;
-            AB_Index  := AB_Index + 1;
-            numDigits := numDigits - 1;
-            exit Repeat_Until when numDigits = 0;
-         end loop Repeat_Until;
-         A.CurrentLen := A.Significant_Length;
-   end NN_Sub;
+   Work_Product  : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+   Work_Dividend : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+   CC_Internal   : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+   DD_Internal   : QuadByteMatrix.TData := QuadByteMatrix.Construct;
 
 
 
@@ -124,15 +76,15 @@ package body Key_4096 is
    --  NN_Add --
    -------------
 
-   procedure NN_Add (A      : out ExtendedQuadByteMatrix.TData;
-                     B      : in  ExtendedQuadByteMatrix.TData;
+   procedure NN_Add (A      : out QuadByteMatrix.TData;
+                     B      : in  QuadByteMatrix.TData;
                      C      : in  QuadByteMatrix.TData;
-                     index  : in  ExtQuadByteDigitIndex;
+                     index  : in  QuadByteDigitIndex;
                      matlen : in  QuadByteMatrixLen;
                      carry  : out MQuadByte)
    is
       C_Index   : QuadByteDigitIndex    := 0;
-      AB_Index  : ExtQuadByteDigitIndex := index;
+      AB_Index  : QuadByteDigitIndex := index;
       numDigits : QuadByteMatrixLen     := matlen;
       temp      : MQuadByte;
    begin
@@ -188,33 +140,11 @@ package body Key_4096 is
 
 
 
-   ------------------
-   --  NN_ModMult  --
-   ------------------
+   ---------------
+   --  NN_Mult  --
+   ---------------
 
-   procedure NN_ModMult (A : out QuadByteMatrix.TData;
-                         B : in  ExtendedQuadByteMatrix.TData;
-                         C : in  QuadByteMatrix.TData;
-                         D : in  QuadByteMatrix.TData)
-   is
-   begin
-      --  This computes A = (b * C) mod D
-      NN_Mult   (A => Work_Product, B => B, C => C);
-      NN_Divide (ResDiv => Work_Dividend,
-                 ResMod => A,
-                 C      => Work_Product,
-                 D      => D);
-      A.CurrentLen := A.Significant_Length;
-
-   end NN_ModMult;
-
-
-
-   ---------------------------
-   --  NN_Mult (Quad Only)  --
-   ---------------------------
-
-   procedure NN_Mult (A : out ExtendedQuadByteMatrix.TData;
+   procedure NN_Mult (A : out QuadByteMatrix.TData;
                       B : in  QuadByteMatrix.TData;
                       C : in  QuadByteMatrix.TData)
    is
@@ -225,7 +155,7 @@ package body Key_4096 is
       carry : MQuadByte;
       High  : MQuadByte;
       Low   : MQuadByte;
-      ndx   : ExtQuadByteDigitIndex;
+      ndx   : QuadByteDigitIndex;
    begin
       --  This computes A = B * C
       A.Zero_Array;
@@ -236,7 +166,7 @@ package body Key_4096 is
             if B.Matrix (k) /= 0 then
                C_Loop :
                   for j in QuadByteDigitIndex range 0 .. MaxC loop
-                     ndx := ExtQuadByteDigitIndex (k + j);
+                     ndx := k + j;
                      DMult (LHS        => B.Matrix (k),
                             RHS        => C.Matrix (j),
                             ResultHigh => High,
@@ -253,58 +183,7 @@ package body Key_4096 is
                      end if;
                      carry := carry + High;
                   end loop C_Loop;
-               ndx := ExtQuadByteDigitIndex (k + MaxC + 1);
-               A.Matrix (ndx) := A.Matrix (ndx) + carry;
-            end if;
-         end loop B_Loop;
-      A.CurrentLen := A.Significant_Length;
-   end NN_Mult;
-
-
-   ---------------------------------
-   --  NN_Mult (Quad + Extended)  --
-   ---------------------------------
-
-   procedure NN_Mult (A : out ExtendedQuadByteMatrix.TData;
-                      B : in  ExtendedQuadByteMatrix.TData;
-                      C : in  QuadByteMatrix.TData)
-   is
-      MaxB  : constant ExtQuadByteDigitIndex :=
-                       ExtQuadByteDigitIndex (B.CurrentLen - 1);
-      MaxC  : constant QuadByteDigitIndex :=
-                       QuadByteDigitIndex (C.CurrentLen - 1);
-      carry : MQuadByte;
-      High  : MQuadByte;
-      Low   : MQuadByte;
-      ndx   : ExtQuadByteDigitIndex;
-   begin
-      --  This computes A = B * C
-      A.Zero_Array;
-
-      B_Loop :
-         for k in ExtQuadByteDigitIndex range 0 .. MaxB loop
-            carry := 0;
-            if B.Matrix (k) /= 0 then
-               C_Loop :
-                  for j in QuadByteDigitIndex range 0 .. MaxC loop
-                     ndx := k + ExtQuadByteDigitIndex (j);
-                     DMult (LHS        => B.Matrix (k),
-                            RHS        => C.Matrix (j),
-                            ResultHigh => High,
-                            ResultLow  => Low);
-                     A.Matrix (ndx) := Flowguard_Add (A.Matrix (ndx), carry);
-                     if A.Matrix (ndx) < carry then
-                        carry := 1;
-                     else
-                        carry := 0;
-                     end if;
-                     A.Matrix (ndx) := Flowguard_Add (A.Matrix (ndx), Low);
-                     if A.Matrix (ndx) < Low then
-                        carry := carry + 1;
-                     end if;
-                     carry := carry + High;
-                  end loop C_Loop;
-               ndx := k + 1 + ExtQuadByteDigitIndex (MaxC);
+               ndx := k + MaxC + 1;
                A.Matrix (ndx) := A.Matrix (ndx) + carry;
             end if;
          end loop B_Loop;
@@ -319,17 +198,17 @@ package body Key_4096 is
 
    procedure NN_Divide (ResDiv : out QuadByteMatrix.TData;
                         ResMod : out QuadByteMatrix.TData;
-                        C      : in  ExtendedQuadByteMatrix.TData;
+                        C      : in  QuadByteMatrix.TData;
                         D      : in  QuadByteMatrix.TData)
    is
       shift      : TDigit;
       carry      : MQuadByte;
       borrow     : MQuadByte;
       index      : QuadByteDigitIndex;
-      CC_Pointer : ExtQuadByteDigitIndex;
-      DD_Digits  : ExtQuadByteDigitIndex;
-      K          : ExtQuadByteDigitIndex;
-      ndx        : ExtQuadByteDigitIndex;
+      CC_Pointer : QuadByteDigitIndex;
+      DD_Digits  : QuadByteDigitIndex;
+      K          : QuadByteDigitIndex;
+      ndx        : QuadByteDigitIndex;
       S          : MQuadByte;
       U          : MQuadByte;
       V          : MQuadByte;
@@ -359,19 +238,18 @@ package body Key_4096 is
       CC_Internal.NN_RShift (B     => C,
                              bits  => shift,
                              carry => carry);
-      CC_Internal.Matrix (ExtQuadByteDigitIndex (C.CurrentLen)) := carry;
-      NN_RShift_Mixed (A     => DD_Internal,
-                       B     => D,
-                       bits  => shift,
-                       carry => carry);
+      CC_Internal.Matrix (QuadByteDigitIndex (C.CurrentLen)) := carry;
+      DD_Internal.NN_RShift (B     => D,
+                             bits  => shift,
+                             carry => carry);
       CC_Internal.CurrentLen := CC_Internal.Significant_Length;
       DD_Internal.CurrentLen := DD_Internal.Significant_Length;
 
-      DD_Digits := ExtQuadByteDigitIndex (DD_Internal.CurrentLen);
+      DD_Digits := QuadByteDigitIndex (DD_Internal.CurrentLen);
       S         := DD_Internal.Matrix (DD_Digits - 1);
 
-      if ExtQuadByteDigitIndex (C.CurrentLen) >= DD_Digits then
-         K := ExtQuadByteDigitIndex (C.CurrentLen) - DD_Digits;
+      if QuadByteDigitIndex (C.CurrentLen) >= DD_Digits then
+         K := QuadByteDigitIndex (C.CurrentLen) - DD_Digits;
          While_One :
             loop
                if S = MAX_NN_DIGIT then
@@ -459,29 +337,28 @@ package body Key_4096 is
 
                while (CC_Internal.Matrix (ndx) > 0) or
                      (CC_Internal.Compared_With (
-                      Index   => K,
-                      ExtData => DD_Internal,
-                      ExtDigits => ExtQuadByteMatrixLen (DD_Digits)) >= 0) loop
+                       Index     => K,
+                       ExtData   => DD_Internal,
+                       ExtDigits => QuadByteMatrixLen (DD_Digits)) >= 0) loop
                   AI := AI + 1;
                   NN_Sub (A      => CC_Internal,
                           B      => CC_Internal,
                           C      => DD_Internal,
                           index  => K,
-                          matlen => ExtQuadByteMatrixLen (DD_Digits),
+                          matlen => QuadByteMatrixLen (DD_Digits),
                           borrow => borrow);
                   CC_Internal.Matrix (ndx) := CC_Internal.Matrix (ndx) -
                                               borrow;
                end loop;
-               ResDiv.Matrix (QuadByteDigitIndex (K)) := AI;
+               ResDiv.Matrix (K) := AI;
 
                exit While_One when K = 0;
                K := K - 1;
             end loop While_One;
       end if;
-      NN_RShift_Mixed  (A     => ResMod,
-                        B     => CC_Internal,
+      ResMod.NN_RShift (B     => CC_Internal,
                         bits  => shift,
-                        carry => DD_Digits);
+                        carry => carry);
       ResMod.CurrentLen := ResMod.Significant_Length;
       ResDiv.CurrentLen := ResDiv.Significant_Length;
 
@@ -492,19 +369,20 @@ package body Key_4096 is
    --  Sub_Digit_Mult  --
    ----------------------
 
-   procedure Sub_Digit_Mult (A      : out ExtendedQuadByteMatrix.TData;
-                             AIndex : in  ExtQuadByteDigitIndex;
+   procedure Sub_Digit_Mult (A      : out QuadByteMatrix.TData;
+                             AIndex : in  QuadByteDigitIndex;
                              C      : in  MQuadByte;
-                             D      : in  ExtendedQuadByteMatrix.TData;
+                             D      : in  QuadByteMatrix.TData;
                              borrow : out MQuadByte)
    is
-      numDigits : constant ExtQuadByteDigitIndex  :=
-                           ExtQuadByteDigitIndex (D.CurrentLen);
-      K         : ExtQuadByteDigitIndex := 0;
+      numDigits : constant QuadByteDigitIndex  :=
+                           QuadByteDigitIndex (D.CurrentLen);
+      K         : QuadByteDigitIndex := 0;
       High      : MQuadByte;
       Low       : MQuadByte;
-      ndx       : ExtQuadByteDigitIndex;
+      ndx       : QuadByteDigitIndex;
    begin
+      A.Zero_Array;
       borrow := 0;
       if C = 0 then
          return;
@@ -533,48 +411,5 @@ package body Key_4096 is
    end Sub_Digit_Mult;
 
 
-   -----------------------
-   --  NN_RShift_Mixed  --
-   -----------------------
-
-   procedure NN_RShift_Mixed (A     : out ExtendedQuadByteMatrix.TData;
-                              B     : in  QuadByteMatrix.TData;
-                              bits  : in  TDigit;
-                              carry : out MQuadByte)
-   is
-      t            : constant Natural := NN_DIGIT_BITS - Natural (bits);
-      factor       : constant MQuadByte := MQuadByte (2 ** Natural (bits));
-      tfactor      : constant MQuadByte := MQuadByte (2 ** t);
-      DigitCounter : QuadByteMatrixLen  := B.CurrentLen;
-      index        : QuadByteDigitIndex := 0;
-      index_ext    : ExtQuadByteDigitIndex := 0;
-   begin
-      carry := 0;
-      if bits = 0 then
-         A.Zero_Array;
-         A.CurrentLen := ExtQuadByteMatrixLen (B.CurrentLen);
-         declare
-            EZ : QuadByteDigitIndex := QuadByteDigitIndex (DigitCounter) - 1;
-            XX : ExtQuadByteDigitIndex := 0;
-         begin
-            for x in QuadByteDigitIndex range 0 .. EZ loop
-               A.Matrix (XX) := B.Matrix (x);
-               XX := XX + 1;
-            end loop;
-         end;
-         return;
-      end if;
-
-      Repeat :
-         loop
-            A.Matrix (index_ext) := (B.Matrix (index) / factor) or carry;
-            carry := B.Matrix (index) * tfactor;
-            index := index + 1;
-            index_ext := index_ext + 1;
-            DigitCounter := DigitCounter - 1;
-            exit Repeat when DigitCounter = 0;
-         end loop Repeat;
-
-   end NN_RShift_Mixed;
 
 end Key_4096;
