@@ -21,12 +21,16 @@ package Key_4096 is
 
    KeySize_Bits : constant TKeySize := 4096;
 
-   PrimeBytes : constant TPrimeBytes := TPrimeBytes ((KeySize_Bits + 15) / 16);
-   ModLength  : constant Integer := (Integer (KeySize_Bits) + 7) / 8;
-   MsgBytes   : constant TModulus := TModulus (ModLength);
-   NN_Digits  : constant TMAXNNDigits := TMAXNNDigits (
-                ((ModLength + NN_DIGIT_BYTES - 1) / NN_DIGIT_BYTES) + 1);
+   PrimeBytes : constant TPrimeBytes    := TPrimeBytes (KeySize_Bits / 16);
+   ModLength  : constant Integer        := Integer (KeySize_Bits) / 8;
+   MsgBytes   : constant TModulus       := TModulus (ModLength);
+   NN_Digits  : constant TMAXNNDigits   := TMAXNNDigits
+                                          (ModLength / NN_DIGIT_BYTES) + 1;
    NN_Dig2X   : constant T2XMAXNNDigits := T2XMAXNNDigits (NN_Digits * 2);
+
+   subtype LongKeyString is String (1 .. ModLength * 2);
+   subtype HalfKeyString is String (1 .. ModLength);
+   subtype OctetString   is String (1 .. 2);
 
    --  The *MatrixLen ranges are supposed to start with 1
    --  However, for some reason the generics aren't liking it.
@@ -129,5 +133,21 @@ package Key_4096 is
                         C : in  QuadByteMatrix.TData;
                         D : in  QuadByteMatrix.TData);
    --  Computes a = b^c mod d.  assumes d > 0.
+
+
+   function Hex2Byte (LongKey : LongKeyString) return ModExp_Matrix.TData;
+   --  Converts a string of hexadecimal characters to array of MBytes
+   --  Used for public key modulus and exponent.
+
+
+   function Hex2Byte (HalfKey : HalfKeyString) return Prime_Matrix.TData;
+   --  Converts a string of hexadecimal characters to array of MBytes
+   --  Used for the prime numbers of the private key
+
+
+private
+
+   function Octet2MByte (Octet : OctetString) return MByte;
+   --  Takes a 2-character hexidecimal string and returns an MByte
 
 end Key_4096;
