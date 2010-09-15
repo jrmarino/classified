@@ -71,20 +71,6 @@ package Generic_Matrix is
    --  Returns an initialized TData Type
 
 
-   procedure NN_LShift (A     : out TData;
-                        B     : in  TData;
-                        bits  : in  TDigit;
-                        carry : out MatrixType);
-   --  This computes A := B * 2^bits, returns carry and modifies A
-
-
-   procedure NN_RShift (A     : out TData;
-                        B     : in  TData;
-                        bits  : in  TDigit;
-                        carry : out MatrixType);
-   --  This computes A := B / 2^bits, returns carry and modifies A
-
-
 end Generic_Matrix;
 
 --   Matrix_Size  : Positive;
