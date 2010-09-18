@@ -43,8 +43,22 @@ package Radix64 is
 
    subtype OctetString   is String (1 .. 2);
    type TAscii is range 0 .. 127;
+   type TCryptoError is range 0 .. 11;
+
 
    function Encode_to_Radix64 (BinaryString : TBinaryString) return String;
+   --  Converts an array of bytes to 64-bit encoded ASCII text
+   --  The output string is 33% longer than the input string
+
+
+   function Decode_Radix64 (Radix64String : String) return TBinaryString;
+   --  Converts the 64-bit encoded ASCII text back into an array of bytes.
+   --  Error code is stored internally
+   --  Encrypted message length is stored internally
+
+
+   function Get_Status_Message (Status : TCryptoError) return String;
+   --  Returns a description of an error when provided the error code.
 
 private
 

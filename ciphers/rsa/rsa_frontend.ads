@@ -19,8 +19,6 @@ with RSATypes; use RSATypes;
 
 package RSA_Frontend is
 
-   type TErrorCode is range 0 .. 11;
-
    type TPublicKey is record
       KeySize  : TKeySize;
       Modulus  : LongKeyString;
@@ -29,15 +27,15 @@ package RSA_Frontend is
 
 
    type TPrivateKey is record
-      KeySize  : TKeySize;
-      Modulus  : LongKeyString;   --  public modulus
-      Exponent : LongKeyString;   --  public exponent
-      d        : LongKeyString;   --  private exponent
-      p        : HalfKeyString;   --  prime p
-      q        : HalfKeyString;   --  prime q
-      CRTp     : HalfKeyString;   --  prime exponent p
-      CRTq     : HalfKeyString;   --  prime exponent q
-      CRTc     : HalfKeyString;   --  prime coefficient
+      KeySize          : TKeySize;
+      Modulus          : LongKeyString;   --  public modulus
+      Public_Exponent  : LongKeyString;   --  public exponent
+      Private_Exponent : LongKeyString;   --  d
+      Prime_p          : HalfKeyString;   --  prime p
+      Prime_q          : HalfKeyString;   --  prime q
+      Prime_Exp_p      : HalfKeyString;   --  prime exponent CRTp
+      Prime_Exp_q      : HalfKeyString;   --  prime exponent CRTq
+      coefficient      : HalfKeyString;   --  prime coefficient CRTc
    end record;
 
 
@@ -76,15 +74,7 @@ private
                               pkcs_block         : out ModExp_Matrix.TData);
 
 
-   function NN_Decode (HexString : ModExp_Matrix.TData)
-   return QuadByteMatrix.TData;
-   --  Encodes a hexidecimal string (represented by array of bytes) into an
-   --  array of 32-bit integers, but reverses the order such that the bits are
-   --  arranges from Most Significant to Least Significant.
-   --
-   --  It pads the array with zeros for the elements of (hexstring length -
-   --  NN_DIGIT_LEN * MAX_NN_DIGITS).  If the hexstring is too loog, it will
-   --  truncate the most significant bytes.
+
 
 
 end RSA_Frontend;

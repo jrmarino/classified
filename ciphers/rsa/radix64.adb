@@ -16,6 +16,10 @@
 
 package body Radix64 is
 
+   Internal_Error_Code : TCryptoError := 0;
+   Encrypted_Message_Length : Natural := 0;
+
+
    -------------------
    --  Octet2MByte  --
    -------------------
@@ -122,6 +126,111 @@ package body Radix64 is
       return result;
    end Encode_Three_Bytes;
 
+
+
+   ----------------------
+   --  Decode_Radix64  --
+   ----------------------
+
+   function Decode_Radix64 (Radix64String : String)
+   return TBinaryString is
+      triples      : constant Integer := (Radix64String'Length + 3) / 4;
+      Output_Len   : constant Integer := triples * 3;
+      BinaryString : TBinaryString (0 .. Output_Len - 1) := (others => 0);
+      c            : array (1 .. 4) of MByte := (others => 0);
+      enc          : array (1 .. 4) of MByte := (others => 0);
+      index3       : Natural := 0;
+      index4       : Positive := 1;
+   begin
+      Internal_Error_Code      := 0;
+      Encrypted_Message_Length := 0;
+      if Radix64String'Length = 0 then
+         return BinaryString;
+      end if;
+      if Radix64String'Length rem 4 > 0 then
+         Internal_Error_Code := 1;  --  not divisible by 4
+         return BinaryString;
+      end if;
+
+      for x in Integer range 1 .. triples loop
+         for y in Integer range 0 .. 3 loop
+            c (1 + y) := MByte (Character'Pos (Radix64String (index4 + y)));
+            if c (1 + y) > MByte (TAscii'Last) then
+               Internal_Error_Code := 2;  -- 7th bit used
+               return BinaryString;
+            end if;
+            enc (1 + y) := ASC2BIN (TAscii (c (1 + y)));
+            if (enc (1 + y) and 16#80#) > 0 then
+               Internal_Error_Code := 2;  -- Mapped to non-valid character
+               return BinaryString;
+            end if;
+         end loop;
+
+         if Character'Val (c (3)) = PAD then
+            if Character'Val (c (4)) = PAD then
+               enc (3) := 0;
+               enc (4) := 0;
+               Encrypted_Message_Length := Encrypted_Message_Length + 1;
+            else
+               Internal_Error_Code := 3;  -- missing 4th place pad
+               return BinaryString;
+            end if;
+         else
+            if Character'Val (c (4)) = PAD then
+               enc (4) := 0;
+               Encrypted_Message_Length := Encrypted_Message_Length + 2;
+            else
+               Encrypted_Message_Length := Encrypted_Message_Length + 3;
+            end if;
+         end if;
+
+         declare
+            shift2 : constant MByte := MByte (2 ** 2);
+            shift4 : constant MByte := MByte (2 ** 4);
+            shift6 : constant MByte := MByte (2 ** 6);
+            HexFF  : constant MByte := MByte'Last;  -- $FF
+         begin
+            BinaryString (index3)     := ((enc (1) * shift2) and HexFF) or
+                                          (enc (2) / shift4);
+            BinaryString (index3 + 1) := ((enc (2) * shift4) and HexFF) or
+                                          (enc (3) / shift2);
+            BinaryString (index3 + 2) := ((enc (3) * shift6) and HexFF) or
+                                           enc (4);
+         end;
+
+         index3 := index3 + 3;
+         index4 := index4 + 4;
+      end loop;
+
+      return BinaryString;
+   end Decode_Radix64;
+
+
+
+   ----------------------------
+   --  Print_Status_Message  --
+   ----------------------------
+
+   function Get_Status_Message (Status : TCryptoError)
+   return String is
+   begin
+      case Status is
+         when  0 => return "No errors.";
+         when  1 => return "Radix-64 message length not divisible by 4.";
+         when  2 => return "Radix-64 encoding bad, 7th bit used or mismapped.";
+         when  3 => return "Radix-64 encoding bad, 4th place pad doesn't " &
+                           "follow 3rd place pad.";
+         when  4 => return "Encrypted message is larger than key modulus.";
+         when  5 => return "PKCS block is not same length as key modulus.";
+         when  6 => return "PKCS block does not start with <01>.";
+         when  7 => return "PKCS block separator pattern is not <FFFFFF??00>.";
+         when  8 => return "Plain text output is more than 11 chars longer " &
+                           "than key modulus.";
+         when  9 => return "Data Mismatch, message length > key modulus.";
+         when 10 => return "Encryption: message length doesn't match modulus.";
+         when 11 => return "Encryption: Message too long for modulus.";
+      end case;
+   end Get_Status_Message;
 
 
 end Radix64;
