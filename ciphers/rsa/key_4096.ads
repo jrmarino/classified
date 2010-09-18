@@ -28,39 +28,28 @@ package Key_4096 is
                                           (ModLength / NN_DIGIT_BYTES) + 1;
    NN_Dig2X   : constant T2XMAXNNDigits := T2XMAXNNDigits (NN_Digits * 2);
 
-   subtype LongKeyString is String (1 .. ModLength * 2);
-   subtype HalfKeyString is String (1 .. ModLength);
-   subtype OctetString   is String (1 .. 2);
+   subtype LongKeyString is String (1 .. ModLength);
+   subtype HalfKeyString is String (1 .. ModLength / 2);
+
 
    --  The *MatrixLen ranges are supposed to start with 1
    --  However, for some reason the generics aren't liking it.
 
    type PrimeMatrixLen  is range 0 .. PrimeBytes;
    type PrimeDigitIndex is range 0 .. PrimeBytes - 1;
-
-   package Prime_Matrix is
-      new Generic_Matrix (
-         MatrixType => MByte,
-         TMatrixLen => PrimeMatrixLen,
-         DigitIndex => PrimeDigitIndex
-      );
    --  Used for all the private key components
    --  Sized for 4096-bit key, but will accommodate smaller down to 1024-bit
 
 
-
    type ModExpMsgMatrixLen  is range 0 .. MsgBytes;
    type ModExpMsgDigitIndex is range 0 .. MsgBytes - 1;
-
-   package ModExp_Matrix is
-      new Generic_Matrix (
-         MatrixType => MByte,
-         TMatrixLen => ModExpMsgMatrixLen,
-         DigitIndex => ModExpMsgDigitIndex
-      );
    --  Used for encoding and decoding the messages, and public key components
    --  Sized for 4096-bit key, but will accommodate smaller down to 1024-bit
 
+
+   type TBinaryString is array (Natural range <>) of MByte;
+   --  subtype Prime_Matrix     is TBinaryString range 0 .. PrimeBytes - 1;
+   --  subtype ModExpMsg_Matrix is TBinaryString range 0 .. MsgBytes - 1;
 
 
    type QuadByteMatrixLen  is range 0 .. NN_Dig2X + 1;
@@ -76,19 +65,16 @@ package Key_4096 is
    --  Sized for 4096-bit key, but will accommodate smaller down to 1024-bit
 
 
-   function Hex2Byte (LongKey : LongKeyString) return ModExp_Matrix.TData;
+   --  function Hex2Byte (LongKey : LongKeyString) return ModExp_Matrix.TData;
    --  Converts a string of hexadecimal characters to array of MBytes
    --  Used for public key modulus and exponent.
 
 
-   function Hex2Byte (HalfKey : HalfKeyString) return Prime_Matrix.TData;
+   --  function Hex2Byte (HalfKey : HalfKeyString) return Prime_Matrix.TData;
    --  Converts a string of hexadecimal characters to array of MBytes
    --  Used for the prime numbers of the private key
 
 
-private
 
-   function Octet2MByte (Octet : OctetString) return MByte;
-   --  Takes a 2-character hexidecimal string and returns an MByte
 
 end Key_4096;
