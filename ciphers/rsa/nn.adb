@@ -18,59 +18,45 @@ with RSA_Utilities; use RSA_Utilities;
 
 package body NN is
 
-   --  Internal "scratch paper" variables, saves constant memory allocation
-   Work_Product  : QuadByteMatrix.TData := QuadByteMatrix.Construct;
-   Work_Dividend : QuadByteMatrix.TData := QuadByteMatrix.Construct;
-   CC_Internal   : QuadByteMatrix.TData := QuadByteMatrix.Construct;
-   DD_Internal   : QuadByteMatrix.TData := QuadByteMatrix.Construct;
-   Isolation     : QuadByteMatrix.TData := QuadByteMatrix.Construct;
-
-   BPower        : array (0 .. 2) of QuadByteMatrix.TData := (
-                                    QuadByteMatrix.Construct,
-                                    QuadByteMatrix.Construct,
-                                    QuadByteMatrix.Construct);
-
    ---------------------
    --  NN_Sub (Quad)  --
    ---------------------
 
-   procedure NN_Sub (A      : out QuadByteMatrix.TData;
-                     B      : in  QuadByteMatrix.TData;
-                     C      : in  QuadByteMatrix.TData;
-                     index  : in  QuadByteDigitIndex;
-                     matlen : in  QuadByteMatrixLen;
-                     borrow : out MQuadByte)
+   procedure NN_Sub (A         : out QuadByteMatrix.TData;
+                     A_Index   : in  QuadByteDigitIndex;
+                     B         : in  QuadByteMatrix.TData;
+                     B_Index   : in  QuadByteDigitIndex;
+                     C         : in  QuadByteMatrix.TData;
+                     C_Index   : in  QuadByteDigitIndex;
+                     numDigits : in  QuadByteMatrixLen;
+                     borrow    : out MQuadByte)
    is
-      C_Index   : QuadByteDigitIndex := 0;
-      AB_Index  : QuadByteDigitIndex := index;
-      numDigits : QuadByteMatrixLen  := matlen;
       temp      : MQuadByte;
+      Andx      : QuadByteDigitIndex := A_Index;
+      Bndx      : QuadByteDigitIndex := B_Index;
+      Cndx      : QuadByteDigitIndex := C_Index;
    begin
       borrow := 0;
-      if numDigits = 0 then
-         return;
-      end if;
 
-      Repeat_Until :
-         loop
-            temp := B.Matrix (AB_Index) - borrow;
-            if temp = MAX_NN_DIGIT then
-               temp := MAX_NN_DIGIT - C.Matrix (C_Index);
+      for x in QuadByteMatrixLen range 1 .. numDigits loop
+         temp := B.Matrix (Bndx) - borrow;
+         if temp = MAX_NN_DIGIT then
+            temp := MAX_NN_DIGIT - C.Matrix (Cndx);
+         else
+            temp := Flowguard_Sub (temp, C.Matrix (Cndx));
+            if temp > Flowguard_Sub (MAX_NN_DIGIT, C.Matrix (Cndx)) then
+               borrow := 1;
             else
-               temp := Flowguard_Sub (temp, C.Matrix (C_Index));
-               if temp > Flowguard_Sub (MAX_NN_DIGIT, C.Matrix (C_Index)) then
-                  borrow := 1;
-               else
-                  borrow := 0;
-               end if;
+               borrow := 0;
             end if;
-            A.Matrix (AB_Index) := temp;
-            C_Index   := C_Index + 1;
-            AB_Index  := AB_Index + 1;
-            numDigits := numDigits - 1;
-            exit Repeat_Until when numDigits = 0;
-         end loop Repeat_Until;
+         end if;
+         A.Matrix (Andx) := temp;
+         Andx := Andx + 1;
+         Bndx := Bndx + 1;
+         Cndx := Cndx + 1;
+      end loop;
       A.CurrentLen := A.Significant_Length;
+
    end NN_Sub;
 
 
@@ -79,67 +65,42 @@ package body NN is
    --  NN_Add --
    -------------
 
-   procedure NN_Add (A      : out QuadByteMatrix.TData;
-                     B      : in  QuadByteMatrix.TData;
-                     C      : in  QuadByteMatrix.TData;
-                     index  : in  QuadByteDigitIndex;
-                     matlen : in  QuadByteMatrixLen;
-                     carry  : out MQuadByte)
+   procedure NN_Add (A         : out QuadByteMatrix.TData;
+                     A_Index   : in  QuadByteDigitIndex;
+                     B         : in  QuadByteMatrix.TData;
+                     B_Index   : in  QuadByteDigitIndex;
+                     C         : in  QuadByteMatrix.TData;
+                     C_Index   : in  QuadByteDigitIndex;
+                     numDigits : in  QuadByteMatrixLen;
+                     carry     : out MQuadByte)
    is
-      C_Index   : QuadByteDigitIndex    := 0;
-      AB_Index  : QuadByteDigitIndex := index;
-      numDigits : QuadByteMatrixLen     := matlen;
-      temp      : MQuadByte;
+      temp      : MQuadByte          := 0;
+      Andx      : QuadByteDigitIndex := A_Index;
+      Bndx      : QuadByteDigitIndex := B_Index;
+      Cndx      : QuadByteDigitIndex := C_Index;
    begin
       carry := 0;
-      if numDigits = 0 then
-         return;
-      end if;
 
-      Repeat_Until :
-         loop
-            temp := B.Matrix (AB_Index) + carry;
-            if temp < carry then
-               temp := C.Matrix (C_Index);
+      for x in QuadByteMatrixLen range 1 .. numDigits loop
+         temp := B.Matrix (Bndx) + carry;
+         if temp < carry then
+            temp := C.Matrix (Cndx);
+         else
+            temp := Flowguard_Add (temp, C.Matrix (Cndx));
+            if temp < C.Matrix (Cndx) then
+               carry := 1;
             else
-               temp := Flowguard_Add (temp, C.Matrix (C_Index));
-               if temp < C.Matrix (C_Index) then
-                  carry := 1;
-               else
-                  carry := 0;
-               end if;
+               carry := 0;
             end if;
-            A.Matrix (AB_Index) := temp;
-            C_Index   := C_Index + 1;
-            AB_Index  := AB_Index + 1;
-            numDigits := numDigits - 1;
-            exit Repeat_Until when numDigits = 0;
-         end loop Repeat_Until;
+         end if;
+         A.Matrix (Andx) := temp;
+         Andx := Andx + 1;
+         Bndx := Bndx + 1;
+         Cndx := Cndx + 1;
+      end loop;
       A.CurrentLen := A.Significant_Length;
 
    end NN_Add;
-
-
-
-   ------------------
-   --  NN_ModMult  --
-   ------------------
-
-   procedure NN_ModMult (A : out QuadByteMatrix.TData;
-                         B : in  QuadByteMatrix.TData;
-                         C : in  QuadByteMatrix.TData;
-                         D : in  QuadByteMatrix.TData)
-   is
-   begin
-      --  This computes A = (b * C) mod D
-      NN_Mult   (A => Work_Product, B => B, C => C);
-      NN_Divide (ResDiv => Work_Dividend,
-                 ResMod => A,
-                 C      => Work_Product,
-                 D      => D);
-      A.CurrentLen := A.Significant_Length;
-
-   end NN_ModMult;
 
 
 
@@ -147,9 +108,12 @@ package body NN is
    --  NN_Mult  --
    ---------------
 
-   procedure NN_Mult (A : out QuadByteMatrix.TData;
-                      B : in  QuadByteMatrix.TData;
-                      C : in  QuadByteMatrix.TData)
+   procedure NN_Mult (A       : out QuadByteMatrix.TData;
+                      A_Index : in  QuadByteDigitIndex;
+                      B       : in  QuadByteMatrix.TData;
+                      B_Index : in  QuadByteDigitIndex;
+                      C       : in  QuadByteMatrix.TData;
+                      C_Index : in  QuadByteDigitIndex)
    is
       MaxB  : constant QuadByteDigitIndex :=
                        QuadByteDigitIndex (B.CurrentLen - 1);
@@ -158,58 +122,200 @@ package body NN is
       carry : MQuadByte;
       High  : MQuadByte;
       Low   : MQuadByte;
-      ndx   : QuadByteDigitIndex;
+      bndx  : QuadByteDigitIndex;
+      cndx  : QuadByteDigitIndex;
+      zndx  : QuadByteDigitIndex;
+
+      ZZ_Internal : QuadByteMatrix.TData := QuadByteMatrix.Construct;
    begin
       --  This computes A = B * C
-      A.Zero_Array;
 
       B_Loop :
          for k in QuadByteDigitIndex range 0 .. MaxB loop
             carry := 0;
-            if B.Matrix (k) /= 0 then
+            bndx  := B_Index + k;
+            if B.Matrix (bndx) /= 0 then
                C_Loop :
                   for j in QuadByteDigitIndex range 0 .. MaxC loop
-                     ndx := k + j;
-                     DMult (LHS        => B.Matrix (k),
-                            RHS        => C.Matrix (j),
+                     cndx := C_Index + j;
+                     DMult (LHS        => B.Matrix (bndx),
+                            RHS        => C.Matrix (cndx),
                             ResultHigh => High,
                             ResultLow  => Low);
-                     A.Matrix (ndx) := Flowguard_Add (A.Matrix (ndx), carry);
-                     if A.Matrix (ndx) < carry then
+                     zndx := k + j;
+                     ZZ_Internal.Matrix (zndx) :=
+                           Flowguard_Add (ZZ_Internal.Matrix (zndx), carry);
+                     if ZZ_Internal.Matrix (zndx) < carry then
                         carry := 1;
                      else
                         carry := 0;
                      end if;
-                     A.Matrix (ndx) := Flowguard_Add (A.Matrix (ndx), Low);
-                     if A.Matrix (ndx) < Low then
+                     ZZ_Internal.Matrix (zndx) :=
+                           Flowguard_Add (ZZ_Internal.Matrix (zndx), Low);
+                     if ZZ_Internal.Matrix (zndx) < Low then
                         carry := carry + 1;
                      end if;
                      carry := carry + High;
                   end loop C_Loop;
-               ndx := k + MaxC + 1;
-               A.Matrix (ndx) := A.Matrix (ndx) + carry;
             end if;
+            zndx := k + MaxC + 1;
+            ZZ_Internal.Matrix (zndx) := ZZ_Internal.Matrix (zndx) + carry;
          end loop B_Loop;
-      A.CurrentLen := A.Significant_Length;
+
+      ZZ_Internal.CurrentLen := ZZ_Internal.Significant_Length;
+      ZZ_Internal.CopyTo (destination => A);
+
    end NN_Mult;
 
 
 
    -----------------
-   --  NN_Divide  --
+   --  NN_LShift  --
    -----------------
 
-   procedure NN_Divide (ResDiv : out QuadByteMatrix.TData;
-                        ResMod : out QuadByteMatrix.TData;
-                        C      : in  QuadByteMatrix.TData;
-                        D      : in  QuadByteMatrix.TData)
+   procedure NN_LShift (A         : out QuadByteMatrix.TData;
+                        A_Index   : in  QuadByteDigitIndex;
+                        B         : in  QuadByteMatrix.TData;
+                        B_Index   : in  QuadByteDigitIndex;
+                        numBits   : in  TDigit;
+                        numDigits : in  QuadByteMatrixLen;
+                        carry     : out MQuadByte)
+   is
+      t       : constant Natural := NN_DIGIT_BITS - Natural (numBits);
+      factor  : constant MQuadByte := MQuadByte (2 ** Natural (numBits));
+      tfactor : constant MQuadByte := MQuadByte (2 ** t);
+      Andx    : QuadByteDigitIndex := A_Index;
+      Bndx    : QuadByteDigitIndex := B_Index;
+   begin
+      --  This computes A := B * 2^numBits, returns carry and modifies A
+      carry := 0;
+      if numBits = 0 then
+         if numDigits > 0 then
+            B.CopyTo (destination => A);
+         end if;
+         return;
+      end if;
+
+      for x in QuadByteMatrixLen range 1 .. numDigits loop
+         A.Matrix (Andx) := B.Matrix (Bndx) * factor or carry;
+         carry           := B.Matrix (Bndx) / tfactor;
+         Andx            := Andx + 1;
+         Bndx            := Bndx + 1;
+      end loop;
+
+   end NN_LShift;
+
+
+
+   -----------------
+   --  NN_RShift  --
+   -----------------
+
+   procedure NN_RShift (A         : out QuadByteMatrix.TData;
+                        A_Index   : in  QuadByteDigitIndex;
+                        B         : in  QuadByteMatrix.TData;
+                        B_Index   : in  QuadByteDigitIndex;
+                        numBits   : in  TDigit;
+                        numDigits : in  QuadByteMatrixLen;
+                        carry     : out MQuadByte)
+   is
+      t            : constant Natural := NN_DIGIT_BITS - Natural (numBits);
+      factor       : constant MQuadByte := MQuadByte (2 ** Natural (numBits));
+      tfactor      : constant MQuadByte := MQuadByte (2 ** t);
+      BBndx        : QuadByteDigitIndex;
+      AAndx        : QuadByteDigitIndex;
+   begin
+   --  This computes A := B / 2^bits, returns carry and modifies A
+      carry := 0;
+      if numBits = 0 then
+         if numDigits > 0 then
+            B.CopyTo (destination => A);
+         end if;
+         return;
+      end if;
+
+      for x in QuadByteMatrixLen range 1 .. numDigits loop
+         BBndx            := B_Index + QuadByteDigitIndex (numDigits - x);
+         AAndx            := A_Index + QuadByteDigitIndex (numDigits - x);
+         A.Matrix (AAndx) := B.Matrix (BBndx) * factor or carry;
+         carry            := B.Matrix (BBndx) / tfactor;
+      end loop;
+
+   end NN_RShift;
+
+
+
+   ----------------------
+   --  Sub_Digit_Mult  --
+   ----------------------
+
+   procedure Sub_Digit_Mult (A         : out QuadByteMatrix.TData;
+                             A_Index   : in  QuadByteDigitIndex;
+                             B         : in  QuadByteMatrix.TData;
+                             B_Index   : in  QuadByteDigitIndex;
+                             C         : in  MQuadByte;
+                             D         : in  QuadByteMatrix.TData;
+                             D_Index   : in  QuadByteDigitIndex;
+                             numDigits : in  QuadByteMatrixLen;
+                             borrow    : out MQuadByte)
+   is
+      High      : MQuadByte;
+      Low       : MQuadByte;
+      Andx      : QuadByteDigitIndex;
+      Bndx      : QuadByteDigitIndex;
+      Dndx      : QuadByteDigitIndex;
+   begin
+      borrow := 0;
+      if C = 0 then
+         return;
+      end if;
+
+      for K in QuadByteDigitIndex
+               range 0 .. QuadByteDigitIndex (numDigits - 1) loop
+         Andx := K + A_Index;
+         Bndx := K + B_Index;
+         Dndx := K + D_Index;
+
+         DMult (LHS        => C,
+                RHS        => D.Matrix (Dndx),
+                ResultHigh => High,
+                ResultLow  => Low);
+
+         A.Matrix (Andx) := Flowguard_Sub (B.Matrix (Bndx), borrow);
+         if A.Matrix (Andx) > Flowguard_Sub (MAX_NN_DIGIT, borrow) then
+            borrow := 1;
+         else
+            borrow := 0;
+         end if;
+         A.Matrix (Andx) := Flowguard_Sub (A.Matrix (Andx), Low);
+         if A.Matrix (Andx) > Flowguard_Sub (MAX_NN_DIGIT, Low) then
+            borrow := borrow + 1;
+         end if;
+         borrow := borrow + High;
+      end loop;
+
+   end Sub_Digit_Mult;
+
+
+
+   --------------
+   --  NN_Div  --
+   --------------
+
+   procedure NN_Div (ResDiv   : out QuadByteMatrix.TData;
+                     ResMod   : out QuadByteMatrix.TData;
+                     C        : in  QuadByteMatrix.TData;
+                     C_Index  : in  QuadByteDigitIndex;
+                     C_Digits : in  QuadByteMatrixLen;
+                     D        : in  QuadByteMatrix.TData;
+                     D_Index  : in  QuadByteDigitIndex;
+                     D_Digits : in  QuadByteMatrixLen)
    is
       shift      : TDigit;
       carry      : MQuadByte;
       borrow     : MQuadByte;
-      index      : QuadByteDigitIndex;
+      DD_Digits  : QuadByteMatrixLen;
       CC_Pointer : QuadByteDigitIndex;
-      DD_Digits  : QuadByteDigitIndex;
       K          : QuadByteDigitIndex;
       ndx        : QuadByteDigitIndex;
       S          : MQuadByte;
@@ -223,253 +329,297 @@ package body NN is
       CLow       : MDualByte;
       AHigh      : MDualByte;
       ALow       : MDualByte;
+
+      CC_Internal : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+      DD_Internal : QuadByteMatrix.TData := QuadByteMatrix.Construct;
    begin
       --  This computes the modulus and dividend of C divided by D
       --  e.g. dividend = int (C/D) and modulus = C mod D
 
       ResDiv.Zero_Array;
       ResMod.Zero_Array;
-      if D.CurrentLen = 0 then
+      DD_Digits := D.CurrentLen;
+      if DD_Digits = 0 then
          return;
       end if;
-      CC_Internal.Zero_Array;
-      DD_Internal.Zero_Array;
 
-      index := QuadByteDigitIndex (D.CurrentLen) - 1;
-      shift := D.Significant_Bits (index => index);
-      shift := TDigit (NN_DIGIT_BITS - Integer (shift));
-      CC_Internal.NN_RShift (B     => C,
-                             bits  => shift,
-                             carry => carry);
-      CC_Internal.Matrix (QuadByteDigitIndex (C.CurrentLen)) := carry;
-      DD_Internal.NN_RShift (B     => D,
-                             bits  => shift,
-                             carry => carry);
-      CC_Internal.CurrentLen := CC_Internal.Significant_Length;
-      DD_Internal.CurrentLen := DD_Internal.Significant_Length;
 
-      DD_Digits := QuadByteDigitIndex (DD_Internal.CurrentLen);
-      S         := DD_Internal.Matrix (DD_Digits - 1);
+      shift := TDigit (NN_DIGIT_BITS - Integer (D.Significant_Bits
+               (index => QuadByteDigitIndex (DD_Digits - 1))));
 
-      if QuadByteDigitIndex (C.CurrentLen) >= DD_Digits then
-         K := QuadByteDigitIndex (C.CurrentLen) - DD_Digits;
-         While_One :
-            loop
-               if S = MAX_NN_DIGIT then
-                  AI := CC_Internal.Matrix (K + DD_Digits);
+      NN_RShift (A         => CC_Internal, A_Index   => 0,
+                 B         => C,           B_Index   => 0,
+                 numBits   => shift,
+                 numDigits => C_Digits,
+                 carry     => carry);
+      CC_Internal.Matrix (QuadByteDigitIndex (C_Digits)) := carry;
+
+      NN_RShift (A         => DD_Internal, A_Index   => 0,
+                 B         => D,           B_Index   => 0,
+                 numBits   => shift,
+                 numDigits => DD_Digits,
+                 carry     => carry);
+      S := DD_Internal.Matrix (QuadByteDigitIndex (DD_Digits - 1));
+
+
+      K := QuadByteDigitIndex (C_Digits - DD_Digits);
+      While_One :
+         loop
+            if S = MAX_NN_DIGIT then
+               AI := CC_Internal.Matrix (K + QuadByteDigitIndex (DD_Digits));
+            else
+               CC_Pointer := K + QuadByteDigitIndex (DD_Digits) - 1;
+
+               S := S + 1;
+               CHigh := High_Half (S);
+               CLow  := Low_Half (S);
+
+               T0 := CC_Internal.Matrix (CC_Pointer);
+               T1 := CC_Internal.Matrix (CC_Pointer + 1);
+
+               if CHigh = MDualByte (MAX_NN_HALF_DIGIT) then
+                  AHigh := High_Half (T1);
                else
-                  CC_Pointer := K + DD_Digits - 1;
-
-                  S := S + 1;
-                  CHigh := High_Half (S);
-                  CLow  := Low_Half (S);
-
-                  T0 := CC_Internal.Matrix (CC_Pointer);
-                  T1 := CC_Internal.Matrix (CC_Pointer + 1);
-
-                  if CHigh = MDualByte (MAX_NN_HALF_DIGIT) then
-                     AHigh := High_Half (T1);
-                  else
-                     AHigh := MDualByte (T1) / (CHigh + 1);
-                  end if;
-                  U := Flowguard_Mult (AHigh, CLow);
-                  V := Flowguard_Mult (AHigh, CHigh);
-                  postShiftL := Shift_To_High_Half (
-                                      MDualByte (U and MAX_NN_HALF_DIGIT));
-
-                  T0 := Flowguard_Sub (T0, postShiftL);
-                  if T0 > Flowguard_Sub (MAX_NN_DIGIT, postShiftL) then
-                     T1 := T1 - 1;
-                  end if;
-                  T1 := T1 - MQuadByte (High_Half (U)) - V;
-
-                  while (T1 > MQuadByte (CHigh)) or
-                        ((T1 = MQuadByte (CHigh)) and (T0 >= Shift_To_High_Half
-                               (CLow and MDualByte (MAX_NN_HALF_DIGIT)))) loop
-                     postShiftL := Shift_To_High_Half
-                                   (CLow and MDualByte (MAX_NN_HALF_DIGIT));
-                     T0 := Flowguard_Sub (T0, postShiftL);
-                     if T0 > Flowguard_Sub (MAX_NN_DIGIT, postShiftL) then
-                        T1 := T1 - 1;
-                     end if;
-                     T1 := T1 - MQuadByte (CHigh);
-                     AHigh := AHigh + 1;
-                  end loop;
-
-                  if MQuadByte (CHigh) = MAX_NN_HALF_DIGIT then
-                     ALow := High_Half (T1);
-                  else
-                     ALow := MDualByte (Flowguard_Add (
-                             MQuadByte (Shift_To_High_Half (MDualByte (T1))),
-                             MQuadByte (High_Half (T0))) /
-                             MQuadByte (CHigh + 1));
-                  end if;
-                  U  := Flowguard_Mult (ALow, CLow);
-                  V  := Flowguard_Mult (ALow, CHigh);
-                  T0 := Flowguard_Sub  (T0, U);
-                  if T0 > Flowguard_Sub (MAX_NN_DIGIT, U) then
-                     T1 := T1 - 1;
-                  end if;
-                  postShiftL := Shift_To_High_Half
-                                (MDualByte (V and MAX_NN_HALF_DIGIT));
-                  T0 := Flowguard_Sub (T0, postShiftL);
-                  if T0 > Flowguard_Sub (MAX_NN_DIGIT, postShiftL) then
-                     T1 := T1 - 1;
-                  end if;
-                  T1 := T1 - MQuadByte (High_Half (V));
-
-                  while (T1 > 0) or ((T1 = 0) and (T0 >= S)) loop
-                     T0 := Flowguard_Sub (T0, S);
-                     if T0 > (MAX_NN_DIGIT - S) then
-                        T1 := T1 - 1;
-                     end if;
-                     ALow := ALow + 1;
-                  end loop;
-
-                  AI := Shift_To_High_Half (AHigh) + MQuadByte (ALow);
-                  S  := S - 1;
+                  AHigh := MDualByte (T1) / (CHigh + 1);
                end if;
+               U := Flowguard_Mult (AHigh, CLow);
+               V := Flowguard_Mult (AHigh, CHigh);
+               postShiftL := Shift_To_High_Half (
+                                   MDualByte (U and MAX_NN_HALF_DIGIT));
 
-               Sub_Digit_Mult (A      => CC_Internal,
-                               AIndex => K,
-                               C      => AI,
-                               D      => DD_Internal,
-                               borrow => borrow);
-               ndx := K + DD_Digits;
-               CC_Internal.Matrix (ndx) := CC_Internal.Matrix (ndx) - borrow;
+               T0 := Flowguard_Sub (T0, postShiftL);
+               if T0 > Flowguard_Sub (MAX_NN_DIGIT, postShiftL) then
+                  T1 := T1 - 1;
+               end if;
+               T1 := T1 - MQuadByte (High_Half (U)) - V;
 
-               while (CC_Internal.Matrix (ndx) > 0) or
-                     (CC_Internal.Compared_With (
-                       Index     => K,
-                       ExtData   => DD_Internal,
-                       ExtDigits => QuadByteMatrixLen (DD_Digits)) >= 0) loop
-                  AI := AI + 1;
-                  NN_Sub (A      => CC_Internal,
-                          B      => CC_Internal,
-                          C      => DD_Internal,
-                          index  => K,
-                          matlen => QuadByteMatrixLen (DD_Digits),
-                          borrow => borrow);
-                  CC_Internal.Matrix (ndx) := CC_Internal.Matrix (ndx) -
-                                              borrow;
+               while (T1 > MQuadByte (CHigh)) or
+                     ((T1 = MQuadByte (CHigh)) and (T0 >= Shift_To_High_Half
+                            (CLow))) loop
+                  postShiftL := Shift_To_High_Half (CLow);
+                  T0 := Flowguard_Sub (T0, postShiftL);
+                  if T0 > Flowguard_Sub (MAX_NN_DIGIT, postShiftL) then
+                     T1 := T1 - 1;
+                  end if;
+                  T1 := T1 - MQuadByte (CHigh);
+                  AHigh := AHigh + 1;
                end loop;
-               ResDiv.Matrix (K) := AI;
 
-               exit While_One when K = 0;
-               K := K - 1;
-            end loop While_One;
-      end if;
-      ResMod.NN_RShift (B     => CC_Internal,
-                        bits  => shift,
-                        carry => carry);
+               if MQuadByte (CHigh) = MAX_NN_HALF_DIGIT then
+                  ALow := High_Half (T1);
+               else
+                  ALow := MDualByte (Flowguard_Add (
+                          MQuadByte (Shift_To_High_Half (MDualByte (T1))),
+                          MQuadByte (High_Half (T0))) /
+                          MQuadByte (CHigh + 1));
+               end if;
+               U  := Flowguard_Mult (ALow, CLow);
+               V  := Flowguard_Mult (ALow, CHigh);
+               T0 := Flowguard_Sub  (T0, U);
+               if T0 > Flowguard_Sub (MAX_NN_DIGIT, U) then
+                  T1 := T1 - 1;
+               end if;
+               postShiftL := Shift_To_High_Half
+                             (MDualByte (V and MAX_NN_HALF_DIGIT));
+               T0 := Flowguard_Sub (T0, postShiftL);
+               if T0 > Flowguard_Sub (MAX_NN_DIGIT, postShiftL) then
+                  T1 := T1 - 1;
+               end if;
+               T1 := T1 - MQuadByte (High_Half (V));
+
+               while (T1 > 0) or ((T1 = 0) and (T0 >= S)) loop
+                  T0 := Flowguard_Sub (T0, S);
+                  if T0 > Flowguard_Sub (MAX_NN_DIGIT, S) then
+                     T1 := T1 - 1;
+                  end if;
+                  ALow := ALow + 1;
+               end loop;
+
+               AI := Shift_To_High_Half (AHigh) + MQuadByte (ALow);
+               S  := S - 1;
+            end if;
+            Sub_Digit_Mult (A         => CC_Internal,
+                            A_Index   => K,
+                            B         => CC_Internal,
+                            B_Index   => K,
+                            C         => AI,
+                            D         => DD_Internal,
+                            D_Index   => 0,
+                            numDigits => DD_Digits,
+                            borrow    => borrow);
+            ndx := K + QuadByteDigitIndex (DD_Digits);
+            CC_Internal.Matrix (ndx) := CC_Internal.Matrix (ndx) - borrow;
+
+            while (CC_Internal.Matrix (ndx) > 0) or
+                  (CC_Internal.Compared_With (
+                    Index     => K,
+                    ExtData   => DD_Internal,
+                    ExtDigits => DD_Digits) >= 0) loop
+               AI := AI + 1;
+               NN_Sub (A         => CC_Internal,
+                       A_Index   => K,
+                       B         => CC_Internal,
+                       B_Index   => K,
+                       C         => DD_Internal,
+                       C_Index   => 0,
+                       numDigits => DD_Digits,
+                       borrow    => borrow);
+               CC_Internal.Matrix (ndx) := CC_Internal.Matrix (ndx) -
+                                           borrow;
+            end loop;
+            ResDiv.Matrix (K) := AI;
+
+            exit While_One when K = 0;
+            K := K - 1;
+         end loop While_One;
+
+      NN_RShift (A         => ResMod,
+                 A_Index   => 0,
+                 B         => CC_Internal,
+                 B_Index   => 0,
+                 numBits   => shift,
+                 numDigits => DD_Digits,
+                 carry     => carry);
+
       ResMod.CurrentLen := ResMod.Significant_Length;
       ResDiv.CurrentLen := ResDiv.Significant_Length;
 
-   end NN_Divide;
+   end NN_Div;
 
 
-   ----------------------
-   --  Sub_Digit_Mult  --
-   ----------------------
 
-   procedure Sub_Digit_Mult (A      : out QuadByteMatrix.TData;
-                             AIndex : in  QuadByteDigitIndex;
-                             C      : in  MQuadByte;
-                             D      : in  QuadByteMatrix.TData;
-                             borrow : out MQuadByte)
+   ------------------
+   --  NN_ModMult  --
+   ------------------
+
+   procedure NN_ModMult (A         : out QuadByteMatrix.TData;
+                         B         : in  QuadByteMatrix.TData;
+                         B_Index   : in  QuadByteDigitIndex;
+                         C         : in  QuadByteMatrix.TData;
+                         C_Index   : in  QuadByteDigitIndex;
+                         D         : in  QuadByteMatrix.TData;
+                         D_Index   : in  QuadByteDigitIndex;
+                         numDigits : in  QuadByteMatrixLen)
    is
-      numDigits : constant QuadByteDigitIndex  :=
-                           QuadByteDigitIndex (D.CurrentLen);
-      K         : QuadByteDigitIndex := 0;
-      High      : MQuadByte;
-      Low       : MQuadByte;
-      ndx       : QuadByteDigitIndex;
+      intermediate  : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+      Work_Dividend : QuadByteMatrix.TData := QuadByteMatrix.Construct;
    begin
-      A.Zero_Array;
-      borrow := 0;
-      if C = 0 then
-         return;
-      end if;
+      --  This computes A = (b * C) mod D
+      NN_Mult (A       => intermediate,
+               A_Index => 0,
+               B       => B,
+               B_Index => B_Index,
+               C       => C,
+               C_Index => C_Index);
 
-      while K < numDigits loop
-         DMult (LHS        => C,
-                RHS        => D.Matrix (K),
-                ResultHigh => High,
-                ResultLow  => Low);
-         ndx := AIndex + K;
-         A.Matrix (ndx) := Flowguard_Sub (A.Matrix (ndx), borrow);
-         if A.Matrix (ndx) > Flowguard_Sub (MAX_NN_DIGIT, borrow) then
-            borrow := 1;
-         else
-            borrow := 0;
-         end if;
-         A.Matrix (ndx) := Flowguard_Sub (A.Matrix (ndx), Low);
-         if A.Matrix (ndx) > Flowguard_Sub (MAX_NN_DIGIT, Low) then
-            borrow := borrow + 1;
-         end if;
-         borrow := borrow + High;
-         K := K + 1;
-      end loop;
+      NN_Div (ResDiv   => Work_Dividend,
+              ResMod   => A,
+              C        => intermediate,
+              C_Index  => 0,
+              C_Digits => 2 * numDigits,
+              D        => D,
+              D_Index  => D_Index,
+              D_Digits => numDigits);
+
       A.CurrentLen := A.Significant_Length;
 
-   end Sub_Digit_Mult;
+   end NN_ModMult;
+
 
 
    -----------------
    --  NN_ModExp  --
    -----------------
 
-   procedure NN_ModExp (A : out QuadByteMatrix.TData;
-                        B : in  QuadByteMatrix.TData;
-                        C : in  QuadByteMatrix.TData;
-                        D : in  QuadByteMatrix.TData)
+   procedure NN_ModExp (A         : out QuadByteMatrix.TData;
+                        B         : in  QuadByteMatrix.TData;
+                        B_Index   : in  QuadByteDigitIndex;
+                        C         : in  QuadByteMatrix.TData;
+                        C_Index   : in  QuadByteDigitIndex;
+                        C_Digits  : in  QuadByteMatrixLen;
+                        D         : in  QuadByteMatrix.TData;
+                        D_Index   : in  QuadByteDigitIndex;
+                        D_Digits  : in  QuadByteMatrixLen)
    is
-      numDigits : constant QuadByteDigitIndex  :=
-                           QuadByteDigitIndex (C.CurrentLen);
-      K         : QuadByteDigitIndex := numDigits - 1;
+      K         : QuadByteDigitIndex := QuadByteDigitIndex (C_Digits - 1);
       ci        : MQuadByte;
       S         : MQuadByte;
-      ciBits    : Integer := NN_DIGIT_BITS;
+      ciBits    : Integer;
       J         : Integer := 0;
+
+      T      : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+      Tp1    : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+      Tp2    : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+      BPower : array (0 .. 2) of QuadByteMatrix.TData := (
+                                 QuadByteMatrix.Construct,
+                                 QuadByteMatrix.Construct,
+                                 QuadByteMatrix.Construct);
    begin
       --  Computes a = b^c mod d.  assumes d > 0.
-      Isolation.Zero_Array;
-      BPower (0).Zero_Array;
-      BPower (1).Zero_Array;
-      BPower (2).Zero_Array;
-      A.Zero_Array;
-
+      --  Store b, b^2 mod d, and b^3 mod d
       B.CopyTo (BPower (0));
-      NN_ModMult (BPower (1), BPower (0), B, D);   --  a = (b * c) mod d
-      NN_ModMult (BPower (2), BPower (1), B, D);
-      A.Assign_Zero_Digit (1);
+      NN_ModMult (A         => BPower (1),
+                  B         => BPower (0),
+                  B_Index   => B_Index,
+                  C         => B,
+                  C_Index   => B_Index,
+                  D         => D,
+                  D_Index   => D_Index,
+                  numDigits => D_Digits);
+      NN_ModMult (A         => BPower (2),
+                  B         => BPower (1),
+                  B_Index   => B_Index,
+                  C         => B,
+                  C_Index   => B_Index,
+                  D         => D,
+                  D_Index   => D_Index,
+                  numDigits => D_Digits);
+      T.Assign_Zero_Digit (1);
 
       Outer_Loop :
          loop
-            ci := C.Matrix (K);
+            ci     := C.Matrix (K + C_Index);
+            ciBits := NN_DIGIT_BITS;
 
             --  Scan past leading zero bits of most significant digit.
-            if K = numDigits - 1 then
+            if K = QuadByteDigitIndex (C_Digits - 1) then
                while Digit_2MSB (ci) = 0 loop
                   ci := ci * MQuadByte (4);  -- shift left 2 bits
                   ciBits := ciBits - 2;
                end loop;
             end if;
 
-
+            J := 0;
             while J < ciBits loop
                --  Compute t = t^4 * b^s mod d, where s = two MSB's of ci.
 
-               NN_ModMult (Isolation, A, A, D);
-               Isolation.CopyTo (A);
-
-               NN_ModMult (Isolation, A, A, D);
-               Isolation.CopyTo (A);
+               NN_ModMult (A         => Tp1,
+                           B         => T,
+                           B_Index   => 0,
+                           C         => T,
+                           C_Index   => 0,
+                           D         => D,
+                           D_Index   => D_Index,
+                           numDigits => D_Digits);
+               NN_ModMult (A         => Tp2,
+                           B         => Tp1,
+                           B_Index   => 0,
+                           C         => Tp1,
+                           C_Index   => 0,
+                           D         => D,
+                           D_Index   => D_Index,
+                           numDigits => D_Digits);
 
                S := Digit_2MSB (ci);
                if S /= 0 then
-                  NN_ModMult (Isolation, A, BPower (Integer (S) - 1), D);
-                  Isolation.CopyTo (A);
+                  NN_ModMult (A         => T,
+                              B         => Tp2,
+                              B_Index   => 0,
+                              C         => BPower (Integer (S) - 1),
+                              C_Index   => 0,
+                              D         => D,
+                              D_Index   => D_Index,
+                              numDigits => D_Digits);
                end if;
 
                J := J + 2;
@@ -479,78 +629,61 @@ package body NN is
             exit Outer_Loop when K = 0;
             K := K - 1;
          end loop Outer_Loop;
+
+      T.CopyTo (A);
       A.CurrentLen := A.Significant_Length;
 
    end NN_ModExp;
 
 
 
+
+
+
+
+
    -----------------
-   --  NN_LShift  --
+   --  NN_Decode  --
    -----------------
 
-   procedure NN_LShift (A     : out QuadByteMatrix.TData;
-                        B     : in  QuadByteMatrix.TData;
-                        bits  : in  TDigit;
-                        carry : out MQuadByte)
-   is
-      t            : constant Natural := NN_DIGIT_BITS - Natural (bits);
-      factor       : constant MQuadByte := MQuadByte (2 ** Natural (bits));
-      tfactor      : constant MQuadByte := MQuadByte (2 ** t);
-      DigitCounter : QuadByteMatrixLen := B.CurrentLen;
-      index        : QuadByteDigitIndex := 0;
+   function NN_Decode (HexString : ModExp_Matrix.TData)
+   return QuadByteMatrix.TData is
+      result    : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+      j         : ModExpMsgDigitIndex := ModExpMsgDigitIndex'Last;
+      k         : QuadByteDigitIndex := 0;
+      u         : Integer;
+      t         : MQuadByte;
    begin
-      --  This computes A := B * 2^bits, returns carry and modifies A
-      carry := 0;
-      if bits = 0 then
-         B.CopyTo (destination => A);
-         return;
-      end if;
-
-      Repeat :
+      Outer_Loop :
          loop
-            A.Matrix (index) := (B.Matrix (index) * factor) or carry;
-            carry := B.Matrix (index) / tfactor;
-            index := index + 1;
-            DigitCounter := DigitCounter - 1;
-            exit Repeat when DigitCounter = 0;
-         end loop Repeat;
+            t := 0;
+            u := 0;
+            Inner_Loop :
+               loop
+                  t := t or (MQuadByte (HexString.Matrix (j)) *
+                             MQuadByte (2 ** u));
+                  exit Inner_Loop when j = 0;
+                  j := j - 1;
+                  u := u + 8;
+                  exit Inner_Loop when u >= NN_DIGIT_BITS;
+               end loop Inner_Loop;
 
-   end NN_LShift;
+            result.Matrix (k) := t;
+            exit Outer_Loop when k = QuadByteDigitIndex (NN_Digits);
+            k := k + 1;
+            exit Outer_Loop when j = 0;
+         end loop Outer_Loop;
 
+      result.CurrentLen := QuadByteMatrixLen (k);
 
+      --  With short hexstrings, pads output with zeros
+      while k < QuadByteDigitIndex (NN_Digits) loop
+         result.Matrix (k) := 0;
+         k := k + 1;
+      end loop;
 
-   -----------------
-   --  NN_RShift  --
-   -----------------
+      return result;
 
-   procedure NN_RShift (A     : out QuadByteMatrix.TData;
-                        B     : in  QuadByteMatrix.TData;
-                        bits  : in  TDigit;
-                        carry : out MQuadByte)
-   is
-      t            : constant Natural := NN_DIGIT_BITS - Natural (bits);
-      factor       : constant MQuadByte := MQuadByte (2 ** Natural (bits));
-      tfactor      : constant MQuadByte := MQuadByte (2 ** t);
-      DigitCounter : QuadByteMatrixLen := B.CurrentLen;
-      index        : QuadByteDigitIndex := 0;
-   begin
-   --  This computes A := B / 2^bits, returns carry and modifies A
-      carry := 0;
-      if bits = 0 then
-         B.CopyTo (destination => A);
-         return;
-      end if;
-
-      Repeat :
-         loop
-            A.Matrix (index) := (B.Matrix (index) / factor) or carry;
-            carry := B.Matrix (index) * tfactor;
-            index := index + 1;
-            DigitCounter := DigitCounter - 1;
-            exit Repeat when DigitCounter = 0;
-         end loop Repeat;
-
-   end NN_RShift;
+   end NN_Decode;
 
 end NN;
