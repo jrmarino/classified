@@ -188,14 +188,12 @@ package body Radix64 is
             shift2 : constant MByte := MByte (2 ** 2);
             shift4 : constant MByte := MByte (2 ** 4);
             shift6 : constant MByte := MByte (2 ** 6);
-            HexFF  : constant MByte := MByte'Last;  -- $FF
          begin
-            BinaryString (index3)     := ((enc (1) * shift2) and HexFF) or
-                                          (enc (2) / shift4);
-            BinaryString (index3 + 1) := ((enc (2) * shift4) and HexFF) or
-                                          (enc (3) / shift2);
-            BinaryString (index3 + 2) := ((enc (3) * shift6) and HexFF) or
-                                           enc (4);
+            BinaryString (index3)     := (enc (1) * shift2) or
+                                         (enc (2) / shift4);
+            BinaryString (index3 + 1) := (enc (2) * shift4) or
+                                         (enc (3) / shift2);
+            BinaryString (index3 + 2) := (enc (3) * shift6) or enc (4);
          end;
 
          index3 := index3 + 3;
