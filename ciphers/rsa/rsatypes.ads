@@ -16,9 +16,9 @@
 
 package RSATypes is
 
-   type MQuadByte is mod 16#FFFFFFFF#;
-   type MDualByte is mod 16#FFFF#;
-   type MByte     is mod 16#FF#;
+   type MQuadByte is mod 16#100000000#;
+   type MDualByte is mod 16#10000#;
+   type MByte     is mod 16#100#;
 
    NN_DIGIT_BITS      : constant Integer := 32;
    NN_DIGIT_BYTES     : constant Integer := NN_DIGIT_BITS / 8;

@@ -16,10 +16,6 @@
 
 package body Radix64 is
 
-   Internal_Error_Code : TCryptoError := 0;
-   Encrypted_Message_Length : Natural := 0;
-
-
    -------------------
    --  Octet2MByte  --
    -------------------
@@ -71,22 +67,25 @@ package body Radix64 is
       triples    : constant Integer := (BinaryString'Length + 2) / 3;
       Output_Len : constant Integer := triples * 4;
       Result     : String (1 .. Output_Len) := (others => ' ');
-      index3     : Integer := 1;
+      index3     : Integer := 0;
       index4     : Integer := 1;
       count      : TCount;
    begin
-      for x in Integer range 1 .. triples loop
-         if index3 + 2 <= BinaryString'Length then
-            count := 0;
-         else
-            count := BinaryString'Length rem 3;
-         end if;
-
+      for x in Integer range 1 .. triples - 1 loop
          Result (index4 .. index4 + 3) :=
-                Encode_Three_Bytes (BinaryString, index3, count);
+                Encode_Three_Bytes (BinaryString, index3, Count => 0);
          index3 := index3 + 3;
          index4 := index4 + 4;
       end loop;
+
+      if index3 + 3 = BinaryString'Length then
+         count := 0;
+      else
+         count := BinaryString'Length rem 3;
+      end if;
+
+      Result (index4 .. index4 + 3) :=
+             Encode_Three_Bytes (BinaryString, index3, Count => count);
       return Result;
    end Encode_to_Radix64;
 
@@ -100,29 +99,41 @@ package body Radix64 is
                                 Index        : Natural;
                                 Count        : TCount)
    return FourSequence is
-      c1 : constant MByte := BinaryString (Index) / MByte (4);  -- shr 4
-      c2 : constant MByte :=
-            ((BinaryString (Index)     * MByte (16)) and 8#60#) or
-            ((BinaryString (Index + 1) / MByte (16)) and 8#17#);
-      c3 : constant MByte :=
-            ((BinaryString (Index + 1) * MByte (4)) and 8#74#) or
-            ((BinaryString (Index + 2) / MByte (64)) and 8#3#);
-      c4 : constant MByte := BinaryString (Index + 2) and 8#77#;
+      P0 : constant MByte := BinaryString (Index);
+      P1 : MByte := 0;
+      P2 : MByte := 0;
+
       result : FourSequence;
    begin
-      result (1) := EncodeByte (c1);
-      result (2) := EncodeByte (c2);
-      if Count = 1 then
-         result (3) := PAD;
-         result (4) := PAD;
-      else
-         result (3) := EncodeByte (c3);
-         if Count = 2 then
-            result (4) := PAD;
-         else
-            result (4) := EncodeByte (c4);
-         end if;
+      if Index + 1 < BinaryString'Length then
+         P1 := BinaryString (Index + 1);
       end if;
+      if Index + 2 < BinaryString'Length then
+         P2 := BinaryString (Index + 2);
+      end if;
+
+      declare
+         c1 : constant MByte :=  Scroll_Right (P0, 2);
+         c2 : constant MByte := (Scroll_Left  (P0, 4) and 8#60#) or
+                                (Scroll_Right (P1, 4) and 8#17#);
+         c3 : constant MByte := (Scroll_Left  (P1, 2) and 8#74#) or
+                                (Scroll_Right (P2, 6) and 8#3#);
+         c4 : constant MByte := P2 and 8#77#;
+      begin
+         result (1) := EncodeByte (c1);
+         result (2) := EncodeByte (c2);
+         if Count = 1 then
+            result (3) := Character'Val (PAD);
+            result (4) := Character'Val (PAD);
+         else
+            result (3) := EncodeByte (c3);
+            if Count = 2 then
+               result (4) := Character'Val (PAD);
+            else
+               result (4) := EncodeByte (c4);
+            end if;
+         end if;
+      end;
       return result;
    end Encode_Three_Bytes;
 
@@ -134,22 +145,24 @@ package body Radix64 is
 
    function Decode_Radix64 (Radix64String : String)
    return TBinaryString is
-      triples      : constant Integer := (Radix64String'Length + 3) / 4;
-      Output_Len   : constant Integer := triples * 3;
-      BinaryString : TBinaryString (0 .. Output_Len - 1) := (others => 0);
-      c            : array (1 .. 4) of MByte := (others => 0);
-      enc          : array (1 .. 4) of MByte := (others => 0);
-      index3       : Natural := 0;
-      index4       : Positive := 1;
+      triples    : constant Integer := (Radix64String'Length + 3) / 4;
+      Max_Len    : constant Integer := triples * 3;
+      WorkString : TBinaryString (0 .. Max_Len - 1) := (others => 0);
+      c          : array (1 .. 4) of MByte := (others => 0);
+      enc        : array (1 .. 4) of MByte := (others => 0);
+      index3     : Natural := 0;
+      index4     : Positive := 1;
+      msg_length : Natural := 0;
+      error_msg  : constant TBinaryString (0 .. 2) := (5, 5, 5);
    begin
-      Internal_Error_Code      := 0;
-      Encrypted_Message_Length := 0;
+      msg_length          := 0;
+      Internal_Error_Code := 0;
       if Radix64String'Length = 0 then
-         return BinaryString;
+         return error_msg;
       end if;
       if Radix64String'Length rem 4 > 0 then
          Internal_Error_Code := 1;  --  not divisible by 4
-         return BinaryString;
+         return error_msg;
       end if;
 
       for x in Integer range 1 .. triples loop
@@ -157,50 +170,61 @@ package body Radix64 is
             c (1 + y) := MByte (Character'Pos (Radix64String (index4 + y)));
             if c (1 + y) > MByte (TAscii'Last) then
                Internal_Error_Code := 2;  -- 7th bit used
-               return BinaryString;
+               return error_msg;
             end if;
             enc (1 + y) := ASC2BIN (TAscii (c (1 + y)));
-            if (enc (1 + y) and 16#80#) > 0 then
-               Internal_Error_Code := 2;  -- Mapped to non-valid character
-               return BinaryString;
+            if (c (1 + y) = PAD) then
+               if not ((x = triples) and y >= 2) then
+                  Internal_Error_Code := 12;  -- Pad not found at end
+                  return error_msg;
+               end if;
+            else
+               if (enc (1 + y) and 16#80#) > 0 then
+                  Internal_Error_Code := 2;  -- Mapped to non-valid character
+                  return error_msg;
+               end if;
             end if;
          end loop;
 
-         if Character'Val (c (3)) = PAD then
-            if Character'Val (c (4)) = PAD then
+   --  need another check to ensure pad is at very end.
+
+         if c (3) = PAD then
+            if c (4) = PAD then
                enc (3) := 0;
                enc (4) := 0;
-               Encrypted_Message_Length := Encrypted_Message_Length + 1;
+               msg_length := msg_length + 1;
             else
                Internal_Error_Code := 3;  -- missing 4th place pad
-               return BinaryString;
+               return error_msg;
+            end if;
+            if (enc(2) and 15) > 0 then
+               Internal_Error_Code := 13;  -- previous 4 bits not clear
+               return error_msg;
             end if;
          else
-            if Character'Val (c (4)) = PAD then
+            if c (4) = PAD then
+               if (enc(3) and 3) > 0 then
+                  Internal_Error_Code := 13;  -- previous 2 bits not clear
+                  return error_msg;
+               end if;
                enc (4) := 0;
-               Encrypted_Message_Length := Encrypted_Message_Length + 2;
+               msg_length := msg_length + 2;
             else
-               Encrypted_Message_Length := Encrypted_Message_Length + 3;
+               msg_length := msg_length + 3;
             end if;
          end if;
 
-         declare
-            shift2 : constant MByte := MByte (2 ** 2);
-            shift4 : constant MByte := MByte (2 ** 4);
-            shift6 : constant MByte := MByte (2 ** 6);
-         begin
-            BinaryString (index3)     := (enc (1) * shift2) or
-                                         (enc (2) / shift4);
-            BinaryString (index3 + 1) := (enc (2) * shift4) or
-                                         (enc (3) / shift2);
-            BinaryString (index3 + 2) := (enc (3) * shift6) or enc (4);
-         end;
+         WorkString (index3)     := Scroll_Left  (enc (1), 2) or
+                                    Scroll_Right (enc (2), 4);
+         WorkString (index3 + 1) := Scroll_Left  (enc (2), 4) or
+                                    Scroll_Right (enc (3), 2);
+         WorkString (index3 + 2) := Scroll_Left  (enc (3), 6) or enc (4);
 
          index3 := index3 + 3;
          index4 := index4 + 4;
       end loop;
 
-      return BinaryString;
+      return WorkString (0 .. msg_length - 1);
    end Decode_Radix64;
 
 
@@ -227,8 +251,41 @@ package body Radix64 is
          when  9 => return "Data Mismatch, message length > key modulus.";
          when 10 => return "Encryption: message length doesn't match modulus.";
          when 11 => return "Encryption: Message too long for modulus.";
+         when 12 => return "Radix-64 encoding bad, found pad away from end.";
+         when 13 => return "Radix-64 encoding bad, character previous to " &
+                           "pad doesn't have clear trailing bits.";
       end case;
    end Get_Status_Message;
 
+
+
+   ------------------
+   --  Scroll_Left  --
+   ------------------
+
+   function Scroll_Left (original : MByte;
+                         bits     : ShiftRange)
+   return MByte is
+      mask   : constant MByte := MByte (2 ** (8 - bits)) - 1;
+      factor : constant MByte := MByte (2 ** bits);
+      canvas : constant MByte := original and mask;
+   begin
+      return canvas * factor;
+   end Scroll_Left;
+
+
+   -------------------
+   --  Scroll_Right  --
+   -------------------
+
+   function Scroll_Right (original : MByte;
+                          bits     : ShiftRange)
+   return MByte is
+      mask   : constant MByte := MByte ((2 ** (8 - bits)) - 1);
+      factor : constant MByte := MByte (2 ** bits);
+      canvas : constant MByte := original / factor;
+   begin
+      return canvas and mask;
+   end Scroll_Right;
 
 end Radix64;

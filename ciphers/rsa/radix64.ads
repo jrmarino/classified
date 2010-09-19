@@ -43,8 +43,9 @@ package Radix64 is
 
    subtype OctetString   is String (1 .. 2);
    type TAscii is range 0 .. 127;
-   type TCryptoError is range 0 .. 11;
+   type TCryptoError is range 0 .. 13;
 
+   Internal_Error_Code : TCryptoError := 0;
 
    function Encode_to_Radix64 (BinaryString : TBinaryString) return String;
    --  Converts an array of bytes to 64-bit encoded ASCII text
@@ -62,7 +63,7 @@ package Radix64 is
 
 private
 
-   PAD : constant Character := '=';
+   PAD : constant MByte := 16#3D#;  --  Character of "="
    BIN2ASC : constant String (1 .. 64) := "ABCDEFGHIJKLMNOPQRSTUVWXYZ" &
                                           "abcdefghijklmnopqrstuvwxyz" &
                                           "0123456789+/";
@@ -86,19 +87,38 @@ private
    );
 
    subtype FourSequence is String (1 .. 4);
-   type TCount       is range 0 .. 2;
+   subtype TCount is Natural range 0 .. 2;
+   subtype ShiftRange is Natural range 1 .. 7;
+
 
    function Octet2MByte (Octet : OctetString) return MByte;
    --  Takes a 2-character hexidecimal string and returns an MByte
 
+
    function EncodeByte (c : MByte) return Character;
    --  Takes a byte, and returns the appropriate Radix64 character.
+
 
    function Encode_Three_Bytes (BinaryString : TBinaryString;
                                 Index        : Natural;
                                 Count        : TCount)
    return FourSequence;
    --  Takes three bytes and returns four 7-bit ASCII characters
+
+
+   function Scroll_Left (original : MByte;
+                        bits     : ShiftRange) return MByte;
+   --  Recieves a byte, and shifts it left by "bits" bits, but doesn't
+   --  wrap them around.  Overflown bits just fall off.
+
+
+   function Scroll_Right (original : MByte;
+                        bits     : ShiftRange) return MByte;
+   --  Recieves a byte, and shifts it right by "bits" bits, but doesn't
+   --  wrap them around.  Overflown bits just fall off.
+
+
+
 
 
 end Radix64;
