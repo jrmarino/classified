@@ -197,13 +197,13 @@ package body Radix64 is
                Internal_Error_Code := 3;  -- missing 4th place pad
                return error_msg;
             end if;
-            if (enc(2) and 15) > 0 then
+            if (enc (2) and 15) > 0 then
                Internal_Error_Code := 13;  -- previous 4 bits not clear
                return error_msg;
             end if;
          else
             if c (4) = PAD then
-               if (enc(3) and 3) > 0 then
+               if (enc (3) and 3) > 0 then
                   Internal_Error_Code := 13;  -- previous 2 bits not clear
                   return error_msg;
                end if;

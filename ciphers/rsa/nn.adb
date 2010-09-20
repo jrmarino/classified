@@ -181,11 +181,12 @@ package body NN is
                         numDigits : in  QuadByteMatrixLen;
                         carry     : out MQuadByte)
    is
-      t       : constant Natural := NN_DIGIT_BITS - Natural (numBits);
-      factor  : constant MQuadByte := MQuadByte (2 ** Natural (numBits));
-      tfactor : constant MQuadByte := MQuadByte (2 ** t);
-      Andx    : QuadByteDigitIndex := A_Index;
-      Bndx    : QuadByteDigitIndex := B_Index;
+      factor     : constant MQuadByte := MQuadByte (2 ** Natural (numBits));
+      mask       : constant MQuadByte := factor - 1;
+      invmask    : constant MQuadByte := MQuadByte'Last xor mask;
+      Andx       : QuadByteDigitIndex := A_Index;
+      Bndx       : QuadByteDigitIndex := B_Index;
+      last_carry : MQuadByte;
    begin
       --  This computes A := B * 2^numBits, returns carry and modifies A
       carry := 0;
@@ -196,9 +197,17 @@ package body NN is
          return;
       end if;
 
+      --  In Ada, the mod type doesn't shift bits off, they just rotate.
+      --  Therefore we need to clear the right-most bits before or'ing
+      --  the previous carry.  Before we clear, we copy the bits, because
+      --  this is the carry for the next element.
+
       for x in QuadByteMatrixLen range 1 .. numDigits loop
-         A.Matrix (Andx) := B.Matrix (Bndx) * factor or carry;
-         carry           := B.Matrix (Bndx) / tfactor;
+         last_carry      := carry;
+         A.Matrix (Andx) := B.Matrix (Bndx) * factor;
+         carry           := A.Matrix (Andx) and mask;
+         A.Matrix (Andx) := A.Matrix (Andx) and invmask;
+         A.Matrix (Andx) := A.Matrix (Andx) or  last_carry;
          Andx            := Andx + 1;
          Bndx            := Bndx + 1;
       end loop;
@@ -219,11 +228,12 @@ package body NN is
                         numDigits : in  QuadByteMatrixLen;
                         carry     : out MQuadByte)
    is
-      t            : constant Natural := NN_DIGIT_BITS - Natural (numBits);
-      factor       : constant MQuadByte := MQuadByte (2 ** Natural (numBits));
-      tfactor      : constant MQuadByte := MQuadByte (2 ** t);
-      BBndx        : QuadByteDigitIndex;
-      AAndx        : QuadByteDigitIndex;
+      factor     : constant MQuadByte := MQuadByte (2 ** Natural (numBits));
+      mask       : constant MQuadByte := factor - 1;
+      invmask    : constant MQuadByte := MQuadByte'Last xor mask;
+      BBndx      : QuadByteDigitIndex;
+      AAndx      : QuadByteDigitIndex;
+      last_carry : MQuadByte;
    begin
    --  This computes A := B / 2^bits, returns carry and modifies A
       carry := 0;
@@ -234,11 +244,20 @@ package body NN is
          return;
       end if;
 
+      --  In Ada, the mod type doesn't shift bits off, they just rotate.
+      --  The "carry" bits start off in the right-most position, so we will
+      --  copy them into the carry variable, and then clear them, and finally
+      --  or the previous carry in their place.  After the shift/rotation,
+      --  the new carry will be in the correct location.
+
       for x in QuadByteMatrixLen range 1 .. numDigits loop
+         last_carry       := carry;
          BBndx            := B_Index + QuadByteDigitIndex (numDigits - x);
          AAndx            := A_Index + QuadByteDigitIndex (numDigits - x);
-         A.Matrix (AAndx) := B.Matrix (BBndx) * factor or carry;
-         carry            := B.Matrix (BBndx) / tfactor;
+         carry            := B.Matrix (BBndx) and mask;
+         A.Matrix (AAndx) := B.Matrix (BBndx) and invmask;
+         A.Matrix (AAndx) := A.Matrix (AAndx) or  last_carry;
+         A.Matrix (AAndx) := A.Matrix (AAndx) * factor;
       end loop;
 
    end NN_RShift;
@@ -646,13 +665,16 @@ package body NN is
    --  NN_Decode  --
    -----------------
 
-   function NN_Decode (HexString : ModExp_Matrix.TData)
+   function NN_Decode (HexString : TBinaryString)
    return QuadByteMatrix.TData is
       result    : QuadByteMatrix.TData := QuadByteMatrix.Construct;
-      j         : ModExpMsgDigitIndex := ModExpMsgDigitIndex'Last;
+      OutputLen : constant Natural := (HexString'Length + 3) / 4;
+      j         : Natural := OutputLen - 1;
       k         : QuadByteDigitIndex := 0;
-      u         : Integer;
+      u         : Natural;
       t         : MQuadByte;
+      shifted   : MQuadByte;
+      factor    : MQuadByte;
    begin
       Outer_Loop :
          loop
@@ -660,8 +682,9 @@ package body NN is
             u := 0;
             Inner_Loop :
                loop
-                  t := t or (MQuadByte (HexString.Matrix (j)) *
-                             MQuadByte (2 ** u));
+                  factor  := MQuadByte (2 ** u);
+                  shifted := MQuadByte (HexString (j)) * factor;
+                  t := t or shifted;
                   exit Inner_Loop when j = 0;
                   j := j - 1;
                   u := u + 8;
@@ -669,18 +692,11 @@ package body NN is
                end loop Inner_Loop;
 
             result.Matrix (k) := t;
+            exit Outer_Loop when j = 0;
             exit Outer_Loop when k = QuadByteDigitIndex (NN_Digits);
             k := k + 1;
-            exit Outer_Loop when j = 0;
+
          end loop Outer_Loop;
-
-      result.CurrentLen := QuadByteMatrixLen (k);
-
-      --  With short hexstrings, pads output with zeros
-      while k < QuadByteDigitIndex (NN_Digits) loop
-         result.Matrix (k) := 0;
-         k := k + 1;
-      end loop;
 
       return result;
 

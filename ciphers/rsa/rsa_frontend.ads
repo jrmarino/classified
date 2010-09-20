@@ -42,36 +42,38 @@ package RSA_Frontend is
    procedure Decrypt_With_Private_Key (Private_Key    : in  TPrivateKey;
                                        Scrambled_Text : in  String;
                                        Plain_text     : out String;
-                                       Status         : out TErrorCode);
+                                       Status         : out TCryptoError);
 
 
    procedure Decrypt_With_Public_Key (Public_Key     : in  TPublicKey;
                                       Scrambled_Text : in  String;
                                       Plain_text     : out String;
-                                      Status         : out TErrorCode);
+                                      Status         : out TCryptoError);
 
 
    procedure Encrypt_With_Private_Key (Private_Key    : in  TPrivateKey;
                                        Scrambled_Text : out String;
                                        Plain_text     : in  String;
-                                       Status         : out TErrorCode);
+                                       Status         : out TCryptoError);
 
 
    procedure Encrypt_With_Public_Key (Public_Key     : in  TPublicKey;
                                       Scrambled_Text : out String;
                                       Plain_text     : in  String;
-                                      Status         : out TErrorCode);
+                                      Status         : out TCryptoError);
 
 
-   function Get_Status_Message (Status : TErrorCode) return String;
+   function Get_Status_Message (Status : TCryptoError) return String;
+   --  Returns a description of an error when provided the error code.
+
 
 private
 
 
    procedure Decrypt_to_PKCS (Public_Key         : in  TPublicKey;
-                              encrypted_bytecode : in  ModExp_Matrix.TData;
-                              ErrorCode          : out TErrorCode;
-                              pkcs_block         : out ModExp_Matrix.TData);
+                              encrypted_bytecode : in  TBinaryString;
+                              ErrorCode          : out TCryptoError;
+                              pkcs_block         : out TBinaryString);
 
 
 

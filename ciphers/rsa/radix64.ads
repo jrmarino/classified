@@ -43,7 +43,6 @@ package Radix64 is
 
    subtype OctetString   is String (1 .. 2);
    type TAscii is range 0 .. 127;
-   type TCryptoError is range 0 .. 13;
 
    Internal_Error_Code : TCryptoError := 0;
 
@@ -57,9 +56,6 @@ package Radix64 is
    --  Error code is stored internally
    --  Encrypted message length is stored internally
 
-
-   function Get_Status_Message (Status : TCryptoError) return String;
-   --  Returns a description of an error when provided the error code.
 
 private
 

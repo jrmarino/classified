@@ -129,7 +129,7 @@ private
    --  Still not sure what this does
 
 
-   function NN_Decode (HexString : ModExp_Matrix.TData)
+   function NN_Decode (HexString : TBinaryString)
    return QuadByteMatrix.TData;
    --  Encodes a hexidecimal string (represented by array of bytes) into an
    --  array of 32-bit integers, but reverses the order such that the bits are
