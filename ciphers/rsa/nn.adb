@@ -655,12 +655,6 @@ package body NN is
    end NN_ModExp;
 
 
-
-
-
-
-
-
    -----------------
    --  NN_Decode  --
    -----------------
@@ -698,8 +692,46 @@ package body NN is
 
          end loop Outer_Loop;
 
+      result.CurrentLen := result.Significant_Length;
       return result;
 
    end NN_Decode;
+
+
+
+   -----------------
+   --  NN_Encode  --
+   -----------------
+
+   function NN_Encode (HugeNumber : QuadByteMatrix.TData;
+                       numDigits  : QuadByteMatrixLen)
+   return TBinaryString is
+      multiple  : constant Natural := NN_DIGIT_BITS / 8;
+      kmax      : constant QuadByteDigitIndex :=
+                           QuadByteDigitIndex (numDigits) - 1;
+      resultLen : constant Natural := Natural (numDigits) * multiple;
+      result    : TBinaryString (0 .. resultLen - 1) := (others => 0);
+      index     : Natural := resultLen - 1;
+      u         : Natural;
+      shifted   : MQuadByte;
+      factor    : MQuadByte;
+   begin
+
+      for k in QuadByteDigitIndex range 0 .. kmax loop
+         u := 0;
+         for x in Natural range 1 .. multiple loop
+            factor  := MQuadByte (2 ** u);
+            shifted := (HugeNumber.Matrix (k) / factor) and 16#FF#;
+            result (index) := MByte (shifted);
+
+            u     := u + 8;
+            index := index - 1;
+         end loop;
+      end loop;
+
+      return result;
+
+   end NN_Encode;
+
 
 end NN;

@@ -114,6 +114,24 @@ package NN is
    --  Computes a = b^c mod d.  assumes d > 0.
 
 
+   function NN_Decode (HexString : TBinaryString)
+   return QuadByteMatrix.TData;
+   --  Encodes a hexidecimal string (represented by array of bytes) into an
+   --  array of 32-bit integers, but reverses the order such that the bits are
+   --  arranges from Most Significant to Least Significant.
+   --
+   --  It pads the array with zeros for the elements of (hexstring length -
+   --  NN_DIGIT_LEN * MAX_NN_DIGITS).  If the hexstring is too loog, it will
+   --  truncate the most significant bytes.
+
+
+   function NN_Encode (HugeNumber : QuadByteMatrix.TData;
+                       numDigits  : QuadByteMatrixLen) return TBinaryString;
+   --  Encodes an array of 32-integers back into a hexidecimal string
+   --  represented by an array of bytes.  The result is 4 times longer than
+   --  the input.
+
+
 private
 
 
@@ -127,17 +145,6 @@ private
                              numDigits : in  QuadByteMatrixLen;
                              borrow    : out MQuadByte);
    --  Still not sure what this does
-
-
-   function NN_Decode (HexString : TBinaryString)
-   return QuadByteMatrix.TData;
-   --  Encodes a hexidecimal string (represented by array of bytes) into an
-   --  array of 32-bit integers, but reverses the order such that the bits are
-   --  arranges from Most Significant to Least Significant.
-   --
-   --  It pads the array with zeros for the elements of (hexstring length -
-   --  NN_DIGIT_LEN * MAX_NN_DIGITS).  If the hexstring is too loog, it will
-   --  truncate the most significant bytes.
 
 
 end NN;
