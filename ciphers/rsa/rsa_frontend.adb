@@ -15,19 +15,20 @@
 
 
 with Radix64; use Radix64;
+with NN;      use NN;
 
 package body RSA_Frontend is
 
-
+   DPKCS_Error : TCryptoError := 0;
 
    --------------------------------
    --  Decrypt_With_Private_Key  --
    --------------------------------
 
-   procedure Decrypt_With_Private_Key (Private_Key    : in  TPrivateKey;
-                                       Scrambled_Text : in  String;
-                                       Plain_text     : out String;
-                                       Status         : out TCryptoError)
+   procedure Decrypt_With_Private_Key (Private_Key   : in  TPrivateKey;
+                                       Scrambled_R64 : in  String;
+                                       Plain_Text    : out String;
+                                       Status        : out TCryptoError)
    is
    begin
       null;
@@ -39,18 +40,79 @@ package body RSA_Frontend is
    --  Decrypt_With_Public_Key  --
    -------------------------------
 
-   procedure Decrypt_With_Public_Key (Public_Key     : in  TPublicKey;
-                                      Scrambled_Text : in  String;
-                                      Plain_text     : out String;
-                                      Status         : out TCryptoError)
+   procedure Decrypt_With_Public_Key (Public_Key    : in  TPublicKey;
+                                      Scrambled_R64 : in  String;
+                                      Plain_Text    : out String;
+                                      Status        : out TCryptoError)
    is
-      Key_Modulus_Len : Positive := (Positive (Public_Key.KeySize) + 7) / 8;
-      public_exp : TBinaryString :=
-                   Decode_Radix64 (Public_Key.Modulus (1 .. Key_Modulus_Len));
-      public_mod : TBinaryString :=
-                   Decode_Radix64 (Public_Key.Exponent (1 .. Key_Modulus_Len));
+      Modulus_Len : constant Positive := Positive (Public_Key.KeySize) / 8;
+      scrambled : constant TBinaryString := Decode_Radix64 (Scrambled_R64);
+      OutputLen : Integer;
+      z         : Integer := 2;
    begin
-      null;
+      Status := Get_Radix_Coding_Status;
+      if Status /= 0 then
+         return;
+      end if;
+
+      if scrambled'Length > Modulus_Len then
+         Status := 4;  -- Encrypted message is larger than key modulus
+         return;
+      end if;
+
+      declare
+         Revealed_Bytecode : constant TBinaryString :=
+               Decrypt_to_PKCS (Public_Key         => Public_Key,
+                                Encrypted_Bytecode => scrambled);
+      begin
+         if DPKCS_Error /= 0 then
+            Status := DPKCS_Error;
+            return;
+         end if;
+         if Revealed_Bytecode'Length /= Modulus_Len then
+            Status := 5;  --  PKCS block is not same length as key modulus.
+            return;
+         end if;
+         if (Revealed_Bytecode (0) /= 0) or
+            (Revealed_Bytecode (1) /= 1) then
+            Status := 6;  --  PKCS block does not start with <01>
+            return;
+         end if;
+
+         declare
+            maxZ      : constant Integer := Modulus_Len - 1;
+         begin
+            Samantha :
+               loop
+                  exit Samantha when z >= maxZ;
+                  exit Samantha when Revealed_Bytecode (z) /= 16#FF#;
+                  z := z + 1;
+               end loop Samantha;
+         end;
+
+         z := z + 1;
+         if Revealed_Bytecode (z) /= 0 then
+            Status := 7;  --  PKCS block separator pattern not <FFFFFF??00>
+            return;
+         end if;
+         OutputLen := Modulus_Len - z;
+         if OutputLen + 11 > Modulus_Len then
+            Status := 8;  --  Plain text output 11+ chars longer than mod.
+            return;
+         end if;
+
+         declare
+            output : String (1 .. OutputLen);
+         begin
+            for x in Integer range 1 .. OutputLen loop
+               output (x) := Character'Val (Revealed_Bytecode (z));
+               z := z + 1;
+            end loop;
+            Plain_Text := output;
+         end;
+      end;
+
+      Status := 0;
    end Decrypt_With_Public_Key;
 
 
@@ -59,10 +121,10 @@ package body RSA_Frontend is
    --  Encrypt_With_Private_Key  --
    --------------------------------
 
-   procedure Encrypt_With_Private_Key (Private_Key    : in  TPrivateKey;
-                                       Scrambled_Text : out String;
-                                       Plain_text     : in  String;
-                                       Status         : out TCryptoError)
+   procedure Encrypt_With_Private_Key (Private_Key   : in  TPrivateKey;
+                                       Scrambled_R64 : out String;
+                                       Plain_Text    : in  String;
+                                       Status        : out TCryptoError)
    is
    begin
       null;
@@ -74,10 +136,10 @@ package body RSA_Frontend is
    --  Encrypt_With_Public_Key  --
    -------------------------------
 
-   procedure Encrypt_With_Public_Key (Public_Key     : in  TPublicKey;
-                                      Scrambled_Text : out String;
-                                      Plain_text     : in  String;
-                                      Status         : out TCryptoError)
+   procedure Encrypt_With_Public_Key (Public_Key    : in  TPublicKey;
+                                      Scrambled_R64 : out String;
+                                      Plain_Text    : in  String;
+                                      Status        : out TCryptoError)
    is
    begin
       null;
@@ -89,21 +151,54 @@ package body RSA_Frontend is
    --  Decrypt_to_PKCS  --
    -----------------------
 
-   procedure Decrypt_to_PKCS (Public_Key         : in  TPublicKey;
-                              encrypted_bytecode : in  TBinaryString;
-                              ErrorCode          : out TCryptoError;
-                              pkcs_block         : out TBinaryString)
-   is
-      --  matrix_M : QuadByteMatrix.TData := QuadByteMatrix.Construct;
-      --  matrix_E : QuadByteMatrix.TData := QuadByteMatrix.Construct;
-      --  matrix_N : QuadByteMatrix.TData := QuadByteMatrix.Construct;
-      --  matrix_C : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+   function Decrypt_to_PKCS (Public_Key         : TPublicKey;
+                             Encrypted_Bytecode : TBinaryString)
+   return TBinaryString is
+      matrix_M   : QuadByteMatrix.TData;
+      matrix_C   : QuadByteMatrix.TData;
+      error_result : constant TBinaryString (0 .. 0) := (0 => 0);
    begin
-      --  pkcs_block.Zero_Array;
-      null;
+      DPKCS_Error := 0;
+      matrix_M := NN_Decode (Encrypted_Bytecode);
+
+      if matrix_M.Compared_With (
+                        Index     => 0,
+                        ExtData   => Public_Key.Modulus,
+                        ExtDigits => Public_Key.NumDigits) >= 0 then
+         DPKCS_Error := 9; --  Data Mismatch, message length > key modulus
+         return error_result;
+      end if;
+
+      --  Compute c = m^e mod n.  To perform actual RSA calc.
+      NN_ModExp (A        => matrix_C,
+                 B        => matrix_M,
+                 B_Index  => 0,
+                 C        => Public_Key.Exponent,
+                 C_Index  => 0,
+                 C_Digits => Public_Key.NumDigits,
+                 D        => Public_Key.Modulus,
+                 D_Index  => 0,
+                 D_Digits => Public_Key.NumDigits);
+
+      --  encode output to standard form
+      declare
+         result : constant TBinaryString := NN_Encode (
+                                       HugeNumber => matrix_C,
+                                       numDigits  => Public_Key.NumDigits);
+      begin
+      --  clear sensitive data areas
+         matrix_C.Zero_Array;
+         matrix_M.Zero_Array;
+
+         --  reference previous various so compiler doesn't complain
+         if matrix_C.Matrix (0) = matrix_M.Matrix (0) then
+            null;
+         end if;
+
+         return result;
+      end;
+
    end Decrypt_to_PKCS;
-
-
 
 
 
@@ -126,7 +221,7 @@ package body RSA_Frontend is
          when  7 => return "PKCS block separator pattern is not <FFFFFF??00>.";
          when  8 => return "Plain text output is more than 11 chars longer " &
                            "than key modulus.";
-         when  9 => return "Data Mismatch, message length > key modulus.";
+         when  9 => return "Data mismatch, message length > key modulus.";
          when 10 => return "Encryption: message length doesn't match modulus.";
          when 11 => return "Encryption: Message too long for modulus.";
          when 12 => return "Radix-64 encoding bad, found pad away from end.";
@@ -134,6 +229,72 @@ package body RSA_Frontend is
                            "pad doesn't have clear trailing bits.";
       end case;
    end Get_Status_Message;
+
+
+
+   ------------------------
+   --  Build_Public_Key  --
+   ------------------------
+
+   function Build_Public_Key (Modulus  : String;
+                              Exponent : String)
+   return TPublicKey is
+      code      : BuildKeyError := 0;
+      KeySize   : TKeySize := 1024;
+      NumDigits : QuadByteMatrixLen := 0;
+      Modulus_Array  : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+      Exponent_Array : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+   begin
+      --  Error codes: 0 means no error
+      --               1 means modulus not multiple of 32
+      --               2 means exponent not multiple of 32
+      --               3 means modulus and exponent not equal
+      --               4 means derived keysize < 1024
+      --               5 means derived keysize > 4096
+      if Modulus'Length rem 32 /= 0 then
+         code := 1;
+         goto complete;
+      end if;
+      if Exponent'Length rem 32 /= 0 then
+         code := 2;
+         goto complete;
+      end if;
+      if Modulus'Length /= Exponent'Length then
+         code := 3;
+         goto complete;
+      end if;
+      declare
+         TestSize : constant Integer := Modulus'Length * 8;
+      begin
+         if TestSize < L_MODULUS_BITS then
+            code := 4;
+            goto complete;
+         end if;
+         if TestSize > U_MODULUS_BITS then
+            code := 5;
+            goto complete;
+         end if;
+         KeySize   := TKeySize (TestSize);
+         NumDigits := QuadByteMatrixLen (Integer (KeySize) / NN_DIGIT_BITS);
+      end;
+      declare
+         public_mod : constant TBinaryString := Decode_Radix64 (Modulus);
+         public_exp : constant TBinaryString := Decode_Radix64 (Exponent);
+      begin
+         Modulus_Array  := NN_Decode (public_mod);
+         Exponent_Array := NN_Decode (public_exp);
+      end;
+
+
+   <<complete>>
+
+         return (KeySize   => KeySize,
+                 Modulus   => Modulus_Array,
+                 Exponent  => Exponent_Array,
+                 NumDigits => NumDigits,
+                 ErrorCode => code);
+
+   end Build_Public_Key;
 
 
 

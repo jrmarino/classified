@@ -44,8 +44,6 @@ package Radix64 is
    subtype OctetString   is String (1 .. 2);
    type TAscii is range 0 .. 127;
 
-   Internal_Error_Code : TCryptoError := 0;
-
    function Encode_to_Radix64 (BinaryString : TBinaryString) return String;
    --  Converts an array of bytes to 64-bit encoded ASCII text
    --  The output string is 33% longer than the input string
@@ -56,6 +54,8 @@ package Radix64 is
    --  Error code is stored internally
    --  Encrypted message length is stored internally
 
+   function Get_Radix_Coding_Status return TCryptoError;
+   --  This passes back the value of Internal_Error_Code
 
 private
 
@@ -86,6 +86,7 @@ private
    subtype TCount is Natural range 0 .. 2;
    subtype ShiftRange is Natural range 1 .. 7;
 
+   Internal_Error_Code : TCryptoError := 0;
 
    function Octet2MByte (Octet : OctetString) return MByte;
    --  Takes a 2-character hexidecimal string and returns an MByte

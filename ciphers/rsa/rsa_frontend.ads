@@ -20,11 +20,12 @@ with RSATypes; use RSATypes;
 package RSA_Frontend is
 
    type TPublicKey is record
-      KeySize  : TKeySize;
-      Modulus  : LongKeyString;
-      Exponent : LongKeyString;
+      KeySize    : TKeySize;
+      Modulus    : QuadByteMatrix.TData;
+      Exponent   : QuadByteMatrix.TData;
+      NumDigits  : QuadByteMatrixLen;
+      ErrorCode  : BuildKeyError;
    end record;
-
 
    type TPrivateKey is record
       KeySize          : TKeySize;
@@ -39,28 +40,35 @@ package RSA_Frontend is
    end record;
 
 
-   procedure Decrypt_With_Private_Key (Private_Key    : in  TPrivateKey;
-                                       Scrambled_Text : in  String;
-                                       Plain_text     : out String;
-                                       Status         : out TCryptoError);
+   function Build_Public_Key (Modulus  : String;
+                              Exponent : String) return TPublicKey;
+   --  This function will convert a radix encoded string into an array of bytes
+   --  and then convert that into an array of double-words (reverse order).
+   --  The Public Key structure is then returned.
 
 
-   procedure Decrypt_With_Public_Key (Public_Key     : in  TPublicKey;
-                                      Scrambled_Text : in  String;
-                                      Plain_text     : out String;
-                                      Status         : out TCryptoError);
+   procedure Decrypt_With_Private_Key (Private_Key   : in  TPrivateKey;
+                                       Scrambled_R64 : in  String;
+                                       Plain_Text    : out String;
+                                       Status        : out TCryptoError);
 
 
-   procedure Encrypt_With_Private_Key (Private_Key    : in  TPrivateKey;
-                                       Scrambled_Text : out String;
-                                       Plain_text     : in  String;
-                                       Status         : out TCryptoError);
+   procedure Decrypt_With_Public_Key (Public_Key    : in  TPublicKey;
+                                      Scrambled_R64 : in  String;
+                                      Plain_Text    : out String;
+                                      Status        : out TCryptoError);
 
 
-   procedure Encrypt_With_Public_Key (Public_Key     : in  TPublicKey;
-                                      Scrambled_Text : out String;
-                                      Plain_text     : in  String;
-                                      Status         : out TCryptoError);
+   procedure Encrypt_With_Private_Key (Private_Key   : in  TPrivateKey;
+                                       Scrambled_R64 : out String;
+                                       Plain_Text    : in  String;
+                                       Status        : out TCryptoError);
+
+
+   procedure Encrypt_With_Public_Key (Public_Key    : in  TPublicKey;
+                                      Scrambled_R64 : out String;
+                                      Plain_Text    : in  String;
+                                      Status        : out TCryptoError);
 
 
    function Get_Status_Message (Status : TCryptoError) return String;
@@ -69,11 +77,10 @@ package RSA_Frontend is
 
 private
 
-
-   procedure Decrypt_to_PKCS (Public_Key         : in  TPublicKey;
-                              encrypted_bytecode : in  TBinaryString;
-                              ErrorCode          : out TCryptoError;
-                              pkcs_block         : out TBinaryString);
+   function Decrypt_to_PKCS (Public_Key         : TPublicKey;
+                             Encrypted_Bytecode : TBinaryString)
+   return TBinaryString;
+   --  Raw public key operation.  Revealed_Bytecode has same length of modulus.
 
 
 

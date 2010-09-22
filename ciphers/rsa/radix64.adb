@@ -229,36 +229,6 @@ package body Radix64 is
 
 
 
-   ----------------------------
-   --  Print_Status_Message  --
-   ----------------------------
-
-   function Get_Status_Message (Status : TCryptoError)
-   return String is
-   begin
-      case Status is
-         when  0 => return "No errors.";
-         when  1 => return "Radix-64 message length not divisible by 4.";
-         when  2 => return "Radix-64 encoding bad, 7th bit used or mismapped.";
-         when  3 => return "Radix-64 encoding bad, 4th place pad doesn't " &
-                           "follow 3rd place pad.";
-         when  4 => return "Encrypted message is larger than key modulus.";
-         when  5 => return "PKCS block is not same length as key modulus.";
-         when  6 => return "PKCS block does not start with <01>.";
-         when  7 => return "PKCS block separator pattern is not <FFFFFF??00>.";
-         when  8 => return "Plain text output is more than 11 chars longer " &
-                           "than key modulus.";
-         when  9 => return "Data Mismatch, message length > key modulus.";
-         when 10 => return "Encryption: message length doesn't match modulus.";
-         when 11 => return "Encryption: Message too long for modulus.";
-         when 12 => return "Radix-64 encoding bad, found pad away from end.";
-         when 13 => return "Radix-64 encoding bad, character previous to " &
-                           "pad doesn't have clear trailing bits.";
-      end case;
-   end Get_Status_Message;
-
-
-
    ------------------
    --  Scroll_Left  --
    ------------------
@@ -287,5 +257,17 @@ package body Radix64 is
    begin
       return canvas and mask;
    end Scroll_Right;
+
+
+
+   -------------------------------
+   --  Get_Radix_Coding_Status  --
+   -------------------------------
+
+   function Get_Radix_Coding_Status
+   return TCryptoError is
+   begin
+      return Internal_Error_Code;
+   end Get_Radix_Coding_Status;
 
 end Radix64;

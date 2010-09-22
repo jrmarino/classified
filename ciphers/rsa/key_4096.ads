@@ -65,16 +65,6 @@ package Key_4096 is
    --  Sized for 4096-bit key, but will accommodate smaller down to 1024-bit
 
 
-   --  function Hex2Byte (LongKey : LongKeyString) return ModExp_Matrix.TData;
-   --  Converts a string of hexadecimal characters to array of MBytes
-   --  Used for public key modulus and exponent.
-
-
-   --  function Hex2Byte (HalfKey : HalfKeyString) return Prime_Matrix.TData;
-   --  Converts a string of hexadecimal characters to array of MBytes
-   --  Used for the prime numbers of the private key
-
-
-
+   type BuildKeyError is range 0 .. 5;
 
 end Key_4096;
