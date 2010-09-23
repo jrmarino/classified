@@ -20,11 +20,8 @@ with Key_4096; use Key_4096;
 package NN is
 
    procedure NN_LShift (A         : out QuadByteMatrix.TData;
-                        A_Index   : in  QuadByteDigitIndex;
                         B         : in  QuadByteMatrix.TData;
-                        B_Index   : in  QuadByteDigitIndex;
                         numBits   : in  TDigit;
-                        numDigits : in  QuadByteMatrixLen;
                         carry     : out MQuadByte);
    --  This computes A := B * 2^numBits, and returns the carry.
    --  In other words, it shifts B left by "numBits" bits and returns result
@@ -33,11 +30,8 @@ package NN is
 
 
    procedure NN_RShift (A         : out QuadByteMatrix.TData;
-                        A_Index   : in  QuadByteDigitIndex;
                         B         : in  QuadByteMatrix.TData;
-                        B_Index   : in  QuadByteDigitIndex;
                         numBits   : in  TDigit;
-                        numDigits : in  QuadByteMatrixLen;
                         carry     : out MQuadByte);
    --  This computes A := B / 2^bits, returns carry and modifies A
    --  In other words, if shifts B right by "bits" bits and returns result
@@ -70,12 +64,8 @@ package NN is
 
    procedure NN_ModMult (A         : out QuadByteMatrix.TData;
                          B         : in  QuadByteMatrix.TData;
-                         B_Index   : in  QuadByteDigitIndex;
                          C         : in  QuadByteMatrix.TData;
-                         C_Index   : in  QuadByteDigitIndex;
-                         D         : in  QuadByteMatrix.TData;
-                         D_Index   : in  QuadByteDigitIndex;
-                         numDigits : in  QuadByteMatrixLen);
+                         D         : in  QuadByteMatrix.TData);
    --  This computes A = (b * C) mod D
 
 
@@ -93,11 +83,7 @@ package NN is
    procedure NN_Div (ResDiv   : out QuadByteMatrix.TData;
                      ResMod   : out QuadByteMatrix.TData;
                      C        : in  QuadByteMatrix.TData;
-                     C_Index  : in  QuadByteDigitIndex;
-                     C_Digits : in  QuadByteMatrixLen;
-                     D        : in  QuadByteMatrix.TData;
-                     D_Index  : in  QuadByteDigitIndex;
-                     D_Digits : in  QuadByteMatrixLen);
+                     D        : in  QuadByteMatrix.TData);
    --  This computes the modulus and dividend of C divided by D
    --  e.g. dividend = int (C/D) and modulus = C mod D
 

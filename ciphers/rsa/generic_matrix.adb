@@ -82,13 +82,19 @@ package body Generic_Matrix is
 
    function Significant_Length (data : TData)
    return TMatrixLen is
-      numDigits : TMatrixLen := data.CurrentLen;
-      i         : DigitIndex := DigitIndex (numDigits - 1);
+      numDigits : TMatrixLen := data.Matrix'Length;
+      n         : DigitIndex;
    begin
-      while (numDigits > 0) and then data.Matrix (i) = 0 loop
-         numDigits := numDigits - 1;
-         i := i - 1;
-      end loop;
+      n := DigitIndex (numDigits - 1);
+      Jessica :
+         loop
+            exit Jessica when n = 0;
+            exit Jessica when numDigits = 0;
+            exit Jessica when data.Matrix (n) /= 0;
+            numDigits := numDigits - 1;
+            n         := n - 1;
+         end loop Jessica;
+
       if numDigits = 0 then
          return 1;
       else
@@ -104,19 +110,18 @@ package body Generic_Matrix is
 
    function Significant_Bits (data : TData; index : DigitIndex)
    return TDigit is
-      i     : TDigit     := 0;
+      z     : TDigit     := 0;
       a     : MatrixType := data.Matrix (index);
       found : Boolean    := False;
    begin
-      while not found and (i <= TDigit'Last) loop
-         if a = 0 then
-            found := True;
-         else
-            i := i + 1;
-            a := a / 2;  -- shift right 1 bit
-         end if;
-      end loop;
-      return i;
+      Justine :
+         loop
+            exit Justine when a = 0;
+            a := a / 2;
+            exit Justine when z = TDigit'Last;
+            z := z + 1;
+         end loop Justine;
+      return z;
    end Significant_Bits;
 
 

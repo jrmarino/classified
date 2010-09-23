@@ -14,12 +14,15 @@
 --  OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 
+with Ada.Text_IO; use Ada.Text_IO;
+
 with Radix64; use Radix64;
 with NN;      use NN;
 
 package body RSA_Frontend is
 
    DPKCS_Error : TCryptoError := 0;
+   Last_Error  : TCryptoError := 0;
 
    --------------------------------
    --  Decrypt_With_Private_Key  --
@@ -40,24 +43,24 @@ package body RSA_Frontend is
    --  Decrypt_With_Public_Key  --
    -------------------------------
 
-   procedure Decrypt_With_Public_Key (Public_Key    : in  TPublicKey;
-                                      Scrambled_R64 : in  String;
-                                      Plain_Text    : out String;
-                                      Status        : out TCryptoError)
-   is
+
+   function Decrypt_With_Public_Key (Public_Key    : TPublicKey;
+                                     Scrambled_R64 : String)
+   return String is
       Modulus_Len : constant Positive := Positive (Public_Key.KeySize) / 8;
       scrambled : constant TBinaryString := Decode_Radix64 (Scrambled_R64);
       OutputLen : Integer;
       z         : Integer := 2;
+      error_msg : constant String (1 .. 6) := "ERROR!";
    begin
-      Status := Get_Radix_Coding_Status;
-      if Status /= 0 then
-         return;
+      Last_Error := Get_Radix_Coding_Status;
+      if Last_Error /= 0 then
+         return error_msg;
       end if;
 
       if scrambled'Length > Modulus_Len then
-         Status := 4;  -- Encrypted message is larger than key modulus
-         return;
+         Last_Error := 4;  -- Encrypted message is larger than key modulus
+         return error_msg;
       end if;
 
       declare
@@ -66,17 +69,19 @@ package body RSA_Frontend is
                                 Encrypted_Bytecode => scrambled);
       begin
          if DPKCS_Error /= 0 then
-            Status := DPKCS_Error;
-            return;
+            Last_Error := DPKCS_Error;
+            return error_msg;
          end if;
+Put_Line ("");
+Put_Line ("Revealed=" & Integer'Image (Revealed_Bytecode'Length) & "  MLen=" & Integer'Image (Modulus_Len));
          if Revealed_Bytecode'Length /= Modulus_Len then
-            Status := 5;  --  PKCS block is not same length as key modulus.
-            return;
+            Last_Error := 5;  --  PKCS block is not same length as key modulus.
+            return error_msg;
          end if;
          if (Revealed_Bytecode (0) /= 0) or
             (Revealed_Bytecode (1) /= 1) then
-            Status := 6;  --  PKCS block does not start with <01>
-            return;
+            Last_Error := 6;  --  PKCS block does not start with <01>
+            return error_msg;
          end if;
 
          declare
@@ -92,14 +97,16 @@ package body RSA_Frontend is
 
          z := z + 1;
          if Revealed_Bytecode (z) /= 0 then
-            Status := 7;  --  PKCS block separator pattern not <FFFFFF??00>
-            return;
+            Last_Error := 7;  --  PKCS block separator pattern not <FFFFFF??00>
+            return error_msg;
          end if;
          OutputLen := Modulus_Len - z;
          if OutputLen + 11 > Modulus_Len then
-            Status := 8;  --  Plain text output 11+ chars longer than mod.
-            return;
+            Last_Error := 8;  --  Plain text output 11+ chars longer than mod.
+            return error_msg;
          end if;
+
+         Last_Error := 0;
 
          declare
             output : String (1 .. OutputLen);
@@ -108,11 +115,10 @@ package body RSA_Frontend is
                output (x) := Character'Val (Revealed_Bytecode (z));
                z := z + 1;
             end loop;
-            Plain_Text := output;
+            return output;
          end;
       end;
 
-      Status := 0;
    end Decrypt_With_Public_Key;
 
 
@@ -161,10 +167,11 @@ package body RSA_Frontend is
       DPKCS_Error := 0;
       matrix_M := NN_Decode (Encrypted_Bytecode);
 
-      if matrix_M.Compared_With (
-                        Index     => 0,
-                        ExtData   => Public_Key.Modulus,
-                        ExtDigits => Public_Key.NumDigits) >= 0 then
+      if matrix_M.CurrentLen > Public_Key.NumDigits or else
+         matrix_M.Compared_With (
+                     Index     => 0,
+                     ExtData   => Public_Key.Modulus,
+                     ExtDigits => Public_Key.NumDigits) >= 0 then
          DPKCS_Error := 9; --  Data Mismatch, message length > key modulus
          return error_result;
       end if;
@@ -175,17 +182,30 @@ package body RSA_Frontend is
                  B_Index  => 0,
                  C        => Public_Key.Exponent,
                  C_Index  => 0,
-                 C_Digits => Public_Key.NumDigits,
+                 C_Digits => Public_Key.Exponent.CurrentLen,
                  D        => Public_Key.Modulus,
                  D_Index  => 0,
-                 D_Digits => Public_Key.NumDigits);
+                 D_Digits => Public_Key.Modulus.CurrentLen);
 
+Put_Line ("TRACE #3");
       --  encode output to standard form
       declare
          result : constant TBinaryString := NN_Encode (
-                                       HugeNumber => matrix_C,
-                                       numDigits  => Public_Key.NumDigits);
+                                 HugeNumber => matrix_C,
+                                 numDigits  => Public_Key.NumDigits);
+                                       --numDigits  => QuadByteMatrixLen (Public_Key.KeySize / 8));
       begin
+for x in QuadByteDigitIndex range 0 .. QuadByteDigitIndex (matrix_C.CurrentLen - 1) loop
+put (Long_Long_Integer'Image (Long_Long_Integer(matrix_C.matrix (x))));
+end loop;
+Put_Line ("");
+Put_Line ("Matrix C length=" & Integer'Image (Integer (matrix_M.CurrentLen)));
+
+--Put_Line ("num digits = " & Integer'Image (Integer(Public_Key.NumDigits)));
+--         for x in Integer range 0 .. Integer (Public_Key.NumDigits * 4 - 1) loop
+--put (Long_Long_Integer'Image (Long_Long_Integer(result (x))));
+--         end loop;
+
       --  clear sensitive data areas
          matrix_C.Zero_Array;
          matrix_M.Zero_Array;
@@ -278,8 +298,8 @@ package body RSA_Frontend is
          NumDigits := QuadByteMatrixLen (Integer (KeySize) / NN_DIGIT_BITS);
       end;
       declare
-         public_mod : constant TBinaryString := Decode_Radix64 (Modulus);
-         public_exp : constant TBinaryString := Decode_Radix64 (Exponent);
+         public_mod : constant TBinaryString := Decode_HexString (Modulus);
+         public_exp : constant TBinaryString := Decode_HexString (Exponent);
       begin
          Modulus_Array  := NN_Decode (public_mod);
          Exponent_Array := NN_Decode (public_exp);
@@ -297,5 +317,14 @@ package body RSA_Frontend is
    end Build_Public_Key;
 
 
+
+   -----------------------
+   --  Cryption_Status  --
+   -----------------------
+
+   function Cryption_Status return TCryptoError is
+   begin
+      return Last_Error;
+   end Cryption_Status;
 
 end RSA_Frontend;

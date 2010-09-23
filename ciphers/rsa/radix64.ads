@@ -54,8 +54,15 @@ package Radix64 is
    --  Error code is stored internally
    --  Encrypted message length is stored internally
 
+
    function Get_Radix_Coding_Status return TCryptoError;
    --  This passes back the value of Internal_Error_Code
+
+
+   function Decode_HexString (HexString : String) return TBinaryString;
+   --  Converts a string of hexadecimal characters to an array of bytes.
+   --  The string must have an even number of digits, otherwise it returns
+   --  zero.
 
 private
 

@@ -38,9 +38,10 @@ package body RSA_Utilities is
    function High_Half (original : MQuadByte)
    return MDualByte is
       work   : MQuadByte;
+      factor : MQuadByte := MQuadByte (2 ** NN_HALF_DIGIT_BITS);
    begin
       --  This is equivalent to shift_right 16 bits
-      work := original / 2 ** NN_HALF_DIGIT_BITS;
+      work := (original / factor) and MAX_NN_HALF_DIGIT;
       return MDualByte (work);
    end High_Half;
 
@@ -53,10 +54,10 @@ package body RSA_Utilities is
    function Shift_To_High_Half (original : MDualByte)
    return MQuadByte is
       work   : MQuadByte := MQuadByte (original);
+      factor : MQuadByte := MQuadByte (2 ** NN_HALF_DIGIT_BITS);
    begin
       --  This is equivalent to shift left 16 bits
-      work := work * 2 ** NN_HALF_DIGIT_BITS;
-      return work;
+      return work * factor;
    end Shift_To_High_Half;
 
 
@@ -67,10 +68,9 @@ package body RSA_Utilities is
 
    function Digit_2MSB (original : MQuadByte)
    return MQuadByte is
-      work : MQuadByte := original;
+      factor : MQuadByte := MQuadByte (2 ** (NN_DIGIT_BITS - 2));
    begin
-      work := work / 2 ** (NN_DIGIT_BITS - 2);
-      return work;
+      return (original / factor) and 3;
    end Digit_2MSB;
 
 
@@ -110,8 +110,7 @@ package body RSA_Utilities is
    return MQuadByte is
       work : MQuadByte := MQuadByte (LHS);
    begin
-      work := work * MQuadByte (RHS);
-      return work;
+      return work * MQuadByte (RHS);
    end Flowguard_Mult;
 
 
@@ -125,16 +124,17 @@ package body RSA_Utilities is
                     ResultHigh : out MQuadByte;
                     ResultLow  : out MQuadByte)
    is
-      carry : MQuadByte := 0;
-      al    : constant MDualByte := Low_Half  (LHS);
-      ah    : constant MDualByte := High_Half (LHS);
-      bl    : constant MDualByte := Low_Half  (RHS);
-      bh    : constant MDualByte := High_Half (RHS);
-      m     : MQuadByte;
-      m1    : MQuadByte;
-      m2    : MQuadByte;
-      ml    : MQuadByte;
-      mh    : MQuadByte;
+      carry  : MQuadByte := 0;
+      al     : constant MDualByte := Low_Half  (LHS);
+      ah     : constant MDualByte := High_Half (LHS);
+      bl     : constant MDualByte := Low_Half  (RHS);
+      bh     : constant MDualByte := High_Half (RHS);
+      m      : MQuadByte;
+      m1     : MQuadByte;
+      m2     : MQuadByte;
+      ml     : MQuadByte;
+      mh     : MQuadByte;
+      factor : MQuadByte := MQuadByte (2 ** NN_HALF_DIGIT_BITS);
    begin
       ResultLow  := Flowguard_Mult (al, bl);
       ResultHigh := Flowguard_Mult (ah, bh);
@@ -145,7 +145,7 @@ package body RSA_Utilities is
 
       if m < m1 then
          --  This is equivalent to 1 shift left 16
-         carry := 1 * 2 ** NN_HALF_DIGIT_BITS;
+         carry := factor;
       end if;
       ml := Shift_To_High_Half (MDualByte (m and MAX_NN_HALF_DIGIT));
       mh := MQuadByte (High_Half (m));

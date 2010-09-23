@@ -22,8 +22,8 @@ package body Radix64 is
 
    function Octet2MByte (Octet : OctetString)
    return MByte is
-      ones   : constant Character := Octet (1);
-      octs   : constant Character := Octet (2);
+      octs   : constant Character := Octet (1);
+      ones   : constant Character := Octet (2);
       result : Integer := 0;
    begin
       case octs is
@@ -42,6 +42,33 @@ package body Radix64 is
       return MByte (result);
 
    end Octet2MByte;
+
+
+
+   ------------------------
+   --  Decode_HexString  --
+   ------------------------
+
+   function Decode_HexString (HexString : String)
+   return TBinaryString is
+      OutputLen : Integer := (HexString'Length + 1) / 2;
+      result : TBinaryString (0 .. OutputLen - 1) := (others => 0);
+      index : integer := 1;
+      octet : OctetString;
+   begin
+      if (HexString'Length rem 2) > 0 then
+         return result;
+      end if;
+
+      for x in integer range 1 .. OutputLen loop
+         octet := HexString (index .. index + 1);
+         result (x - 1) := Octet2MByte (octet);
+         index := index + 2;
+      end loop;
+
+      return result;
+
+   end Decode_HexString;
 
 
 

@@ -47,16 +47,21 @@ package RSA_Frontend is
    --  The Public Key structure is then returned.
 
 
+   function Cryption_Status return TCryptoError;
+   --  This returns the error status of the previous encryption or decryption
+   --  procedures (The four functions below).  Due to the indeterminate
+   --  length of the return string, the status could not be returned as an
+   --  "out" parameter of a procedure as hoped.
+
+
    procedure Decrypt_With_Private_Key (Private_Key   : in  TPrivateKey;
                                        Scrambled_R64 : in  String;
                                        Plain_Text    : out String;
                                        Status        : out TCryptoError);
 
 
-   procedure Decrypt_With_Public_Key (Public_Key    : in  TPublicKey;
-                                      Scrambled_R64 : in  String;
-                                      Plain_Text    : out String;
-                                      Status        : out TCryptoError);
+   function Decrypt_With_Public_Key (Public_Key    : TPublicKey;
+                                     Scrambled_R64 : String) return String;
 
 
    procedure Encrypt_With_Private_Key (Private_Key   : in  TPrivateKey;

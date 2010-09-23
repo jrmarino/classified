@@ -14,6 +14,8 @@
 --  OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 
+with Ada.Text_IO; use Ada.Text_IO;
+
 with RSA_Utilities; use RSA_Utilities;
 
 package body NN is
@@ -159,7 +161,8 @@ package body NN is
                   end loop C_Loop;
             end if;
             zndx := k + MaxC + 1;
-            ZZ_Internal.Matrix (zndx) := ZZ_Internal.Matrix (zndx) + carry;
+            ZZ_Internal.Matrix (zndx) :=
+                  Flowguard_Add (ZZ_Internal.Matrix (zndx), carry);
          end loop B_Loop;
 
       ZZ_Internal.CurrentLen := ZZ_Internal.Significant_Length;
@@ -174,43 +177,38 @@ package body NN is
    -----------------
 
    procedure NN_LShift (A         : out QuadByteMatrix.TData;
-                        A_Index   : in  QuadByteDigitIndex;
                         B         : in  QuadByteMatrix.TData;
-                        B_Index   : in  QuadByteDigitIndex;
                         numBits   : in  TDigit;
-                        numDigits : in  QuadByteMatrixLen;
                         carry     : out MQuadByte)
    is
-      factor     : constant MQuadByte := MQuadByte (2 ** Natural (numBits));
-      mask       : constant MQuadByte := factor - 1;
-      invmask    : constant MQuadByte := MQuadByte'Last xor mask;
-      Andx       : QuadByteDigitIndex := A_Index;
-      Bndx       : QuadByteDigitIndex := B_Index;
-      last_carry : MQuadByte;
    begin
       --  This computes A := B * 2^numBits, returns carry and modifies A
       carry := 0;
       if numBits = 0 then
-         if numDigits > 0 then
-            B.CopyTo (destination => A);
-         end if;
+         B.CopyTo (destination => A);
          return;
       end if;
 
-      --  In Ada, the mod type doesn't shift bits off, they just rotate.
-      --  Therefore we need to clear the right-most bits before or'ing
-      --  the previous carry.  Before we clear, we copy the bits, because
-      --  this is the carry for the next element.
-
-      for x in QuadByteMatrixLen range 1 .. numDigits loop
-         last_carry      := carry;
-         A.Matrix (Andx) := B.Matrix (Bndx) * factor;
-         carry           := A.Matrix (Andx) and mask;
-         A.Matrix (Andx) := A.Matrix (Andx) and invmask;
-         A.Matrix (Andx) := A.Matrix (Andx) or  last_carry;
-         Andx            := Andx + 1;
-         Bndx            := Bndx + 1;
-      end loop;
+      A.Zero_Array;
+      declare
+         factor     : constant MQuadByte := MQuadByte (2 ** Natural (numBits));
+         numDigits  : constant QuadByteMatrixLen := B.CurrentLen;
+         antibits   : constant Natural := NN_DIGIT_BITS - Natural (numBits);
+         antifactor : constant MQuadByte := MQuadByte (2 ** antibits);
+         antimask   : constant MQuadByte := antifactor - 1;
+         mask       : constant MQuadByte := MQuadByte'Last xor antimask;
+         last_carry : MQuadByte;
+         index      : QuadByteDigitIndex := 0;
+      begin
+         for x in QuadByteMatrixLen range 1 .. numDigits loop
+            last_carry       := carry;
+            carry            := (B.Matrix (index) and mask) / antifactor;
+            A.Matrix (index) := (B.Matrix (index) and antimask) * factor;
+            A.Matrix (index) := A.Matrix (index) or last_carry;
+            index := index + 1;
+         end loop;
+      end;
+      A.CurrentLen := A.Significant_Length;
 
    end NN_LShift;
 
@@ -221,44 +219,36 @@ package body NN is
    -----------------
 
    procedure NN_RShift (A         : out QuadByteMatrix.TData;
-                        A_Index   : in  QuadByteDigitIndex;
                         B         : in  QuadByteMatrix.TData;
-                        B_Index   : in  QuadByteDigitIndex;
                         numBits   : in  TDigit;
-                        numDigits : in  QuadByteMatrixLen;
                         carry     : out MQuadByte)
    is
-      factor     : constant MQuadByte := MQuadByte (2 ** Natural (numBits));
-      mask       : constant MQuadByte := factor - 1;
-      invmask    : constant MQuadByte := MQuadByte'Last xor mask;
-      BBndx      : QuadByteDigitIndex;
-      AAndx      : QuadByteDigitIndex;
-      last_carry : MQuadByte;
    begin
    --  This computes A := B / 2^bits, returns carry and modifies A
       carry := 0;
       if numBits = 0 then
-         if numDigits > 0 then
-            B.CopyTo (destination => A);
-         end if;
+         B.CopyTo (destination => A);
          return;
       end if;
 
-      --  In Ada, the mod type doesn't shift bits off, they just rotate.
-      --  The "carry" bits start off in the right-most position, so we will
-      --  copy them into the carry variable, and then clear them, and finally
-      --  or the previous carry in their place.  After the shift/rotation,
-      --  the new carry will be in the correct location.
-
-      for x in QuadByteMatrixLen range 1 .. numDigits loop
-         last_carry       := carry;
-         BBndx            := B_Index + QuadByteDigitIndex (numDigits - x);
-         AAndx            := A_Index + QuadByteDigitIndex (numDigits - x);
-         carry            := B.Matrix (BBndx) and mask;
-         A.Matrix (AAndx) := B.Matrix (BBndx) and invmask;
-         A.Matrix (AAndx) := A.Matrix (AAndx) or  last_carry;
-         A.Matrix (AAndx) := A.Matrix (AAndx) * factor;
-      end loop;
+      A.Zero_Array;
+      declare
+         factor     : constant MQuadByte := MQuadByte (2 ** Natural (numBits));
+         mask       : constant MQuadByte := factor - 1;
+         numDigits  : constant QuadByteMatrixLen := B.CurrentLen;
+         antibits   : constant Natural := NN_DIGIT_BITS - Natural (numBits);
+         antifactor : constant MQuadByte := MQuadByte (2 ** antibits);
+         last_carry : MQuadByte;
+         index      : QuadByteDigitIndex;
+      begin
+         for x in QuadByteMatrixLen range 1 .. numDigits loop
+            last_carry       := carry * antifactor;
+            index            := QuadByteDigitIndex (numDigits - x);
+            carry            := B.Matrix (index) and mask;
+            A.Matrix (index) := (B.Matrix (index) / factor) or last_carry;
+         end loop;
+      end;
+      A.CurrentLen := A.Significant_Length;
 
    end NN_RShift;
 
@@ -324,11 +314,7 @@ package body NN is
    procedure NN_Div (ResDiv   : out QuadByteMatrix.TData;
                      ResMod   : out QuadByteMatrix.TData;
                      C        : in  QuadByteMatrix.TData;
-                     C_Index  : in  QuadByteDigitIndex;
-                     C_Digits : in  QuadByteMatrixLen;
-                     D        : in  QuadByteMatrix.TData;
-                     D_Index  : in  QuadByteDigitIndex;
-                     D_Digits : in  QuadByteMatrixLen)
+                     D        : in  QuadByteMatrix.TData)
    is
       shift      : TDigit;
       carry      : MQuadByte;
@@ -351,6 +337,7 @@ package body NN is
 
       CC_Internal : QuadByteMatrix.TData := QuadByteMatrix.Construct;
       DD_Internal : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+      C_Digits    : constant QuadByteMatrixLen := C.CurrentLen;
    begin
       --  This computes the modulus and dividend of C divided by D
       --  e.g. dividend = int (C/D) and modulus = C mod D
@@ -366,17 +353,15 @@ package body NN is
       shift := TDigit (NN_DIGIT_BITS - Integer (D.Significant_Bits
                (index => QuadByteDigitIndex (DD_Digits - 1))));
 
-      NN_RShift (A         => CC_Internal, A_Index   => 0,
-                 B         => C,           B_Index   => 0,
+      NN_LShift (A         => CC_Internal,
+                 B         => C,
                  numBits   => shift,
-                 numDigits => C_Digits,
                  carry     => carry);
       CC_Internal.Matrix (QuadByteDigitIndex (C_Digits)) := carry;
 
-      NN_RShift (A         => DD_Internal, A_Index   => 0,
-                 B         => D,           B_Index   => 0,
+      NN_LShift (A         => DD_Internal,
+                 B         => D,
                  numBits   => shift,
-                 numDigits => DD_Digits,
                  carry     => carry);
       S := DD_Internal.Matrix (QuadByteDigitIndex (DD_Digits - 1));
 
@@ -399,7 +384,7 @@ package body NN is
                if CHigh = MDualByte (MAX_NN_HALF_DIGIT) then
                   AHigh := High_Half (T1);
                else
-                  AHigh := MDualByte (T1) / (CHigh + 1);
+                  AHigh := MDualByte (T1 / MQuadByte (CHigh + 1));
                end if;
                U := Flowguard_Mult (AHigh, CLow);
                V := Flowguard_Mult (AHigh, CHigh);
@@ -444,7 +429,7 @@ package body NN is
                if T0 > Flowguard_Sub (MAX_NN_DIGIT, postShiftL) then
                   T1 := T1 - 1;
                end if;
-               T1 := T1 - MQuadByte (High_Half (V));
+               T1 := Flowguard_Sub (T1, MQuadByte (High_Half (V)));
 
                while (T1 > 0) or ((T1 = 0) and (T0 >= S)) loop
                   T0 := Flowguard_Sub (T0, S);
@@ -483,8 +468,8 @@ package body NN is
                        C_Index   => 0,
                        numDigits => DD_Digits,
                        borrow    => borrow);
-               CC_Internal.Matrix (ndx) := CC_Internal.Matrix (ndx) -
-                                           borrow;
+               CC_Internal.Matrix (ndx) := Flowguard_Sub (
+                                           CC_Internal.Matrix (ndx), borrow);
             end loop;
             ResDiv.Matrix (K) := AI;
 
@@ -493,11 +478,8 @@ package body NN is
          end loop While_One;
 
       NN_RShift (A         => ResMod,
-                 A_Index   => 0,
                  B         => CC_Internal,
-                 B_Index   => 0,
                  numBits   => shift,
-                 numDigits => DD_Digits,
                  carry     => carry);
 
       ResMod.CurrentLen := ResMod.Significant_Length;
@@ -513,12 +495,8 @@ package body NN is
 
    procedure NN_ModMult (A         : out QuadByteMatrix.TData;
                          B         : in  QuadByteMatrix.TData;
-                         B_Index   : in  QuadByteDigitIndex;
                          C         : in  QuadByteMatrix.TData;
-                         C_Index   : in  QuadByteDigitIndex;
-                         D         : in  QuadByteMatrix.TData;
-                         D_Index   : in  QuadByteDigitIndex;
-                         numDigits : in  QuadByteMatrixLen)
+                         D         : in  QuadByteMatrix.TData)
    is
       intermediate  : QuadByteMatrix.TData := QuadByteMatrix.Construct;
       Work_Dividend : QuadByteMatrix.TData := QuadByteMatrix.Construct;
@@ -527,18 +505,14 @@ package body NN is
       NN_Mult (A       => intermediate,
                A_Index => 0,
                B       => B,
-               B_Index => B_Index,
+               B_Index => 0,
                C       => C,
-               C_Index => C_Index);
+               C_Index => 0);
 
       NN_Div (ResDiv   => Work_Dividend,
               ResMod   => A,
               C        => intermediate,
-              C_Index  => 0,
-              C_Digits => 2 * numDigits,
-              D        => D,
-              D_Index  => D_Index,
-              D_Digits => numDigits);
+              D        => D);
 
       A.CurrentLen := A.Significant_Length;
 
@@ -573,72 +547,67 @@ package body NN is
                                  QuadByteMatrix.Construct,
                                  QuadByteMatrix.Construct,
                                  QuadByteMatrix.Construct);
+      invmask : constant MQuadByte := MQuadByte'Last xor 3;
    begin
       --  Computes a = b^c mod d.  assumes d > 0.
       --  Store b, b^2 mod d, and b^3 mod d
       B.CopyTo (BPower (0));
-      NN_ModMult (A         => BPower (1),
-                  B         => BPower (0),
-                  B_Index   => B_Index,
-                  C         => B,
-                  C_Index   => B_Index,
-                  D         => D,
-                  D_Index   => D_Index,
-                  numDigits => D_Digits);
-      NN_ModMult (A         => BPower (2),
-                  B         => BPower (1),
-                  B_Index   => B_Index,
-                  C         => B,
-                  C_Index   => B_Index,
-                  D         => D,
-                  D_Index   => D_Index,
-                  numDigits => D_Digits);
+
+for x in QuadByteDigitIndex range 0 .. QuadByteDigitIndex (BPower (0).CurrentLen - 1) loop
+put (Long_Long_Integer'Image (Long_Long_Integer(BPower (0).matrix (x))));
+end loop;
+Put_Line ("");
+Put_Line ("Matrix BPower (0) length=" & Integer'Image (Integer (BPower (0).CurrentLen)));
+
+
+      NN_ModMult (A => BPower (1),
+                  B => BPower (0),
+                  C => B,
+                  D => D);
+
+for x in QuadByteDigitIndex range 0 .. QuadByteDigitIndex (BPower (1).CurrentLen - 1) loop
+put (Long_Long_Integer'Image (Long_Long_Integer(BPower (1).matrix (x))));
+end loop;
+Put_Line ("");
+Put_Line ("Matrix BPower (1) length=" & Integer'Image (Integer (BPower (1).CurrentLen)));
+
+
+      NN_ModMult (A => BPower (2),
+                  B => BPower (1),
+                  C => B,
+                  D => D);
       T.Assign_Zero_Digit (1);
 
       Outer_Loop :
          loop
             ci     := C.Matrix (K + C_Index);
             ciBits := NN_DIGIT_BITS;
-
             --  Scan past leading zero bits of most significant digit.
             if K = QuadByteDigitIndex (C_Digits - 1) then
                while Digit_2MSB (ci) = 0 loop
-                  ci := ci * MQuadByte (4);  -- shift left 2 bits
+                  ci := (ci * MQuadByte (4)) and invmask;  -- shift left 2 bits
                   ciBits := ciBits - 2;
                end loop;
             end if;
-
             J := 0;
             while J < ciBits loop
                --  Compute t = t^4 * b^s mod d, where s = two MSB's of ci.
 
                NN_ModMult (A         => Tp1,
                            B         => T,
-                           B_Index   => 0,
                            C         => T,
-                           C_Index   => 0,
-                           D         => D,
-                           D_Index   => D_Index,
-                           numDigits => D_Digits);
+                           D         => D);
                NN_ModMult (A         => Tp2,
                            B         => Tp1,
-                           B_Index   => 0,
                            C         => Tp1,
-                           C_Index   => 0,
-                           D         => D,
-                           D_Index   => D_Index,
-                           numDigits => D_Digits);
+                           D         => D);
 
                S := Digit_2MSB (ci);
                if S /= 0 then
                   NN_ModMult (A         => T,
                               B         => Tp2,
-                              B_Index   => 0,
                               C         => BPower (Integer (S) - 1),
-                              C_Index   => 0,
-                              D         => D,
-                              D_Index   => D_Index,
-                              numDigits => D_Digits);
+                              D         => D);
                end if;
 
                J := J + 2;
@@ -662,35 +631,30 @@ package body NN is
    function NN_Decode (HexString : TBinaryString)
    return QuadByteMatrix.TData is
       result    : QuadByteMatrix.TData := QuadByteMatrix.Construct;
-      OutputLen : constant Natural := (HexString'Length + 3) / 4;
-      j         : Natural := OutputLen - 1;
-      k         : QuadByteDigitIndex := 0;
+      multiple  : constant Natural := NN_DIGIT_BITS / 8;
+      OutputLen : constant Natural := (HexString'Length + 3) / multiple;
+      kmax      : constant QuadByteDigitIndex :=
+                           QuadByteDigitIndex (OutputLen - 1);
+      index     : Natural := HexString'Length;
       u         : Natural;
       t         : MQuadByte;
       shifted   : MQuadByte;
       factor    : MQuadByte;
    begin
-      Outer_Loop :
-         loop
-            t := 0;
-            u := 0;
-            Inner_Loop :
-               loop
-                  factor  := MQuadByte (2 ** u);
-                  shifted := MQuadByte (HexString (j)) * factor;
-                  t := t or shifted;
-                  exit Inner_Loop when j = 0;
-                  j := j - 1;
-                  u := u + 8;
-                  exit Inner_Loop when u >= NN_DIGIT_BITS;
-               end loop Inner_Loop;
-
-            result.Matrix (k) := t;
-            exit Outer_Loop when j = 0;
-            exit Outer_Loop when k = QuadByteDigitIndex (NN_Digits);
-            k := k + 1;
-
-         end loop Outer_Loop;
+      for k in QuadByteDigitIndex range 0 .. kmax loop
+         t := 0;
+         u := 0;
+         for x in Natural range 1 .. multiple loop
+            if index > 0 then
+               index   := index - 1;
+               factor  := MQuadByte (2 ** u);
+               shifted := MQuadByte (HexString (index)) * factor;
+               t := t or shifted;
+               u := u + 8;
+            end if;
+         end loop;
+         result.Matrix (k) := t;
+      end loop;
 
       result.CurrentLen := result.Significant_Length;
       return result;
@@ -711,7 +675,7 @@ package body NN is
                            QuadByteDigitIndex (numDigits) - 1;
       resultLen : constant Natural := Natural (numDigits) * multiple;
       result    : TBinaryString (0 .. resultLen - 1) := (others => 0);
-      index     : Natural := resultLen - 1;
+      index     : Natural := resultLen;
       u         : Natural;
       shifted   : MQuadByte;
       factor    : MQuadByte;
@@ -720,12 +684,12 @@ package body NN is
       for k in QuadByteDigitIndex range 0 .. kmax loop
          u := 0;
          for x in Natural range 1 .. multiple loop
+            index := index - 1;
             factor  := MQuadByte (2 ** u);
             shifted := (HugeNumber.Matrix (k) / factor) and 16#FF#;
             result (index) := MByte (shifted);
 
             u     := u + 8;
-            index := index - 1;
          end loop;
       end loop;
 
