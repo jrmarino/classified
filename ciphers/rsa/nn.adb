@@ -14,8 +14,6 @@
 --  OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 
-with Ada.Text_IO; use Ada.Text_IO;
-
 with RSA_Utilities; use RSA_Utilities;
 
 package body NN is
@@ -350,8 +348,8 @@ package body NN is
       end if;
 
 
-      shift := TDigit (NN_DIGIT_BITS - Integer (D.Significant_Bits
-               (index => QuadByteDigitIndex (DD_Digits - 1))));
+      shift := TDigit (NN_DIGIT_BITS - D.Significant_Bits
+               (index => QuadByteDigitIndex (DD_Digits - 1)));
 
       NN_LShift (A         => CC_Internal,
                  B         => C,
@@ -365,6 +363,9 @@ package body NN is
                  carry     => carry);
       S := DD_Internal.Matrix (QuadByteDigitIndex (DD_Digits - 1));
 
+      if DD_Digits > C_Digits then
+         goto Determine_Modulus;
+      end if;
 
       K := QuadByteDigitIndex (C_Digits - DD_Digits);
       While_One :
@@ -477,6 +478,8 @@ package body NN is
             K := K - 1;
          end loop While_One;
 
+<<Determine_Modulus>>
+
       NN_RShift (A         => ResMod,
                  B         => CC_Internal,
                  numBits   => shift,
@@ -526,14 +529,10 @@ package body NN is
 
    procedure NN_ModExp (A         : out QuadByteMatrix.TData;
                         B         : in  QuadByteMatrix.TData;
-                        B_Index   : in  QuadByteDigitIndex;
                         C         : in  QuadByteMatrix.TData;
-                        C_Index   : in  QuadByteDigitIndex;
-                        C_Digits  : in  QuadByteMatrixLen;
-                        D         : in  QuadByteMatrix.TData;
-                        D_Index   : in  QuadByteDigitIndex;
-                        D_Digits  : in  QuadByteMatrixLen)
+                        D         : in  QuadByteMatrix.TData)
    is
+      C_Digits  : constant QuadByteMatrixLen := C.CurrentLen;
       K         : QuadByteDigitIndex := QuadByteDigitIndex (C_Digits - 1);
       ci        : MQuadByte;
       S         : MQuadByte;
@@ -553,34 +552,21 @@ package body NN is
       --  Store b, b^2 mod d, and b^3 mod d
       B.CopyTo (BPower (0));
 
-for x in QuadByteDigitIndex range 0 .. QuadByteDigitIndex (BPower (0).CurrentLen - 1) loop
-put (Long_Long_Integer'Image (Long_Long_Integer(BPower (0).matrix (x))));
-end loop;
-Put_Line ("");
-Put_Line ("Matrix BPower (0) length=" & Integer'Image (Integer (BPower (0).CurrentLen)));
-
-
       NN_ModMult (A => BPower (1),
                   B => BPower (0),
                   C => B,
                   D => D);
 
-for x in QuadByteDigitIndex range 0 .. QuadByteDigitIndex (BPower (1).CurrentLen - 1) loop
-put (Long_Long_Integer'Image (Long_Long_Integer(BPower (1).matrix (x))));
-end loop;
-Put_Line ("");
-Put_Line ("Matrix BPower (1) length=" & Integer'Image (Integer (BPower (1).CurrentLen)));
-
-
       NN_ModMult (A => BPower (2),
                   B => BPower (1),
                   C => B,
                   D => D);
+
       T.Assign_Zero_Digit (1);
 
       Outer_Loop :
          loop
-            ci     := C.Matrix (K + C_Index);
+            ci     := C.Matrix (K);
             ciBits := NN_DIGIT_BITS;
             --  Scan past leading zero bits of most significant digit.
             if K = QuadByteDigitIndex (C_Digits - 1) then
@@ -668,12 +654,12 @@ Put_Line ("Matrix BPower (1) length=" & Integer'Image (Integer (BPower (1).Curre
    -----------------
 
    function NN_Encode (HugeNumber : QuadByteMatrix.TData;
-                       numDigits  : QuadByteMatrixLen)
+                       numDigits  : Natural)
    return TBinaryString is
       multiple  : constant Natural := NN_DIGIT_BITS / 8;
       kmax      : constant QuadByteDigitIndex :=
-                           QuadByteDigitIndex (numDigits) - 1;
-      resultLen : constant Natural := Natural (numDigits) * multiple;
+                           QuadByteDigitIndex (numDigits / multiple) - 1;
+      resultLen : constant Natural := numDigits;
       result    : TBinaryString (0 .. resultLen - 1) := (others => 0);
       index     : Natural := resultLen;
       u         : Natural;

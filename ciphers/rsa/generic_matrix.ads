@@ -50,11 +50,12 @@ package Generic_Matrix is
    --  plus 1.  If all the elements have a value of zero, the result is 1.
 
 
-   function Significant_Bits (data : TData; index : DigitIndex) return TDigit;
+   function Significant_Bits (data : TData; index : DigitIndex) return Natural;
    --  Given the value of a TData array element with the index of "index", the
    --  value is shifted right (divides by 2) until the value is zero.  The
    --  number of shifts it took to do this is returned.  If the value is starts
-   --  at zero, then zero is returned because no shifts were required.
+   --  at zero, then zero is returned because no shifts were required.  The
+   --  maximum value is TDigit + 1, which is 32.  (Also equals NN_DIGIT_BITS)
 
 
    function Compared_With (Data      : TData;

@@ -88,10 +88,9 @@ package body Generic_Matrix is
       n := DigitIndex (numDigits - 1);
       Jessica :
          loop
-            exit Jessica when n = 0;
-            exit Jessica when numDigits = 0;
             exit Jessica when data.Matrix (n) /= 0;
             numDigits := numDigits - 1;
+            exit Jessica when numDigits = 0;
             n         := n - 1;
          end loop Jessica;
 
@@ -109,17 +108,16 @@ package body Generic_Matrix is
    ------------------------
 
    function Significant_Bits (data : TData; index : DigitIndex)
-   return TDigit is
-      z     : TDigit     := 0;
+   return Natural is
+      z     : Natural    := 0;
       a     : MatrixType := data.Matrix (index);
-      found : Boolean    := False;
    begin
       Justine :
          loop
             exit Justine when a = 0;
             a := a / 2;
-            exit Justine when z = TDigit'Last;
             z := z + 1;
+            exit Justine when z = NN_DIGIT_BITS;
          end loop Justine;
       return z;
    end Significant_Bits;

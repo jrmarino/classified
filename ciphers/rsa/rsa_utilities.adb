@@ -38,7 +38,7 @@ package body RSA_Utilities is
    function High_Half (original : MQuadByte)
    return MDualByte is
       work   : MQuadByte;
-      factor : MQuadByte := MQuadByte (2 ** NN_HALF_DIGIT_BITS);
+      factor : constant MQuadByte := MQuadByte (2 ** NN_HALF_DIGIT_BITS);
    begin
       --  This is equivalent to shift_right 16 bits
       work := (original / factor) and MAX_NN_HALF_DIGIT;
@@ -53,8 +53,8 @@ package body RSA_Utilities is
 
    function Shift_To_High_Half (original : MDualByte)
    return MQuadByte is
-      work   : MQuadByte := MQuadByte (original);
-      factor : MQuadByte := MQuadByte (2 ** NN_HALF_DIGIT_BITS);
+      work   : constant MQuadByte := MQuadByte (original);
+      factor : constant MQuadByte := MQuadByte (2 ** NN_HALF_DIGIT_BITS);
    begin
       --  This is equivalent to shift left 16 bits
       return work * factor;
@@ -68,7 +68,7 @@ package body RSA_Utilities is
 
    function Digit_2MSB (original : MQuadByte)
    return MQuadByte is
-      factor : MQuadByte := MQuadByte (2 ** (NN_DIGIT_BITS - 2));
+      factor : constant MQuadByte := MQuadByte (2 ** (NN_DIGIT_BITS - 2));
    begin
       return (original / factor) and 3;
    end Digit_2MSB;
@@ -108,7 +108,7 @@ package body RSA_Utilities is
    function Flowguard_Mult (LHS : MDualByte;
                             RHS : MDualByte)
    return MQuadByte is
-      work : MQuadByte := MQuadByte (LHS);
+      work : constant MQuadByte := MQuadByte (LHS);
    begin
       return work * MQuadByte (RHS);
    end Flowguard_Mult;
@@ -129,12 +129,12 @@ package body RSA_Utilities is
       ah     : constant MDualByte := High_Half (LHS);
       bl     : constant MDualByte := Low_Half  (RHS);
       bh     : constant MDualByte := High_Half (RHS);
+      factor : constant MQuadByte := MQuadByte (2 ** NN_HALF_DIGIT_BITS);
       m      : MQuadByte;
       m1     : MQuadByte;
       m2     : MQuadByte;
       ml     : MQuadByte;
       mh     : MQuadByte;
-      factor : MQuadByte := MQuadByte (2 ** NN_HALF_DIGIT_BITS);
    begin
       ResultLow  := Flowguard_Mult (al, bl);
       ResultHigh := Flowguard_Mult (ah, bh);

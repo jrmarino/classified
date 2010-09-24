@@ -14,8 +14,6 @@
 --  OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 
-with Ada.Text_IO; use Ada.Text_IO;
-
 with Radix64; use Radix64;
 with NN;      use NN;
 
@@ -47,10 +45,10 @@ package body RSA_Frontend is
    function Decrypt_With_Public_Key (Public_Key    : TPublicKey;
                                      Scrambled_R64 : String)
    return String is
-      Modulus_Len : constant Positive := Positive (Public_Key.KeySize) / 8;
+      Bytes_Mod : constant Positive := Positive (Public_Key.KeySize) / 8;
       scrambled : constant TBinaryString := Decode_Radix64 (Scrambled_R64);
       OutputLen : Integer;
-      z         : Integer := 2;
+      z         : Natural := 2;
       error_msg : constant String (1 .. 6) := "ERROR!";
    begin
       Last_Error := Get_Radix_Coding_Status;
@@ -58,7 +56,7 @@ package body RSA_Frontend is
          return error_msg;
       end if;
 
-      if scrambled'Length > Modulus_Len then
+      if scrambled'Length > Bytes_Mod then
          Last_Error := 4;  -- Encrypted message is larger than key modulus
          return error_msg;
       end if;
@@ -72,9 +70,7 @@ package body RSA_Frontend is
             Last_Error := DPKCS_Error;
             return error_msg;
          end if;
-Put_Line ("");
-Put_Line ("Revealed=" & Integer'Image (Revealed_Bytecode'Length) & "  MLen=" & Integer'Image (Modulus_Len));
-         if Revealed_Bytecode'Length /= Modulus_Len then
+         if Revealed_Bytecode'Length /= Bytes_Mod then
             Last_Error := 5;  --  PKCS block is not same length as key modulus.
             return error_msg;
          end if;
@@ -85,23 +81,24 @@ Put_Line ("Revealed=" & Integer'Image (Revealed_Bytecode'Length) & "  MLen=" & I
          end if;
 
          declare
-            maxZ      : constant Integer := Modulus_Len - 1;
+            maxZ      : constant Integer := Bytes_Mod - 1;
          begin
             Samantha :
                loop
-                  exit Samantha when z >= maxZ;
+                  exit Samantha when z > maxZ;
                   exit Samantha when Revealed_Bytecode (z) /= 16#FF#;
                   z := z + 1;
                end loop Samantha;
          end;
 
-         z := z + 1;
          if Revealed_Bytecode (z) /= 0 then
             Last_Error := 7;  --  PKCS block separator pattern not <FFFFFF??00>
             return error_msg;
          end if;
-         OutputLen := Modulus_Len - z;
-         if OutputLen + 11 > Modulus_Len then
+
+         z := z + 1;
+         OutputLen := Bytes_Mod - z;
+         if OutputLen + 11 > Bytes_Mod then
             Last_Error := 8;  --  Plain text output 11+ chars longer than mod.
             return error_msg;
          end if;
@@ -167,44 +164,27 @@ Put_Line ("Revealed=" & Integer'Image (Revealed_Bytecode'Length) & "  MLen=" & I
       DPKCS_Error := 0;
       matrix_M := NN_Decode (Encrypted_Bytecode);
 
-      if matrix_M.CurrentLen > Public_Key.NumDigits or else
+      if matrix_M.CurrentLen > Public_Key.MsgSize or else
          matrix_M.Compared_With (
                      Index     => 0,
                      ExtData   => Public_Key.Modulus,
-                     ExtDigits => Public_Key.NumDigits) >= 0 then
+                     ExtDigits => Public_Key.MsgSize) >= 0 then
          DPKCS_Error := 9; --  Data Mismatch, message length > key modulus
          return error_result;
       end if;
 
       --  Compute c = m^e mod n.  To perform actual RSA calc.
-      NN_ModExp (A        => matrix_C,
-                 B        => matrix_M,
-                 B_Index  => 0,
-                 C        => Public_Key.Exponent,
-                 C_Index  => 0,
-                 C_Digits => Public_Key.Exponent.CurrentLen,
-                 D        => Public_Key.Modulus,
-                 D_Index  => 0,
-                 D_Digits => Public_Key.Modulus.CurrentLen);
+      NN_ModExp (A => matrix_C,
+                 B => matrix_M,
+                 C => Public_Key.Exponent,
+                 D => Public_Key.Modulus);
 
-Put_Line ("TRACE #3");
       --  encode output to standard form
       declare
          result : constant TBinaryString := NN_Encode (
                                  HugeNumber => matrix_C,
-                                 numDigits  => Public_Key.NumDigits);
-                                       --numDigits  => QuadByteMatrixLen (Public_Key.KeySize / 8));
+                                 numDigits  => Integer (Public_Key.MsgSize));
       begin
-for x in QuadByteDigitIndex range 0 .. QuadByteDigitIndex (matrix_C.CurrentLen - 1) loop
-put (Long_Long_Integer'Image (Long_Long_Integer(matrix_C.matrix (x))));
-end loop;
-Put_Line ("");
-Put_Line ("Matrix C length=" & Integer'Image (Integer (matrix_M.CurrentLen)));
-
---Put_Line ("num digits = " & Integer'Image (Integer(Public_Key.NumDigits)));
---         for x in Integer range 0 .. Integer (Public_Key.NumDigits * 4 - 1) loop
---put (Long_Long_Integer'Image (Long_Long_Integer(result (x))));
---         end loop;
 
       --  clear sensitive data areas
          matrix_C.Zero_Array;
@@ -259,11 +239,13 @@ Put_Line ("Matrix C length=" & Integer'Image (Integer (matrix_M.CurrentLen)));
    function Build_Public_Key (Modulus  : String;
                               Exponent : String)
    return TPublicKey is
-      code      : BuildKeyError := 0;
-      KeySize   : TKeySize := 1024;
-      NumDigits : QuadByteMatrixLen := 0;
-      Modulus_Array  : QuadByteMatrix.TData := QuadByteMatrix.Construct;
-      Exponent_Array : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+      code              : BuildKeyError := 0;
+      KeySize           : TKeySize := 1024;
+      MsgSize           : QuadByteMatrixLen := 0;
+      Modulus_Array     : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+      Exponent_Array    : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+      num_bits_modulus  : constant Natural := Modulus'Length * 4;
+      num_bits_exponent : constant Natural := Exponent'Length * 4;
    begin
       --  Error codes: 0 means no error
       --               1 means modulus not multiple of 32
@@ -271,20 +253,20 @@ Put_Line ("Matrix C length=" & Integer'Image (Integer (matrix_M.CurrentLen)));
       --               3 means modulus and exponent not equal
       --               4 means derived keysize < 1024
       --               5 means derived keysize > 4096
-      if Modulus'Length rem 32 /= 0 then
+      if num_bits_modulus rem 32 /= 0 then
          code := 1;
          goto complete;
       end if;
-      if Exponent'Length rem 32 /= 0 then
+      if num_bits_exponent rem 32 /= 0 then
          code := 2;
          goto complete;
       end if;
-      if Modulus'Length /= Exponent'Length then
+      if num_bits_modulus /= num_bits_exponent then
          code := 3;
          goto complete;
       end if;
       declare
-         TestSize : constant Integer := Modulus'Length * 8;
+         TestSize : constant Integer := num_bits_modulus;
       begin
          if TestSize < L_MODULUS_BITS then
             code := 4;
@@ -294,8 +276,8 @@ Put_Line ("Matrix C length=" & Integer'Image (Integer (matrix_M.CurrentLen)));
             code := 5;
             goto complete;
          end if;
-         KeySize   := TKeySize (TestSize);
-         NumDigits := QuadByteMatrixLen (Integer (KeySize) / NN_DIGIT_BITS);
+         KeySize := TKeySize (TestSize);
+         MsgSize := QuadByteMatrixLen (num_bits_modulus / 8);
       end;
       declare
          public_mod : constant TBinaryString := Decode_HexString (Modulus);
@@ -311,7 +293,7 @@ Put_Line ("Matrix C length=" & Integer'Image (Integer (matrix_M.CurrentLen)));
          return (KeySize   => KeySize,
                  Modulus   => Modulus_Array,
                  Exponent  => Exponent_Array,
-                 NumDigits => NumDigits,
+                 MsgSize   => MsgSize,
                  ErrorCode => code);
 
    end Build_Public_Key;

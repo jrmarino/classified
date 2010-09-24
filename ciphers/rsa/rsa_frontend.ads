@@ -23,7 +23,7 @@ package RSA_Frontend is
       KeySize    : TKeySize;
       Modulus    : QuadByteMatrix.TData;
       Exponent   : QuadByteMatrix.TData;
-      NumDigits  : QuadByteMatrixLen;
+      MsgSize    : QuadByteMatrixLen;
       ErrorCode  : BuildKeyError;
    end record;
 

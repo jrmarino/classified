@@ -88,15 +88,10 @@ package NN is
    --  e.g. dividend = int (C/D) and modulus = C mod D
 
 
-   procedure NN_ModExp (A         : out QuadByteMatrix.TData;
-                        B         : in  QuadByteMatrix.TData;
-                        B_Index   : in  QuadByteDigitIndex;
-                        C         : in  QuadByteMatrix.TData;
-                        C_Index   : in  QuadByteDigitIndex;
-                        C_Digits  : in  QuadByteMatrixLen;
-                        D         : in  QuadByteMatrix.TData;
-                        D_Index   : in  QuadByteDigitIndex;
-                        D_Digits  : in  QuadByteMatrixLen);
+   procedure NN_ModExp (A : out QuadByteMatrix.TData;
+                        B : in  QuadByteMatrix.TData;
+                        C : in  QuadByteMatrix.TData;
+                        D : in  QuadByteMatrix.TData);
    --  Computes a = b^c mod d.  assumes d > 0.
 
 
@@ -112,7 +107,7 @@ package NN is
 
 
    function NN_Encode (HugeNumber : QuadByteMatrix.TData;
-                       numDigits  : QuadByteMatrixLen) return TBinaryString;
+                       numDigits  : Natural) return TBinaryString;
    --  Encodes an array of 32-integers back into a hexidecimal string
    --  represented by an array of bytes.  The result is 4 times longer than
    --  the input.

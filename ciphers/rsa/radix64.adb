@@ -51,16 +51,16 @@ package body Radix64 is
 
    function Decode_HexString (HexString : String)
    return TBinaryString is
-      OutputLen : Integer := (HexString'Length + 1) / 2;
+      OutputLen : constant Integer := (HexString'Length + 1) / 2;
       result : TBinaryString (0 .. OutputLen - 1) := (others => 0);
-      index : integer := 1;
+      index : Integer := 1;
       octet : OctetString;
    begin
       if (HexString'Length rem 2) > 0 then
          return result;
       end if;
 
-      for x in integer range 1 .. OutputLen loop
+      for x in Integer range 1 .. OutputLen loop
          octet := HexString (index .. index + 1);
          result (x - 1) := Octet2MByte (octet);
          index := index + 2;
