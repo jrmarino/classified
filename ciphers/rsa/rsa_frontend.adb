@@ -20,7 +20,9 @@ with NN;      use NN;
 package body RSA_Frontend is
 
    DPKCS_Error : TCryptoError := 0;
+   EPKCS_Error : TCryptoError := 0;
    Last_Error  : TCryptoError := 0;
+   error_msg   : constant String (1 .. 6) := "ERROR!";
 
    --------------------------------
    --  Decrypt_With_Private_Key  --
@@ -49,7 +51,6 @@ package body RSA_Frontend is
       scrambled : constant TBinaryString := Decode_Radix64 (Scrambled_R64);
       OutputLen : Integer;
       z         : Natural := 2;
-      error_msg : constant String (1 .. 6) := "ERROR!";
    begin
       Last_Error := Get_Radix_Coding_Status;
       if Last_Error /= 0 then
@@ -63,8 +64,8 @@ package body RSA_Frontend is
 
       declare
          Revealed_Bytecode : constant TBinaryString :=
-               Decrypt_to_PKCS (Public_Key         => Public_Key,
-                                Encrypted_Bytecode => scrambled);
+               Decrypt_PKCS (Public_Key         => Public_Key,
+                             Encrypted_Bytecode => scrambled);
       begin
          if DPKCS_Error /= 0 then
             Last_Error := DPKCS_Error;
@@ -124,13 +125,76 @@ package body RSA_Frontend is
    --  Encrypt_With_Private_Key  --
    --------------------------------
 
-   procedure Encrypt_With_Private_Key (Private_Key   : in  TPrivateKey;
-                                       Scrambled_R64 : out String;
-                                       Plain_Text    : in  String;
-                                       Status        : out TCryptoError)
-   is
+   function Encrypt_With_Private_Key (Private_Key   : TPrivateKey;
+                                      Plain_Text    : String)
+   return String is
+      Plain_Bytecode : TBinaryString (0 .. Plain_Text'Length - 1);
    begin
-      null;
+      Last_Error := 0;
+
+      if Plain_Text'Length > Private_Key.MsgSize then
+         Last_Error := 11;  -- Encryption: Message too long for modulus.
+         return error_msg;
+      end if;
+
+      for x in Integer range 1 .. Plain_Text'Length loop
+         Plain_Bytecode (x - 1) := Character'Pos (Plain_Text (x));
+      end loop;
+
+      declare
+         Encrypted_Bytecode : constant TBinaryString := Encrypt_to_PKCS (
+                                       Private_Key    => Private_Key,
+                                       Plain_Bytecode => Plain_Bytecode);
+         z : Natural := 2;
+      begin
+         --  clear sensitive information from memory
+         Plain_Bytecode := (others => 0);
+
+         if EPKCS_Error /= 0 then
+            Last_Error := EPKCS_Error;
+            return error_msg;
+         end if;
+
+         if Encrypted_Bytecode'Length /= Private_Key.MsgSize then
+            Last_Error := 10;  --  Message length doesn't match modulus.
+            return error_msg;
+         end if;
+
+         --  We require block type 2.
+
+         if (Encrypted_Bytecode (0) /= 0) or
+            (Encrypted_Bytecode (1) /= 2) then
+            Last_Error := 14;  --  Encryption: Incorrect Block Type found.
+            return error_msg;
+         end if;
+
+         Jasmine :
+            loop
+               exit Jasmine when z = Natural (Private_Key.MsgSize);
+               exit Jasmine when Encrypted_Bytecode (z) = 0;
+               z := z + 1;
+            end loop Jasmine;
+
+         z := z + 1;
+         if z >= Natural (Private_Key.MsgSize) then
+            Last_Error := 15;  --  message part of bytecode is too long.
+            return error_msg;
+         end if;
+
+         declare
+            outputLen : constant Natural := Natural (Private_Key.MsgSize) - z;
+            result    : constant String :=
+                                 Encode_to_Radix64 (Encrypted_Bytecode);
+         begin
+            if outputLen + 11 > Natural (Private_Key.MsgSize) then
+               Last_Error := 16;  --  Internal Separator is too short
+               return error_msg;
+            end if;
+
+            return result;
+         end;
+      end;
+
    end Encrypt_With_Private_Key;
 
 
@@ -150,11 +214,11 @@ package body RSA_Frontend is
 
 
 
-   -----------------------
-   --  Decrypt_to_PKCS  --
-   -----------------------
+   --------------------
+   --  Decrypt_PKCS  --
+   --------------------
 
-   function Decrypt_to_PKCS (Public_Key         : TPublicKey;
+   function Decrypt_PKCS (Public_Key         : TPublicKey;
                              Encrypted_Bytecode : TBinaryString)
    return TBinaryString is
       matrix_M   : QuadByteMatrix.TData;
@@ -198,8 +262,141 @@ package body RSA_Frontend is
          return result;
       end;
 
-   end Decrypt_to_PKCS;
+   end Decrypt_PKCS;
 
+
+
+   -----------------------
+   --  Encrypt_to_PKCS  --
+   -----------------------
+
+   function Encrypt_to_PKCS (Private_Key    : TPrivateKey;
+                             Plain_Bytecode : TBinaryString)
+   return TBinaryString is
+      Matrix_c    : QuadByteMatrix.TData;
+      PKCSErr     : constant TBinaryString (0 .. 2) := (5, 5, 5);
+   begin
+
+      --  decode required input data from standard form
+      Matrix_c    := NN_Decode (HexString => Plain_Bytecode);
+
+      if Matrix_c.Compared_With (
+                        Index     => 0,
+                        ExtData   => Private_Key.Modulus,
+                        ExtDigits => Private_Key.Modulus.CurrentLen) >= 0 then
+         EPKCS_Error := 17;
+         return PKCSErr;
+      end if;
+
+      --  Compute mP = cP^dP mod p  and  mQ = cQ^dQ mod q.
+      --  (Assumes q has length at most pDigits, i.e., p > q)
+
+      declare
+         scratch   : QuadByteMatrix.TData;
+         Matrix_cP : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+         Matrix_cQ : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+         Matrix_mP : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+         Matrix_mQ : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+         Matrix_t1 : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+         Matrix_t2 : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+         Matrix_t3 : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+         Matrix_t4 : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+         Matrix_t5 : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+         borrow    : MQuadByte;
+         carry     : MQuadByte;
+      begin
+         NN_Div (ResDiv => scratch,
+                 ResMod => Matrix_cP,
+                 C      => Matrix_c,
+                 D      => Private_Key.Prime_p);
+
+         NN_Div (ResDiv => scratch,
+                 ResMod => Matrix_cQ,
+                 C      => Matrix_c,
+                 D      => Private_Key.Prime_q);
+
+         NN_ModExp (A   => Matrix_mP,
+                    B   => Matrix_cP,
+                    C   => Private_Key.Prime_Exp_p,
+                    D   => Private_Key.Prime_p);
+
+         NN_ModExp (A   => Matrix_mQ,
+                    B   => Matrix_cQ,
+                    C   => Private_Key.Prime_Exp_q,
+                    D   => Private_Key.Prime_q);
+
+         --  Chinese Remainder Theorem:
+         --  m = ((((mP - mQ) mod p) * qInv) mod p) * q + mQ
+
+         if Matrix_mP.Compared_With (
+                        Index     => 0,
+                        ExtData   => Matrix_mQ,
+                        ExtDigits => Private_Key.Prime_p.CurrentLen) >= 0 then
+            NN_Sub (A         => Matrix_t2,
+                    A_Index   => 0,
+                    B         => Matrix_mP,
+                    B_Index   => 0,
+                    C         => Matrix_mQ,
+                    C_Index   => 0,
+                    numDigits => Private_Key.Prime_p.CurrentLen,
+                    borrow    => borrow);
+         else
+            NN_Sub (A         => Matrix_t1,
+                    A_Index   => 0,
+                    B         => Matrix_mQ,
+                    B_Index   => 0,
+                    C         => Matrix_mP,
+                    C_Index   => 0,
+                    numDigits => Private_Key.Prime_p.CurrentLen,
+                    borrow    => borrow);
+
+            NN_Sub (A         => Matrix_t2,
+                    A_Index   => 0,
+                    B         => Private_Key.Prime_p,
+                    B_Index   => 0,
+                    C         => Matrix_t1,
+                    C_Index   => 0,
+                    numDigits => Private_Key.Prime_p.CurrentLen,
+                    borrow    => borrow);
+         end if;
+
+         NN_ModMult (A => Matrix_t3,
+                     B => Matrix_t2,
+                     C => Private_Key.coefficient,
+                     D => Private_Key.Prime_p);
+
+         NN_Mult (A       => Matrix_t4,
+                  A_Index => 0,
+                  B       => Matrix_t3,
+                  B_Index => 0,
+                  C       => Private_Key.Prime_q,
+                  C_Index => 0);
+
+         NN_Add (A         => Matrix_t5,
+                 A_Index   => 0,
+                 B         => Matrix_t4,
+                 B_Index   => 0,
+                 C         => Matrix_mQ,
+                 C_Index   => 0,
+                 numDigits => Private_Key.Modulus.CurrentLen,
+                 carry     => carry);
+
+         --  clear sensitive information
+         Matrix_cP.Zero_Array;
+         Matrix_cQ.Zero_Array;
+         Matrix_mP.Zero_Array;
+         Matrix_mQ.Zero_Array;
+         Matrix_t1.Zero_Array;
+         Matrix_t2.Zero_Array;
+         Matrix_t3.Zero_Array;
+         Matrix_t4.Zero_Array;
+
+         --  encode output to standard form
+         return NN_Encode (HugeNumber => Matrix_t5, numDigits =>
+                           Natural (Private_Key.Modulus.CurrentLen));
+      end;
+
+   end Encrypt_to_PKCS;
 
 
    ----------------------------
@@ -222,11 +419,16 @@ package body RSA_Frontend is
          when  8 => return "Plain text output is more than 11 chars longer " &
                            "than key modulus.";
          when  9 => return "Data mismatch, message length > key modulus.";
-         when 10 => return "Encryption: message length doesn't match modulus.";
+         when 10 => return "Encryption: Message length doesn't match modulus.";
          when 11 => return "Encryption: Message too long for modulus.";
          when 12 => return "Radix-64 encoding bad, found pad away from end.";
          when 13 => return "Radix-64 encoding bad, character previous to " &
                            "pad doesn't have clear trailing bits.";
+         when 14 => return "Encryption: Incorrect Block Type found.";
+         when 15 => return "Encryption: Encrypted array of bytes is too " &
+                           "long for modulus.";
+         when 16 => return "Encryption: Internal separator is too short.";
+         when 17 => return "PKCS coding: Byte String longer than modulus.";
       end case;
    end Get_Status_Message;
 

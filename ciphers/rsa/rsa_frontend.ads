@@ -20,23 +20,26 @@ with RSATypes; use RSATypes;
 package RSA_Frontend is
 
    type TPublicKey is record
-      KeySize    : TKeySize;
-      Modulus    : QuadByteMatrix.TData;
-      Exponent   : QuadByteMatrix.TData;
-      MsgSize    : QuadByteMatrixLen;
-      ErrorCode  : BuildKeyError;
+      KeySize   : TKeySize;
+      MsgSize   : QuadByteMatrixLen;
+      ErrorCode : BuildKeyError;
+      Modulus   : QuadByteMatrix.TData;
+      Exponent  : QuadByteMatrix.TData;
    end record;
+
 
    type TPrivateKey is record
       KeySize          : TKeySize;
-      Modulus          : LongKeyString;   --  public modulus
-      Public_Exponent  : LongKeyString;   --  public exponent
-      Private_Exponent : LongKeyString;   --  d
-      Prime_p          : HalfKeyString;   --  prime p
-      Prime_q          : HalfKeyString;   --  prime q
-      Prime_Exp_p      : HalfKeyString;   --  prime exponent CRTp
-      Prime_Exp_q      : HalfKeyString;   --  prime exponent CRTq
-      coefficient      : HalfKeyString;   --  prime coefficient CRTc
+      MsgSize          : QuadByteMatrixLen;
+      ErrorCode        : BuildKeyError;
+      Modulus          : QuadByteMatrix.TData;   --  public modulus
+      Public_Exponent  : QuadByteMatrix.TData;   --  public exponent
+      Private_Exponent : QuadByteMatrix.TData;   --  d
+      Prime_p          : QuadByteMatrix.TData;   --  prime p
+      Prime_q          : QuadByteMatrix.TData;   --  prime q
+      Prime_Exp_p      : QuadByteMatrix.TData;   --  prime exponent CRTp
+      Prime_Exp_q      : QuadByteMatrix.TData;   --  prime exponent CRTq
+      coefficient      : QuadByteMatrix.TData;   --  prime coefficient CRTc
    end record;
 
 
@@ -62,12 +65,20 @@ package RSA_Frontend is
 
    function Decrypt_With_Public_Key (Public_Key    : TPublicKey;
                                      Scrambled_R64 : String) return String;
+   --  This function returns a plain text string after processing a radix64
+   --  encoded, encrypted message.  The message is expected to be encoded by
+   --  the private key complement to the provided public key.  Failure to
+   --  decrypt will result in the text "ERROR!" and the error code can be
+   --  checked with the cryption_status function.
 
 
-   procedure Encrypt_With_Private_Key (Private_Key   : in  TPrivateKey;
-                                       Scrambled_R64 : out String;
-                                       Plain_Text    : in  String;
-                                       Status        : out TCryptoError);
+   function Encrypt_With_Private_Key (Private_Key   : TPrivateKey;
+                                      Plain_Text    : String) return String;
+   --  This function returns a radix64 encoded message, which is the encrypted
+   --  version of the plain text message provided along with the private key
+   --  that is used to encrypt it.  Failure to encrypt will result in the
+   --  plain text message "ERROR!" and the error code can be chcked with the
+   --  cryption status function.
 
 
    procedure Encrypt_With_Public_Key (Public_Key    : in  TPublicKey;
@@ -82,12 +93,16 @@ package RSA_Frontend is
 
 private
 
-   function Decrypt_to_PKCS (Public_Key         : TPublicKey;
+   function Decrypt_PKCS (Public_Key         : TPublicKey;
                              Encrypted_Bytecode : TBinaryString)
    return TBinaryString;
    --  Raw public key operation.  Revealed_Bytecode has same length of modulus.
 
 
+   function Encrypt_to_PKCS (Private_Key    : TPrivateKey;
+                             Plain_Bytecode : TBinaryString)
+   return TBinaryString;
+   --  Raw public key operation.  Revealed_Bytecode has same length of modulus.
 
 
 

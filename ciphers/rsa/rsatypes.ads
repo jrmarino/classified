@@ -58,6 +58,6 @@ package RSATypes is
    type TDigit         is range 0 .. NN_DIGIT_BITS - 1;
    type TCompare       is range -1 .. 1;
 
-   subtype TCryptoError is Natural range 0 .. 13;
+   subtype TCryptoError is Natural range 0 .. 17;
 
 end RSATypes;
