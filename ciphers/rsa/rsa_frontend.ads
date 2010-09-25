@@ -19,6 +19,9 @@ with RSATypes; use RSATypes;
 
 package RSA_Frontend is
 
+   type BuildKeyError is range 0 .. 5;
+   type PrivateKeyError is range 0 .. 8;
+
    type TPublicKey is record
       KeySize   : TKeySize;
       MsgSize   : QuadByteMatrixLen;
@@ -31,7 +34,7 @@ package RSA_Frontend is
    type TPrivateKey is record
       KeySize          : TKeySize;
       MsgSize          : QuadByteMatrixLen;
-      ErrorCode        : BuildKeyError;
+      ErrorCode        : PrivateKeyError;
       Modulus          : QuadByteMatrix.TData;   --  public modulus
       Public_Exponent  : QuadByteMatrix.TData;   --  public exponent
       Private_Exponent : QuadByteMatrix.TData;   --  d
@@ -45,9 +48,22 @@ package RSA_Frontend is
 
    function Build_Public_Key (Modulus  : String;
                               Exponent : String) return TPublicKey;
-   --  This function will convert a radix encoded string into an array of bytes
-   --  and then convert that into an array of double-words (reverse order).
+   --  This function will convert radix encoded strings into an array of bytes
+   --  and then convert those into arrays of double-words (reverse order).
    --  The Public Key structure is then returned.
+
+
+   function Build_Private_Key (Modulus          : String;
+                               Public_Exponent  : String;
+                               Private_Exponent : String;
+                               Prime_p          : String;
+                               Prime_q          : String;
+                               Prime_Exp_p      : String;
+                               Prime_Exp_q      : String;
+                               coefficient      : String) return TPrivateKey;
+   --  This function will convert radix encoded strings into an array of bytes
+   --  and then convert those into arrays of double-words (reverse order).
+   --  The Private Key structure is then returned.
 
 
    function Cryption_Status return TCryptoError;

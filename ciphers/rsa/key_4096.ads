@@ -65,6 +65,4 @@ package Key_4096 is
    --  Sized for 4096-bit key, but will accommodate smaller down to 1024-bit
 
 
-   type BuildKeyError is range 0 .. 5;
-
 end Key_4096;

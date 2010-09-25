@@ -594,6 +594,8 @@ package body NN is
                               B         => Tp2,
                               C         => BPower (Integer (S) - 1),
                               D         => D);
+               else
+                  Tp2.CopyTo (T);
                end if;
 
                J := J + 2;

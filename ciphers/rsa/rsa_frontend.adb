@@ -128,17 +128,25 @@ package body RSA_Frontend is
    function Encrypt_With_Private_Key (Private_Key   : TPrivateKey;
                                       Plain_Text    : String)
    return String is
-      Plain_Bytecode : TBinaryString (0 .. Plain_Text'Length - 1);
+      Plain_Bytecode : TBinaryString (0 .. Integer (Private_Key.MsgSize) - 1) :=
+                       (others => 16#FF#);
+      InputLen : Natural := Plain_Text'Length;
+      border   : Natural := Natural (Private_Key.MsgSize) - InputLen - 1;
    begin
       Last_Error := 0;
 
-      if Plain_Text'Length > Private_Key.MsgSize then
+      if InputLen + 11 > Natural (Private_Key.MsgSize) then
          Last_Error := 11;  -- Encryption: Message too long for modulus.
          return error_msg;
       end if;
 
-      for x in Integer range 1 .. Plain_Text'Length loop
-         Plain_Bytecode (x - 1) := Character'Pos (Plain_Text (x));
+      --  PKCS format
+      Plain_Bytecode (0) := 0;
+      Plain_Bytecode (1) := 1;  --  block type 1
+      Plain_Bytecode (border) := 0;
+
+      for x in Integer range 1 .. InputLen loop
+         Plain_Bytecode (border + x) := Character'Pos (Plain_Text (x));
       end loop;
 
       declare
@@ -155,42 +163,9 @@ package body RSA_Frontend is
             return error_msg;
          end if;
 
-         if Encrypted_Bytecode'Length /= Private_Key.MsgSize then
-            Last_Error := 10;  --  Message length doesn't match modulus.
-            return error_msg;
-         end if;
-
-         --  We require block type 2.
-
-         if (Encrypted_Bytecode (0) /= 0) or
-            (Encrypted_Bytecode (1) /= 2) then
-            Last_Error := 14;  --  Encryption: Incorrect Block Type found.
-            return error_msg;
-         end if;
-
-         Jasmine :
-            loop
-               exit Jasmine when z = Natural (Private_Key.MsgSize);
-               exit Jasmine when Encrypted_Bytecode (z) = 0;
-               z := z + 1;
-            end loop Jasmine;
-
-         z := z + 1;
-         if z >= Natural (Private_Key.MsgSize) then
-            Last_Error := 15;  --  message part of bytecode is too long.
-            return error_msg;
-         end if;
-
          declare
-            outputLen : constant Natural := Natural (Private_Key.MsgSize) - z;
-            result    : constant String :=
-                                 Encode_to_Radix64 (Encrypted_Bytecode);
+            result : constant String := Encode_to_Radix64 (Encrypted_Bytecode);
          begin
-            if outputLen + 11 > Natural (Private_Key.MsgSize) then
-               Last_Error := 16;  --  Internal Separator is too short
-               return error_msg;
-            end if;
-
             return result;
          end;
       end;
@@ -219,7 +194,7 @@ package body RSA_Frontend is
    --------------------
 
    function Decrypt_PKCS (Public_Key         : TPublicKey;
-                             Encrypted_Bytecode : TBinaryString)
+                          Encrypted_Bytecode : TBinaryString)
    return TBinaryString is
       matrix_M   : QuadByteMatrix.TData;
       matrix_C   : QuadByteMatrix.TData;
@@ -392,8 +367,8 @@ package body RSA_Frontend is
          Matrix_t4.Zero_Array;
 
          --  encode output to standard form
-         return NN_Encode (HugeNumber => Matrix_t5, numDigits =>
-                           Natural (Private_Key.Modulus.CurrentLen));
+         return NN_Encode (HugeNumber => Matrix_t5,
+                           numDigits  => Natural (Private_Key.MsgSize));
       end;
 
    end Encrypt_to_PKCS;
@@ -492,13 +467,142 @@ package body RSA_Frontend is
 
    <<complete>>
 
-         return (KeySize   => KeySize,
-                 Modulus   => Modulus_Array,
-                 Exponent  => Exponent_Array,
-                 MsgSize   => MsgSize,
-                 ErrorCode => code);
+      return (KeySize   => KeySize,
+              MsgSize   => MsgSize,
+              ErrorCode => code,
+              Modulus   => Modulus_Array,
+              Exponent  => Exponent_Array);
 
    end Build_Public_Key;
+
+
+
+   -------------------------
+   --  Build_Private_Key  --
+   -------------------------
+
+   function Build_Private_Key (Modulus          : String;
+                               Public_Exponent  : String;
+                               Private_Exponent : String;
+                               Prime_p          : String;
+                               Prime_q          : String;
+                               Prime_Exp_p      : String;
+                               Prime_Exp_q      : String;
+                               coefficient      : String)
+   return TPrivateKey is
+      code              : PrivateKeyError := 0;
+      KeySize           : TKeySize := 1024;
+      MsgSize           : QuadByteMatrixLen := 0;
+      Modulus_Array     : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+      PubExp_Array      : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+      PrivExp_Array     : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+      PrimeP_Array      : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+      PrimeQ_Array      : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+      PrimeExpP_Array   : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+      PrimeExpQ_Array   : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+      Coefficient_Array : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+   begin
+
+      declare
+         num_bits_modulus : constant Natural := Modulus'Length * 4;
+         num_bits_pubexp  : constant Natural := Public_Exponent'Length * 4;
+         num_bits_privexp : constant Natural := Private_Exponent'Length * 4;
+         num_bits_p       : constant Natural := Prime_p'Length * 4;
+         num_bits_q       : constant Natural := Prime_q'Length * 4;
+         num_bits_expp    : constant Natural := Prime_Exp_p'Length * 4;
+         num_bits_expq    : constant Natural := Prime_Exp_q'Length * 4;
+         num_bits_coeff   : constant Natural := coefficient'Length * 4;
+
+         --  Error codes: 0 means no error
+         --               1 means modulus not multiple of 32
+         --               2 means one of the 2 exponents is not multiple of 32
+         --               3 means one of the 5 prime comp. is not mult of 32
+         --               4 means modulus and both exponents not all equal
+         --               5 means the 5 prime components are not all equal
+         --               6 means the prime components are not 2x mod/exp
+         --               7 means derived keysize < 1024
+         --               8 means derived keysize > 4096
+      begin
+         if num_bits_modulus rem 32 /= 0 then
+            code := 1;
+            goto complete;
+         end if;
+         if (num_bits_pubexp  rem 32 /= 0) or
+            (num_bits_privexp rem 32 /= 0) then
+            code := 2;
+            goto complete;
+         end if;
+         if (num_bits_p     rem 32 /= 0) or
+            (num_bits_q     rem 32 /= 0) or
+            (num_bits_expp  rem 32 /= 0) or
+            (num_bits_expq  rem 32 /= 0) or
+            (num_bits_coeff rem 32 /= 0) then
+            code := 3;
+            goto complete;
+         end if;
+         if not ((num_bits_modulus = num_bits_pubexp) and
+                 (num_bits_modulus = num_bits_privexp)) then
+            code := 4;
+            goto complete;
+         end if;
+         if not ((num_bits_p = num_bits_q) and
+                 (num_bits_p = num_bits_expp) and
+                 (num_bits_p = num_bits_expq) and
+                 (num_bits_p = num_bits_coeff)) then
+            code := 5;
+            goto complete;
+         end if;
+         if num_bits_p * 2 /= num_bits_modulus then
+            code := 6;
+            goto complete;
+         end if;
+         if num_bits_modulus < L_MODULUS_BITS then
+            code := 7;
+            goto complete;
+         end if;
+         if num_bits_modulus > U_MODULUS_BITS then
+            code := 8;
+            goto complete;
+         end if;
+         KeySize := TKeySize (num_bits_modulus);
+         MsgSize := QuadByteMatrixLen (num_bits_modulus / 8);
+      end;
+
+      declare
+         pumod : constant TBinaryString := Decode_HexString (Modulus);
+         puexp : constant TBinaryString := Decode_HexString (Public_Exponent);
+         prexp : constant TBinaryString := Decode_HexString (Private_Exponent);
+         prp   : constant TBinaryString := Decode_HexString (Prime_p);
+         prq   : constant TBinaryString := Decode_HexString (Prime_q);
+         prxp  : constant TBinaryString := Decode_HexString (Prime_Exp_p);
+         prxq  : constant TBinaryString := Decode_HexString (Prime_Exp_q);
+         prcof : constant TBinaryString := Decode_HexString (coefficient);
+      begin
+         Modulus_Array     := NN_Decode (pumod);
+         PubExp_Array      := NN_Decode (puexp);
+         PrivExp_Array     := NN_Decode (prexp);
+         PrimeP_Array      := NN_Decode (prp);
+         PrimeQ_Array      := NN_Decode (prq);
+         PrimeExpP_Array   := NN_Decode (prxp);
+         PrimeExpQ_Array   := NN_Decode (prxq);
+         Coefficient_Array := NN_Decode (prcof);
+      end;
+
+   <<complete>>
+
+      return (KeySize          => KeySize,
+              MsgSize          => MsgSize,
+              ErrorCode        => code,
+              Modulus          => Modulus_Array,
+              Public_Exponent  => PubExp_Array,
+              Private_Exponent => PrivExp_Array,
+              Prime_p          => PrimeP_Array,
+              Prime_q          => PrimeQ_Array,
+              Prime_Exp_p      => PrimeExpP_Array,
+              Prime_Exp_q      => PrimeExpQ_Array,
+              coefficient      => Coefficient_Array);
+
+   end Build_Private_Key;
 
 
 
