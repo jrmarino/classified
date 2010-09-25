@@ -64,8 +64,8 @@ package body RSA_Frontend is
 
       declare
          Revealed_Bytecode : constant TBinaryString :=
-               Decrypt_PKCS (Public_Key         => Public_Key,
-                             Encrypted_Bytecode => scrambled);
+               Decrypt_To_PKCS (Public_Key         => Public_Key,
+                                Encrypted_Bytecode => scrambled);
       begin
          if DPKCS_Error /= 0 then
             Last_Error := DPKCS_Error;
@@ -128,10 +128,11 @@ package body RSA_Frontend is
    function Encrypt_With_Private_Key (Private_Key   : TPrivateKey;
                                       Plain_Text    : String)
    return String is
-      Plain_Bytecode : TBinaryString (0 .. Integer (Private_Key.MsgSize) - 1) :=
-                       (others => 16#FF#);
-      InputLen : Natural := Plain_Text'Length;
-      border   : Natural := Natural (Private_Key.MsgSize) - InputLen - 1;
+      PBMax : constant Natural := Natural (Private_Key.MsgSize) - 1;
+      Plain_Bytecode : TBinaryString (0 .. PBMax) := (others => 16#FF#);
+      InputLen : constant Natural := Plain_Text'Length;
+      border   : constant Natural :=
+                          Natural (Private_Key.MsgSize) - InputLen - 1;
    begin
       Last_Error := 0;
 
@@ -150,10 +151,9 @@ package body RSA_Frontend is
       end loop;
 
       declare
-         Encrypted_Bytecode : constant TBinaryString := Encrypt_to_PKCS (
+         Encrypted_Bytecode : constant TBinaryString := Encrypt_PKCS (
                                        Private_Key    => Private_Key,
                                        Plain_Bytecode => Plain_Bytecode);
-         z : Natural := 2;
       begin
          --  clear sensitive information from memory
          Plain_Bytecode := (others => 0);
@@ -189,11 +189,11 @@ package body RSA_Frontend is
 
 
 
-   --------------------
-   --  Decrypt_PKCS  --
-   --------------------
+   -----------------------
+   --  Decrypt_To_PKCS  --
+   -----------------------
 
-   function Decrypt_PKCS (Public_Key         : TPublicKey;
+   function Decrypt_To_PKCS (Public_Key         : TPublicKey;
                           Encrypted_Bytecode : TBinaryString)
    return TBinaryString is
       matrix_M   : QuadByteMatrix.TData;
@@ -237,15 +237,15 @@ package body RSA_Frontend is
          return result;
       end;
 
-   end Decrypt_PKCS;
+   end Decrypt_To_PKCS;
 
 
 
-   -----------------------
-   --  Encrypt_to_PKCS  --
-   -----------------------
+   --------------------
+   --  Encrypt_PKCS  --
+   --------------------
 
-   function Encrypt_to_PKCS (Private_Key    : TPrivateKey;
+   function Encrypt_PKCS (Private_Key    : TPrivateKey;
                              Plain_Bytecode : TBinaryString)
    return TBinaryString is
       Matrix_c    : QuadByteMatrix.TData;
@@ -371,7 +371,7 @@ package body RSA_Frontend is
                            numDigits  => Natural (Private_Key.MsgSize));
       end;
 
-   end Encrypt_to_PKCS;
+   end Encrypt_PKCS;
 
 
    ----------------------------
