@@ -74,10 +74,10 @@ package NN is
 
    procedure NN_Div (ResDiv : out QuadByteMatrix.TData;
                      ResMod : out QuadByteMatrix.TData;
-                     C      : in  QuadByteMatrix.TData;
-                     D      : in  QuadByteMatrix.TData);
-   --  This computes the modulus and dividend of C divided by D
-   --  e.g. dividend = int (C/D) and modulus = C mod D
+                     LHS    : in  QuadByteMatrix.TData;
+                     RHS    : in  QuadByteMatrix.TData);
+   --  This computes the modulus and dividend of LHS divided by RHS
+   --  e.g. dividend = int (LHS/RHS) and modulus = LHS mod RHS
 
 
    function NN_ModExp (LHS    : QuadByteMatrix.TData;

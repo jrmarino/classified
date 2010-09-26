@@ -301,8 +301,8 @@ package body NN is
 
    procedure NN_Div (ResDiv   : out QuadByteMatrix.TData;
                      ResMod   : out QuadByteMatrix.TData;
-                     C        : in  QuadByteMatrix.TData;
-                     D        : in  QuadByteMatrix.TData)
+                     LHS      : in  QuadByteMatrix.TData;
+                     RHS      : in  QuadByteMatrix.TData)
    is
       shift      : TDigit;
       carry      : MQuadByte;
@@ -325,30 +325,30 @@ package body NN is
 
       CC_Internal : QuadByteMatrix.TData := QuadByteMatrix.Construct;
       DD_Internal : QuadByteMatrix.TData := QuadByteMatrix.Construct;
-      C_Digits    : constant QuadByteMatrixLen := C.CurrentLen;
+      C_Digits    : constant QuadByteMatrixLen := LHS.CurrentLen;
    begin
-      --  This computes the modulus and dividend of C divided by D
-      --  e.g. dividend = int (C/D) and modulus = C mod D
+      --  This computes the modulus and dividend of LHS divided by RHS
+      --  e.g. dividend = int (LHS/RHS) and modulus = LHS mod RHS
 
       ResDiv.Zero_Array;
       ResMod.Zero_Array;
-      DD_Digits := D.CurrentLen;
+      DD_Digits := RHS.CurrentLen;
       if DD_Digits = 0 then
          return;
       end if;
 
 
-      shift := TDigit (NN_DIGIT_BITS - D.Significant_Bits
+      shift := TDigit (NN_DIGIT_BITS - RHS.Significant_Bits
                (index => QuadByteDigitIndex (DD_Digits - 1)));
 
       NN_LShift (Result    => CC_Internal,
-                 LHS       => C,
+                 LHS       => LHS,
                  numBits   => shift,
                  carry     => carry);
       CC_Internal.Matrix (QuadByteDigitIndex (C_Digits)) := carry;
 
       NN_LShift (Result    => DD_Internal,
-                 LHS       => D,
+                 LHS       => RHS,
                  numBits   => shift,
                  carry     => carry);
       S := DD_Internal.Matrix (QuadByteDigitIndex (DD_Digits - 1));
@@ -494,8 +494,8 @@ package body NN is
    begin
       NN_Div (ResDiv => scratch,
               ResMod => result,
-              C      => Dividend,
-              D      => Divisor);
+              LHS    => Dividend,
+              RHS    => Divisor);
       return result;
    end NN_Mod;
 
@@ -518,8 +518,8 @@ package body NN is
 
       NN_Div (ResDiv   => result_dividend,
               ResMod   => result_modulus,
-              C        => intermediate,
-              D        => Modulo);
+              LHS      => intermediate,
+              RHS      => Modulo);
 
       return result_modulus;
 
@@ -796,8 +796,8 @@ package body NN is
 
             NN_Div (ResDiv => q,
                     ResMod => t3,
-                    C      => u3,
-                    D      => v3);
+                    LHS    => u3,
+                    RHS    => v3);
 
             w := NN_Mult (LHS => q, RHS => v1);
 
