@@ -24,28 +24,28 @@ package body NN is
    --------------
 
    procedure NN_Sub (Result    : out QuadByteMatrix.TData;
-                     A_Index   : in  QuadByteDigitIndex;
-                     B         : in  QuadByteMatrix.TData;
-                     B_Index   : in  QuadByteDigitIndex;
-                     C         : in  QuadByteMatrix.TData;
-                     C_Index   : in  QuadByteDigitIndex;
+                     Res_Index : in  QuadByteDigitIndex;
+                     LHS       : in  QuadByteMatrix.TData;
+                     LHS_Index : in  QuadByteDigitIndex;
+                     RHS       : in  QuadByteMatrix.TData;
+                     RHS_Index : in  QuadByteDigitIndex;
                      numDigits : in  QuadByteMatrixLen;
                      borrow    : out MQuadByte)
    is
       temp      : MQuadByte;
-      Andx      : QuadByteDigitIndex := A_Index;
-      Bndx      : QuadByteDigitIndex := B_Index;
-      Cndx      : QuadByteDigitIndex := C_Index;
+      Andx      : QuadByteDigitIndex := Res_Index;
+      Bndx      : QuadByteDigitIndex := LHS_Index;
+      Cndx      : QuadByteDigitIndex := RHS_Index;
    begin
       borrow := 0;
 
       for x in QuadByteMatrixLen range 1 .. numDigits loop
-         temp := B.Matrix (Bndx) - borrow;
+         temp := LHS.Matrix (Bndx) - borrow;
          if temp = MAX_NN_DIGIT then
-            temp := MAX_NN_DIGIT - C.Matrix (Cndx);
+            temp := MAX_NN_DIGIT - RHS.Matrix (Cndx);
          else
-            temp := Flowguard_Sub (temp, C.Matrix (Cndx));
-            if temp > Flowguard_Sub (MAX_NN_DIGIT, C.Matrix (Cndx)) then
+            temp := Flowguard_Sub (temp, RHS.Matrix (Cndx));
+            if temp > Flowguard_Sub (MAX_NN_DIGIT, RHS.Matrix (Cndx)) then
                borrow := 1;
             else
                borrow := 0;
@@ -452,11 +452,11 @@ package body NN is
                     ExtDigits => DD_Digits) >= 0) loop
                AI := AI + 1;
                NN_Sub (Result    => CC_Internal,
-                       A_Index   => K,
-                       B         => CC_Internal,
-                       B_Index   => K,
-                       C         => DD_Internal,
-                       C_Index   => 0,
+                       Res_Index => K,
+                       LHS       => CC_Internal,
+                       LHS_Index => K,
+                       RHS       => DD_Internal,
+                       RHS_Index => 0,
                        numDigits => DD_Digits,
                        borrow    => borrow);
                CC_Internal.Matrix (ndx) := Flowguard_Sub (
@@ -821,11 +821,11 @@ package body NN is
             result : QuadByteMatrix.TData := QuadByteMatrix.Construct;
          begin
             NN_Sub (Result    => result,
-                    A_Index   => 0,
-                    B         => Modulus,
-                    B_Index   => 0,
-                    C         => u1,
-                    C_Index   => 0,
+                    Res_Index => 0,
+                    LHS       => Modulus,
+                    LHS_Index => 0,
+                    RHS       => u1,
+                    RHS_Index => 0,
                     numDigits => Modulus.CurrentLen,
                     borrow    => discard);
             return result;

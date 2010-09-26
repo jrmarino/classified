@@ -307,21 +307,21 @@ package body RSA_Frontend is
                         Index     => 0,
                         ExtData   => Matrix_mQ,
                         ExtDigits => Private_Key.Prime_p.CurrentLen) >= 0 then
-            NN_Sub (Result    => Matrix_t2, A_Index   => 0,
-                    B         => Matrix_mP, B_Index   => 0,
-                    C         => Matrix_mQ, C_Index   => 0,
+            NN_Sub (Result    => Matrix_t2, Res_Index => 0,
+                    LHS       => Matrix_mP, LHS_Index => 0,
+                    RHS       => Matrix_mQ, RHS_Index => 0,
                     numDigits => Private_Key.Prime_p.CurrentLen,
                     borrow    => borrow);
          else
-            NN_Sub (Result    => Matrix_t1, A_Index   => 0,
-                    B         => Matrix_mQ, B_Index   => 0,
-                    C         => Matrix_mP, C_Index   => 0,
+            NN_Sub (Result    => Matrix_t1, Res_Index => 0,
+                    LHS       => Matrix_mQ, LHS_Index => 0,
+                    RHS       => Matrix_mP, RHS_Index => 0,
                     numDigits => Private_Key.Prime_p.CurrentLen,
                     borrow    => borrow);
 
-            NN_Sub (Result    => Matrix_t2,           A_Index   => 0,
-                    B         => Private_Key.Prime_p, B_Index   => 0,
-                    C         => Matrix_t1,           C_Index   => 0,
+            NN_Sub (Result    => Matrix_t2,           Res_Index => 0,
+                    LHS       => Private_Key.Prime_p, LHS_Index => 0,
+                    RHS       => Matrix_t1,           RHS_Index => 0,
                     numDigits => Private_Key.Prime_p.CurrentLen,
                     borrow    => borrow);
          end if;

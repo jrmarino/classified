@@ -38,14 +38,14 @@ package NN is
 
 
    procedure NN_Sub (Result    : out QuadByteMatrix.TData;
-                     A_Index   : in  QuadByteDigitIndex;
-                     B         : in  QuadByteMatrix.TData;
-                     B_Index   : in  QuadByteDigitIndex;
-                     C         : in  QuadByteMatrix.TData;
-                     C_Index   : in  QuadByteDigitIndex;
+                     Res_Index : in  QuadByteDigitIndex;
+                     LHS       : in  QuadByteMatrix.TData;
+                     LHS_Index : in  QuadByteDigitIndex;
+                     RHS       : in  QuadByteMatrix.TData;
+                     RHS_Index : in  QuadByteDigitIndex;
                      numDigits : in  QuadByteMatrixLen;
                      borrow    : out MQuadByte);
-   --  This computes A := B - C, returns borrow and modifies A (Quad)
+   --  This computes Result := LHS - RHS, returns borrow
 
 
    procedure NN_Add (Result    : out QuadByteMatrix.TData;
@@ -53,7 +53,7 @@ package NN is
                      RHS       : in  QuadByteMatrix.TData;
                      numDigits : in  QuadByteMatrixLen;
                      carry     : out MQuadByte);
-   --  This computes A := B + C, returns carry and modifies A
+   --  This computes Result := LHS + RHS, returns carry
 
 
 
