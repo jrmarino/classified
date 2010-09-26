@@ -109,16 +109,16 @@ package RSA_Frontend is
 
 private
 
-   function Decrypt_To_PKCS (Public_Key         : TPublicKey;
-                             Encrypted_Bytecode : TBinaryString)
+   function Public_Transformation (Public_Key : TPublicKey;
+                                   Bytecode   : TBinaryString)
    return TBinaryString;
-   --  Raw public key operation.  Revealed_Bytecode has same length of modulus.
+   --  Raw public key operation.  Returned Bytecode has same length of modulus.
 
 
-   function Encrypt_PKCS (Private_Key    : TPrivateKey;
-                          Plain_Bytecode : TBinaryString)
+   function Private_Transformation (Private_Key : TPrivateKey;
+                                    Bytecode    : TBinaryString)
    return TBinaryString;
-   --  Raw public key operation.  Revealed_Bytecode has same length of modulus.
+   --  Raw public key operation.  Returned Bytecode has same length of modulus.
 
 
 

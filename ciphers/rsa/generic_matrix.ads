@@ -72,6 +72,14 @@ package Generic_Matrix is
    --  Returns an initialized TData Type
 
 
+   function IsZero (data : TData) return Boolean;
+   --  Returns True if TData is equal to zero
+
+
+   function IsOne (data : TData) return Boolean;
+   --  Returns True if TData is equal to one.
+
+
 end Generic_Matrix;
 
 --   Matrix_Size  : Positive;

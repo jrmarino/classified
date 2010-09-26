@@ -39,7 +39,7 @@ package NN is
 
 
 
-   procedure NN_Sub (A         : out QuadByteMatrix.TData;
+   procedure NN_Sub (Result    : out QuadByteMatrix.TData;
                      A_Index   : in  QuadByteDigitIndex;
                      B         : in  QuadByteMatrix.TData;
                      B_Index   : in  QuadByteDigitIndex;
@@ -50,49 +50,50 @@ package NN is
    --  This computes A := B - C, returns borrow and modifies A (Quad)
 
 
-   procedure NN_Add (A         : out QuadByteMatrix.TData;
-                     A_Index   : in  QuadByteDigitIndex;
-                     B         : in  QuadByteMatrix.TData;
-                     B_Index   : in  QuadByteDigitIndex;
-                     C         : in  QuadByteMatrix.TData;
-                     C_Index   : in  QuadByteDigitIndex;
+   procedure NN_Add (Result    : out QuadByteMatrix.TData;
+                     LHS       : in  QuadByteMatrix.TData;
+                     RHS       : in  QuadByteMatrix.TData;
                      numDigits : in  QuadByteMatrixLen;
                      carry     : out MQuadByte);
    --  This computes A := B + C, returns carry and modifies A
 
 
 
-   procedure NN_ModMult (A         : out QuadByteMatrix.TData;
-                         B         : in  QuadByteMatrix.TData;
-                         C         : in  QuadByteMatrix.TData;
-                         D         : in  QuadByteMatrix.TData);
-   --  This computes A = (b * C) mod D
+   function NN_ModMult (LHS    : QuadByteMatrix.TData;
+                        RHS    : QuadByteMatrix.TData;
+                        Modulo : QuadByteMatrix.TData)
+   return QuadByteMatrix.TData;
+   --  This computes result = (LHS * RHS) mod Modulo
 
 
 
-   procedure NN_Mult (A       : out QuadByteMatrix.TData;
-                      A_Index : in  QuadByteDigitIndex;
-                      B       : in  QuadByteMatrix.TData;
-                      B_Index : in  QuadByteDigitIndex;
-                      C       : in  QuadByteMatrix.TData;
-                      C_Index : in  QuadByteDigitIndex);
-   --  This computes A = B * C
+   function NN_Mult (LHS : QuadByteMatrix.TData;
+                     RHS : QuadByteMatrix.TData)
+   return QuadByteMatrix.TData;
+   --  This computes result = LHS * RHS
 
 
 
-   procedure NN_Div (ResDiv   : out QuadByteMatrix.TData;
-                     ResMod   : out QuadByteMatrix.TData;
-                     C        : in  QuadByteMatrix.TData;
-                     D        : in  QuadByteMatrix.TData);
+   procedure NN_Div (ResDiv : out QuadByteMatrix.TData;
+                     ResMod : out QuadByteMatrix.TData;
+                     C      : in  QuadByteMatrix.TData;
+                     D      : in  QuadByteMatrix.TData);
    --  This computes the modulus and dividend of C divided by D
    --  e.g. dividend = int (C/D) and modulus = C mod D
 
 
-   procedure NN_ModExp (A : out QuadByteMatrix.TData;
-                        B : in  QuadByteMatrix.TData;
-                        C : in  QuadByteMatrix.TData;
-                        D : in  QuadByteMatrix.TData);
-   --  Computes a = b^c mod d.  assumes d > 0.
+   function NN_ModExp (LHS    : QuadByteMatrix.TData;
+                       RHS    : QuadByteMatrix.TData;
+                       Modulo : QuadByteMatrix.TData)
+   return QuadByteMatrix.TData;
+   --  This computes result = (LHS ^ RHS) mod Modulo
+   --  Assumes Modulo > 0
+
+
+   function NN_Mod (Dividend : QuadByteMatrix.TData;
+                    Divisor  : QuadByteMatrix.TData)
+   return QuadByteMatrix.TData;
+   --  Computes result = Dividend mod Divisor
 
 
    function NN_Decode (HexString : TBinaryString)
@@ -113,6 +114,34 @@ package NN is
    --  the input.
 
 
+   function NN_Random_Number (Modulus : QuadByteMatrix.TData)
+   return QuadByteMatrix.TData;
+   --  Returns a random number ranging from 1 to 2^32 -1 (4.3 E9)
+
+
+   function NN_Blind (Real_Matrix   : QuadByteMatrix.TData;
+                      Random_Number : QuadByteMatrix.TData;
+                      pub_exponent  : QuadByteMatrix.TData;
+                      pub_modulus   : QuadByteMatrix.TData)
+   return QuadByteMatrix.TData;
+   --  This function multiplies a large number by a random number raised to
+   --  the power of the public key exponent, and returns the modulus of that
+   --  product after dividing by the public key modulus.
+   --  result = random^pub_exponent mod pub_modulus
+   --  It is the first have of the RSA blinding technique to thwart timing
+   --  attackings during the decryption stage that use CRT.
+
+
+   function NN_Unblind (Blinded_Matrix : QuadByteMatrix.TData;
+                        Random_Number  : QuadByteMatrix.TData;
+                        pub_modulus    : QuadByteMatrix.TData)
+   return QuadByteMatrix.TData;
+   --  This function takes the result of the decryption, which is blinded,
+   --  and multiplies it by the modular multiplicative inverse of the
+   --  random number used to the blind it at the start of the decryption.
+   --  The result is the true plain text.
+
+
 private
 
 
@@ -126,6 +155,19 @@ private
                              numDigits : in  QuadByteMatrixLen;
                              borrow    : out MQuadByte);
    --  Still not sure what this does
+
+
+   function NN_ModInv (Value   : QuadByteMatrix.TData;
+                       Modulus : QuadByteMatrix.TData)
+   return QuadByteMatrix.TData;
+   --  This calculates the modular multiplicative inverse of value
+   --  with respect to Modulus
+
+
+   function NN_GCD_Is_1 (Modulus   : QuadByteMatrix.TData;
+                         Candidate : QuadByteMatrix.TData) return Boolean;
+   --  If the Euclidian algorithm calculuates the Greated Common Denominator
+   --  to be 1, this function returns True.
 
 
 end NN;

@@ -30,7 +30,7 @@ package body Generic_Matrix is
    begin
       result := (
          Matrix     => (others => MatZero),
-         CurrentLen => 0
+         CurrentLen => 1
       );
       return result;
    end Construct;
@@ -45,7 +45,7 @@ package body Generic_Matrix is
    is
    begin
       data.Matrix     := (others => MatZero);
-      data.CurrentLen := 0;
+      data.CurrentLen := 1;
    end Zero_Array;
 
 
@@ -154,6 +154,48 @@ package body Generic_Matrix is
       end if;
       return result;
    end Compared_With;
+
+
+
+   --------------
+   --  IsZero  --
+   --------------
+
+   function IsZero (data : TData)
+   return Boolean is
+      index : DigitIndex := DigitIndex (data.CurrentLen - 1);
+      result : Boolean := True;
+   begin
+      Ashley :
+         loop
+            if data.Matrix (index) /= 0 then
+               result := False;
+            end if;
+            exit Ashley when not result;
+            exit Ashley when index = 0;
+            index := index - 1;
+         end loop Ashley;
+      return result;
+   end IsZero;
+
+
+
+   -------------
+   --  IsOne  --
+   -------------
+
+   function IsOne (data : TData)
+   return Boolean is
+      result : Boolean := True;
+   begin
+      if data.CurrentLen > 1 then
+         return False;
+      end if;
+      if data.Matrix (0) /= 1 then
+         result := False;
+      end if;
+      return result;
+   end IsOne;
 
 
 end Generic_Matrix;

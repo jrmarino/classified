@@ -12,17 +12,18 @@
 --  WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
 --  ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 --  OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
+with Ada.Text_IO; use Ada.Text_IO;
 
 with RSA_Utilities; use RSA_Utilities;
+with Ada.Numerics.Discrete_Random;
 
 package body NN is
 
-   ---------------------
-   --  NN_Sub (Quad)  --
-   ---------------------
+   --------------
+   --  NN_Sub  --
+   --------------
 
-   procedure NN_Sub (A         : out QuadByteMatrix.TData;
+   procedure NN_Sub (Result    : out QuadByteMatrix.TData;
                      A_Index   : in  QuadByteDigitIndex;
                      B         : in  QuadByteMatrix.TData;
                      B_Index   : in  QuadByteDigitIndex;
@@ -50,12 +51,12 @@ package body NN is
                borrow := 0;
             end if;
          end if;
-         A.Matrix (Andx) := temp;
+         Result.Matrix (Andx) := temp;
          Andx := Andx + 1;
          Bndx := Bndx + 1;
          Cndx := Cndx + 1;
       end loop;
-      A.CurrentLen := A.Significant_Length;
+      Result.CurrentLen := Result.Significant_Length;
 
    end NN_Sub;
 
@@ -65,40 +66,33 @@ package body NN is
    --  NN_Add --
    -------------
 
-   procedure NN_Add (A         : out QuadByteMatrix.TData;
-                     A_Index   : in  QuadByteDigitIndex;
-                     B         : in  QuadByteMatrix.TData;
-                     B_Index   : in  QuadByteDigitIndex;
-                     C         : in  QuadByteMatrix.TData;
-                     C_Index   : in  QuadByteDigitIndex;
+   procedure NN_Add (Result    : out QuadByteMatrix.TData;
+                     LHS       : in  QuadByteMatrix.TData;
+                     RHS       : in  QuadByteMatrix.TData;
                      numDigits : in  QuadByteMatrixLen;
                      carry     : out MQuadByte)
    is
-      temp      : MQuadByte          := 0;
-      Andx      : QuadByteDigitIndex := A_Index;
-      Bndx      : QuadByteDigitIndex := B_Index;
-      Cndx      : QuadByteDigitIndex := C_Index;
+      temp  : MQuadByte          := 0;
+      index : QuadByteDigitIndex := 0;
    begin
       carry := 0;
 
       for x in QuadByteMatrixLen range 1 .. numDigits loop
-         temp := B.Matrix (Bndx) + carry;
+         temp := LHS.Matrix (index) + carry;
          if temp < carry then
-            temp := C.Matrix (Cndx);
+            temp := RHS.Matrix (index);
          else
-            temp := Flowguard_Add (temp, C.Matrix (Cndx));
-            if temp < C.Matrix (Cndx) then
+            temp := Flowguard_Add (temp, RHS.Matrix (index));
+            if temp < RHS.Matrix (index) then
                carry := 1;
             else
                carry := 0;
             end if;
          end if;
-         A.Matrix (Andx) := temp;
-         Andx := Andx + 1;
-         Bndx := Bndx + 1;
-         Cndx := Cndx + 1;
+         Result.Matrix (index) := temp;
+         index := index + 1;
       end loop;
-      A.CurrentLen := A.Significant_Length;
+      Result.CurrentLen := Result.Significant_Length;
 
    end NN_Add;
 
@@ -108,38 +102,30 @@ package body NN is
    --  NN_Mult  --
    ---------------
 
-   procedure NN_Mult (A       : out QuadByteMatrix.TData;
-                      A_Index : in  QuadByteDigitIndex;
-                      B       : in  QuadByteMatrix.TData;
-                      B_Index : in  QuadByteDigitIndex;
-                      C       : in  QuadByteMatrix.TData;
-                      C_Index : in  QuadByteDigitIndex)
-   is
-      MaxB  : constant QuadByteDigitIndex :=
-                       QuadByteDigitIndex (B.CurrentLen - 1);
-      MaxC  : constant QuadByteDigitIndex :=
-                       QuadByteDigitIndex (C.CurrentLen - 1);
+   function NN_Mult (LHS : QuadByteMatrix.TData;
+                     RHS : QuadByteMatrix.TData)
+   return QuadByteMatrix.TData is
+      MaxLHS : constant QuadByteDigitIndex :=
+                        QuadByteDigitIndex (LHS.CurrentLen - 1);
+      MaxRHS : constant QuadByteDigitIndex :=
+                        QuadByteDigitIndex (RHS.CurrentLen - 1);
       carry : MQuadByte;
       High  : MQuadByte;
       Low   : MQuadByte;
-      bndx  : QuadByteDigitIndex;
-      cndx  : QuadByteDigitIndex;
       zndx  : QuadByteDigitIndex;
 
       ZZ_Internal : QuadByteMatrix.TData := QuadByteMatrix.Construct;
    begin
-      --  This computes A = B * C
+      --  This computes result = LHS * RHS
 
       B_Loop :
-         for k in QuadByteDigitIndex range 0 .. MaxB loop
+         for k in QuadByteDigitIndex range 0 .. MaxLHS loop
             carry := 0;
-            bndx  := B_Index + k;
-            if B.Matrix (bndx) /= 0 then
+            if LHS.Matrix (k) /= 0 then
                C_Loop :
-                  for j in QuadByteDigitIndex range 0 .. MaxC loop
-                     cndx := C_Index + j;
-                     DMult (LHS        => B.Matrix (bndx),
-                            RHS        => C.Matrix (cndx),
+                  for j in QuadByteDigitIndex range 0 .. MaxRHS loop
+                     DMult (LHS        => LHS.Matrix (k),
+                            RHS        => RHS.Matrix (j),
                             ResultHigh => High,
                             ResultLow  => Low);
                      zndx := k + j;
@@ -158,13 +144,14 @@ package body NN is
                      carry := carry + High;
                   end loop C_Loop;
             end if;
-            zndx := k + MaxC + 1;
+
+            zndx := k + MaxRHS + 1;
             ZZ_Internal.Matrix (zndx) :=
                   Flowguard_Add (ZZ_Internal.Matrix (zndx), carry);
          end loop B_Loop;
 
       ZZ_Internal.CurrentLen := ZZ_Internal.Significant_Length;
-      ZZ_Internal.CopyTo (destination => A);
+      return ZZ_Internal;
 
    end NN_Mult;
 
@@ -461,7 +448,7 @@ package body NN is
                     ExtData   => DD_Internal,
                     ExtDigits => DD_Digits) >= 0) loop
                AI := AI + 1;
-               NN_Sub (A         => CC_Internal,
+               NN_Sub (Result    => CC_Internal,
                        A_Index   => K,
                        B         => CC_Internal,
                        B_Index   => K,
@@ -492,32 +479,46 @@ package body NN is
 
 
 
+   --------------
+   --  NN_Mod  --
+   --------------
+
+   function NN_Mod (Dividend : QuadByteMatrix.TData;
+                    Divisor  : QuadByteMatrix.TData)
+   return QuadByteMatrix.TData is
+      scratch : QuadByteMatrix.TData;
+      result  : QuadByteMatrix.TData;
+   begin
+      NN_Div (ResDiv => scratch,
+              ResMod => result,
+              C      => Dividend,
+              D      => Divisor);
+      return result;
+   end NN_Mod;
+
+
+
    ------------------
    --  NN_ModMult  --
    ------------------
 
-   procedure NN_ModMult (A         : out QuadByteMatrix.TData;
-                         B         : in  QuadByteMatrix.TData;
-                         C         : in  QuadByteMatrix.TData;
-                         D         : in  QuadByteMatrix.TData)
-   is
-      intermediate  : QuadByteMatrix.TData := QuadByteMatrix.Construct;
-      Work_Dividend : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+   function NN_ModMult (LHS    : QuadByteMatrix.TData;
+                        RHS    : QuadByteMatrix.TData;
+                        Modulo : QuadByteMatrix.TData)
+   return QuadByteMatrix.TData is
+      intermediate    : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+      result_dividend : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+      result_modulus  : QuadByteMatrix.TData := QuadByteMatrix.Construct;
    begin
-      --  This computes A = (b * C) mod D
-      NN_Mult (A       => intermediate,
-               A_Index => 0,
-               B       => B,
-               B_Index => 0,
-               C       => C,
-               C_Index => 0);
+   --  This computes result = (LHS * RHS) mod Modulo
+      intermediate := NN_Mult (LHS => LHS, RHS => RHS);
 
-      NN_Div (ResDiv   => Work_Dividend,
-              ResMod   => A,
+      NN_Div (ResDiv   => result_dividend,
+              ResMod   => result_modulus,
               C        => intermediate,
-              D        => D);
+              D        => Modulo);
 
-      A.CurrentLen := A.Significant_Length;
+      return result_modulus;
 
    end NN_ModMult;
 
@@ -527,12 +528,11 @@ package body NN is
    --  NN_ModExp  --
    -----------------
 
-   procedure NN_ModExp (A         : out QuadByteMatrix.TData;
-                        B         : in  QuadByteMatrix.TData;
-                        C         : in  QuadByteMatrix.TData;
-                        D         : in  QuadByteMatrix.TData)
-   is
-      C_Digits  : constant QuadByteMatrixLen := C.CurrentLen;
+   function NN_ModExp (LHS    : QuadByteMatrix.TData;
+                       RHS    : QuadByteMatrix.TData;
+                       Modulo : QuadByteMatrix.TData)
+   return QuadByteMatrix.TData is
+      C_Digits  : constant QuadByteMatrixLen := RHS.CurrentLen;
       K         : QuadByteDigitIndex := QuadByteDigitIndex (C_Digits - 1);
       ci        : MQuadByte;
       S         : MQuadByte;
@@ -548,25 +548,23 @@ package body NN is
                                  QuadByteMatrix.Construct);
       invmask : constant MQuadByte := MQuadByte'Last xor 3;
    begin
-      --  Computes a = b^c mod d.  assumes d > 0.
-      --  Store b, b^2 mod d, and b^3 mod d
-      B.CopyTo (BPower (0));
+      --  This computes result = (LHS ^ RHS) mod Modulo
+      --  Store LHS, LHS^2 mod Modulo, and LHS^3 mod Modulo
+      LHS.CopyTo (destination => BPower (0));
 
-      NN_ModMult (A => BPower (1),
-                  B => BPower (0),
-                  C => B,
-                  D => D);
+      BPower (1) := NN_ModMult (LHS    => BPower (0),
+                                RHS    => LHS,
+                                Modulo => Modulo);
 
-      NN_ModMult (A => BPower (2),
-                  B => BPower (1),
-                  C => B,
-                  D => D);
+      BPower (2) := NN_ModMult (LHS    => BPower (1),
+                                RHS    => LHS,
+                                Modulo => Modulo);
 
       T.Assign_Zero_Digit (1);
 
       Outer_Loop :
          loop
-            ci     := C.Matrix (K);
+            ci     := RHS.Matrix (K);
             ciBits := NN_DIGIT_BITS;
             --  Scan past leading zero bits of most significant digit.
             if K = QuadByteDigitIndex (C_Digits - 1) then
@@ -579,23 +577,21 @@ package body NN is
             while J < ciBits loop
                --  Compute t = t^4 * b^s mod d, where s = two MSB's of ci.
 
-               NN_ModMult (A         => Tp1,
-                           B         => T,
-                           C         => T,
-                           D         => D);
-               NN_ModMult (A         => Tp2,
-                           B         => Tp1,
-                           C         => Tp1,
-                           D         => D);
+               Tp1 := NN_ModMult (LHS    => T,
+                                  RHS    => T,
+                                  Modulo => Modulo);
+
+               Tp2 := NN_ModMult (LHS    => Tp1,
+                                  RHS    => Tp2,
+                                  Modulo => Modulo);
 
                S := Digit_2MSB (ci);
                if S /= 0 then
-                  NN_ModMult (A         => T,
-                              B         => Tp2,
-                              C         => BPower (Integer (S) - 1),
-                              D         => D);
+                  T := NN_ModMult (LHS    => Tp2,
+                                   RHS    => BPower (Integer (S) - 1),
+                                   Modulo => Modulo);
                else
-                  Tp2.CopyTo (T);
+                  Tp2.CopyTo (destination => T);
                end if;
 
                J := J + 2;
@@ -606,8 +602,7 @@ package body NN is
             K := K - 1;
          end loop Outer_Loop;
 
-      T.CopyTo (A);
-      A.CurrentLen := A.Significant_Length;
+      return T;
 
    end NN_ModExp;
 
@@ -684,6 +679,186 @@ package body NN is
       return result;
 
    end NN_Encode;
+
+
+
+   ------------------------
+   --  NN_Random_Number  --
+   ------------------------
+
+   function NN_Random_Number (Modulus : QuadByteMatrix.TData)
+   return QuadByteMatrix.TData is
+      type TRandomQB is range 1 .. MQuadByte'Last;
+      package RandQuadByte is new Ada.Numerics.Discrete_Random (TRandomQB);
+      result : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+      QuadByte_Gen : RandQuadByte.Generator;
+   begin
+      result.CurrentLen := 1;
+      RandQuadByte.Reset (QuadByte_Gen);
+      Sara :
+         loop
+            result.Matrix (0) :=
+                   MQuadByte (RandQuadByte.Random (QuadByte_Gen));
+            exit Sara when NN_GCD_Is_1 (Modulus   => Modulus,
+                                        Candidate => result);
+         end loop Sara;
+put_line ("###### RANDOM ###### " & long_long_integer'image (long_long_integer (result.Matrix (0))));
+      return result;
+   end NN_Random_Number;
+
+
+   ----------------
+   --  NN_Blind  --
+   ----------------
+
+   function NN_Blind (Real_Matrix   : QuadByteMatrix.TData;
+                      Random_Number : QuadByteMatrix.TData;
+                      pub_exponent  : QuadByteMatrix.TData;
+                      pub_modulus   : QuadByteMatrix.TData)
+   return QuadByteMatrix.TData is
+      temp   : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+   begin
+      --  temp = random^pubexp mod pubmod
+      temp := NN_ModExp (LHS    => Random_Number,
+                         RHS    => pub_exponent,
+                         Modulo => pub_modulus);
+
+      return NN_ModMult (LHS    => temp,
+                         RHS    => Real_Matrix,
+                         Modulo => pub_modulus);
+
+   end NN_Blind;
+
+
+
+   ------------------
+   --  NN_Unblind  --
+   ------------------
+
+   function NN_Unblind (Blinded_Matrix : QuadByteMatrix.TData;
+                        Random_Number  : QuadByteMatrix.TData;
+                        pub_modulus    : QuadByteMatrix.TData)
+   return QuadByteMatrix.TData is
+      RandInv : QuadByteMatrix.TData;
+   begin
+      RandInv := NN_ModInv (Value   => Random_Number,
+                            Modulus => pub_modulus);
+
+      return NN_Mult (LHS => RandInv, RHS => Blinded_Matrix);
+
+   end NN_Unblind;
+
+
+
+   -----------------
+   --  NN_ModInv  --
+   -----------------
+
+   function NN_ModInv (Value   : QuadByteMatrix.TData;
+                       Modulus : QuadByteMatrix.TData)
+   return QuadByteMatrix.TData is
+      type TU1Sign is range -1 .. 1;
+      u1Sign  : TU1Sign := 1;
+      q       : QuadByteMatrix.TData;
+      t1      : QuadByteMatrix.TData;
+      t3      : QuadByteMatrix.TData;
+      u1      : QuadByteMatrix.TData;
+      u3      : QuadByteMatrix.TData;
+      v1      : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+      v3      : QuadByteMatrix.TData;
+      w       : QuadByteMatrix.TData;
+      discard : MQuadByte;
+   begin
+      --  Apply extended Euclidean algorithm, modified to avoid
+      --  negative numbers
+      u1.Assign_Zero_Digit (1);
+      Value.CopyTo (u3);
+      Modulus.CopyTo (v3);
+
+      Macarena :
+         loop
+            exit Macarena when v3.IsZero;
+
+            NN_Div (ResDiv => q,
+                    ResMod => t3,
+                    C      => u3,
+                    D      => v3);
+
+            w := NN_Mult (LHS => q, RHS => v1);
+
+            NN_Add (Result    => t1,
+                    LHS       => u1,
+                    RHS       => w,
+                    numDigits => Modulus.CurrentLen,
+                    carry     => discard);
+
+            v1.CopyTo (destination => u1);
+            t1.CopyTo (destination => v1);
+            v3.CopyTo (destination => u3);
+            t3.CopyTo (destination => v3);
+            u1Sign := -1 * u1Sign;
+
+         end loop Macarena;
+
+      --  Negate result if sign is negative.
+      if u1Sign < 0 then
+         declare
+            result : QuadByteMatrix.TData;
+         begin
+            NN_Sub (Result    => result,
+                    A_Index   => 0,
+                    B         => Modulus,
+                    B_Index   => 0,
+                    C         => u1,
+                    C_Index   => 0,
+                    numDigits => Modulus.CurrentLen,
+                    borrow    => discard);
+            return result;
+         end;
+      else
+         return u1;
+      end if;
+
+   end NN_ModInv;
+
+
+
+   -------------------
+   --  NN_GCD_Is_1  --
+   -------------------
+
+   function NN_GCD_Is_1 (Modulus   : QuadByteMatrix.TData;
+                         Candidate : QuadByteMatrix.TData)
+   return Boolean is
+      type TJ is range 0 .. 2;
+      type TG is array (TJ) of QuadByteMatrix.TData;
+      g          : TG;
+      j          : TJ := 1;
+      jplus1     : TJ := j + 1;
+      jminus1    : TJ := j - 1;
+   begin
+      Modulus.CopyTo (destination => g (jminus1));
+      Candidate.CopyTo (destination => g (j));
+
+      while not g (j).IsZero loop
+         g (jplus1) := NN_Mod (Dividend => g (jminus1),
+                               Divisor  => g (j));
+         case j is
+            when 0 =>   j       := 1;
+                        jplus1  := 2;
+                        jminus1 := 0;
+            when 1 =>   j       := 2;
+                        jplus1  := 0;
+                        jminus1 := 1;
+            when 2 =>   j       := 0;
+                        jplus1  := 1;
+                        jminus1 := 2;
+         end case;
+      end loop;
+
+      return g (jminus1).IsOne;
+   end NN_GCD_Is_1;
+
 
 
 end NN;

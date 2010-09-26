@@ -63,9 +63,9 @@ package body RSA_Frontend is
       end if;
 
       declare
-         Revealed_Bytecode : constant TBinaryString :=
-               Decrypt_To_PKCS (Public_Key         => Public_Key,
-                                Encrypted_Bytecode => scrambled);
+         Revealed_Bytecode : constant TBinaryString := Public_Transformation (
+                                          Public_Key => Public_Key,
+                                          Bytecode   => scrambled);
       begin
          if DPKCS_Error /= 0 then
             Last_Error := DPKCS_Error;
@@ -151,9 +151,10 @@ package body RSA_Frontend is
       end loop;
 
       declare
-         Encrypted_Bytecode : constant TBinaryString := Encrypt_PKCS (
-                                       Private_Key    => Private_Key,
-                                       Plain_Bytecode => Plain_Bytecode);
+         Encrypted_Bytecode : constant TBinaryString :=
+                                 Private_Transformation (
+                                       Private_Key => Private_Key,
+                                       Bytecode    => Plain_Bytecode);
       begin
          --  clear sensitive information from memory
          Plain_Bytecode := (others => 0);
@@ -189,19 +190,19 @@ package body RSA_Frontend is
 
 
 
-   -----------------------
-   --  Decrypt_To_PKCS  --
-   -----------------------
+   -----------------------------
+   --  Public_Transformation  --
+   -----------------------------
 
-   function Decrypt_To_PKCS (Public_Key         : TPublicKey;
-                          Encrypted_Bytecode : TBinaryString)
+   function Public_Transformation (Public_Key : TPublicKey;
+                                   Bytecode   : TBinaryString)
    return TBinaryString is
       matrix_M   : QuadByteMatrix.TData;
       matrix_C   : QuadByteMatrix.TData;
       error_result : constant TBinaryString (0 .. 0) := (0 => 0);
    begin
       DPKCS_Error := 0;
-      matrix_M := NN_Decode (Encrypted_Bytecode);
+      matrix_M := NN_Decode (Bytecode);
 
       if matrix_M.CurrentLen > Public_Key.MsgSize or else
          matrix_M.Compared_With (
@@ -213,10 +214,9 @@ package body RSA_Frontend is
       end if;
 
       --  Compute c = m^e mod n.  To perform actual RSA calc.
-      NN_ModExp (A => matrix_C,
-                 B => matrix_M,
-                 C => Public_Key.Exponent,
-                 D => Public_Key.Modulus);
+      matrix_C := NN_ModExp (LHS    => matrix_M,
+                             RHS    => Public_Key.Exponent,
+                             Modulo => Public_Key.Modulus);
 
       --  encode output to standard form
       declare
@@ -237,23 +237,23 @@ package body RSA_Frontend is
          return result;
       end;
 
-   end Decrypt_To_PKCS;
+   end Public_Transformation;
 
 
 
-   --------------------
-   --  Encrypt_PKCS  --
-   --------------------
+   ------------------------------
+   --  Private_Transformation  --
+   ------------------------------
 
-   function Encrypt_PKCS (Private_Key    : TPrivateKey;
-                             Plain_Bytecode : TBinaryString)
+   function Private_Transformation (Private_Key  : TPrivateKey;
+                                    Bytecode     : TBinaryString)
    return TBinaryString is
       Matrix_c    : QuadByteMatrix.TData;
       PKCSErr     : constant TBinaryString (0 .. 2) := (5, 5, 5);
    begin
 
       --  decode required input data from standard form
-      Matrix_c    := NN_Decode (HexString => Plain_Bytecode);
+      Matrix_c    := NN_Decode (HexString => Bytecode);
 
       if Matrix_c.Compared_With (
                         Index     => 0,
@@ -267,38 +267,39 @@ package body RSA_Frontend is
       --  (Assumes q has length at most pDigits, i.e., p > q)
 
       declare
-         scratch   : QuadByteMatrix.TData;
-         Matrix_cP : QuadByteMatrix.TData := QuadByteMatrix.Construct;
-         Matrix_cQ : QuadByteMatrix.TData := QuadByteMatrix.Construct;
-         Matrix_mP : QuadByteMatrix.TData := QuadByteMatrix.Construct;
-         Matrix_mQ : QuadByteMatrix.TData := QuadByteMatrix.Construct;
-         Matrix_t1 : QuadByteMatrix.TData := QuadByteMatrix.Construct;
-         Matrix_t2 : QuadByteMatrix.TData := QuadByteMatrix.Construct;
-         Matrix_t3 : QuadByteMatrix.TData := QuadByteMatrix.Construct;
-         Matrix_t4 : QuadByteMatrix.TData := QuadByteMatrix.Construct;
-         Matrix_t5 : QuadByteMatrix.TData := QuadByteMatrix.Construct;
-         borrow    : MQuadByte;
-         carry     : MQuadByte;
+         Matrix_cP     : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+         Matrix_cQ     : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+         Matrix_mP     : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+         Matrix_mQ     : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+         Matrix_t1     : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+         Matrix_t2     : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+         Matrix_t3     : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+         Matrix_t4     : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+         Matrix_t5     : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+         Matrix_t6     : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+         Matrix_Random : QuadByteMatrix.TData := NN_Random_Number
+                                         (Modulus => Private_Key.Modulus);
+         Matrix_Blind  : constant QuadByteMatrix.TData := NN_Blind (
+                               Real_Matrix   => Matrix_c,
+                               Random_Number => Matrix_Random,
+                               pub_exponent  => Private_Key.Public_Exponent,
+                               pub_modulus   => Private_Key.Modulus);
+         borrow        : MQuadByte;
+         carry         : MQuadByte;
       begin
-         NN_Div (ResDiv => scratch,
-                 ResMod => Matrix_cP,
-                 C      => Matrix_c,
-                 D      => Private_Key.Prime_p);
+         Matrix_cP := NN_Mod (Dividend => Matrix_Blind,
+                              Divisor  => Private_Key.Prime_p);
 
-         NN_Div (ResDiv => scratch,
-                 ResMod => Matrix_cQ,
-                 C      => Matrix_c,
-                 D      => Private_Key.Prime_q);
+         Matrix_cQ := NN_Mod (Dividend => Matrix_Blind,
+                              Divisor  => Private_Key.Prime_q);
 
-         NN_ModExp (A   => Matrix_mP,
-                    B   => Matrix_cP,
-                    C   => Private_Key.Prime_Exp_p,
-                    D   => Private_Key.Prime_p);
+         Matrix_mP := NN_ModExp (LHS    => Matrix_cP,
+                                 RHS    => Private_Key.Prime_Exp_p,
+                                 Modulo => Private_Key.Prime_p);
 
-         NN_ModExp (A   => Matrix_mQ,
-                    B   => Matrix_cQ,
-                    C   => Private_Key.Prime_Exp_q,
-                    D   => Private_Key.Prime_q);
+         Matrix_mQ := NN_ModExp (LHS    => Matrix_cQ,
+                                 RHS    => Private_Key.Prime_Exp_q,
+                                 Modulo => Private_Key.Prime_q);
 
          --  Chinese Remainder Theorem:
          --  m = ((((mP - mQ) mod p) * qInv) mod p) * q + mQ
@@ -307,54 +308,41 @@ package body RSA_Frontend is
                         Index     => 0,
                         ExtData   => Matrix_mQ,
                         ExtDigits => Private_Key.Prime_p.CurrentLen) >= 0 then
-            NN_Sub (A         => Matrix_t2,
-                    A_Index   => 0,
-                    B         => Matrix_mP,
-                    B_Index   => 0,
-                    C         => Matrix_mQ,
-                    C_Index   => 0,
+            NN_Sub (Result    => Matrix_t2, A_Index   => 0,
+                    B         => Matrix_mP, B_Index   => 0,
+                    C         => Matrix_mQ, C_Index   => 0,
                     numDigits => Private_Key.Prime_p.CurrentLen,
                     borrow    => borrow);
          else
-            NN_Sub (A         => Matrix_t1,
-                    A_Index   => 0,
-                    B         => Matrix_mQ,
-                    B_Index   => 0,
-                    C         => Matrix_mP,
-                    C_Index   => 0,
+            NN_Sub (Result    => Matrix_t1, A_Index   => 0,
+                    B         => Matrix_mQ, B_Index   => 0,
+                    C         => Matrix_mP, C_Index   => 0,
                     numDigits => Private_Key.Prime_p.CurrentLen,
                     borrow    => borrow);
 
-            NN_Sub (A         => Matrix_t2,
-                    A_Index   => 0,
-                    B         => Private_Key.Prime_p,
-                    B_Index   => 0,
-                    C         => Matrix_t1,
-                    C_Index   => 0,
+            NN_Sub (Result    => Matrix_t2,           A_Index   => 0,
+                    B         => Private_Key.Prime_p, B_Index   => 0,
+                    C         => Matrix_t1,           C_Index   => 0,
                     numDigits => Private_Key.Prime_p.CurrentLen,
                     borrow    => borrow);
          end if;
 
-         NN_ModMult (A => Matrix_t3,
-                     B => Matrix_t2,
-                     C => Private_Key.coefficient,
-                     D => Private_Key.Prime_p);
+         Matrix_t3 := NN_ModMult (LHS    => Matrix_t2,
+                                  RHS    => Private_Key.coefficient,
+                                  Modulo => Private_Key.Prime_p);
 
-         NN_Mult (A       => Matrix_t4,
-                  A_Index => 0,
-                  B       => Matrix_t3,
-                  B_Index => 0,
-                  C       => Private_Key.Prime_q,
-                  C_Index => 0);
+         Matrix_t4 := NN_Mult (LHS => Matrix_t3,
+                               RHS => Private_Key.Prime_q);
 
-         NN_Add (A         => Matrix_t5,
-                 A_Index   => 0,
-                 B         => Matrix_t4,
-                 B_Index   => 0,
-                 C         => Matrix_mQ,
-                 C_Index   => 0,
+         NN_Add (Result    => Matrix_t5,
+                 LHS       => Matrix_t4,
+                 RHS       => Matrix_mQ,
                  numDigits => Private_Key.Modulus.CurrentLen,
                  carry     => carry);
+
+         Matrix_t6 := NN_Unblind (Blinded_Matrix => Matrix_t5,
+                                  Random_Number  => Matrix_Random,
+                                  pub_modulus   => Private_Key.Modulus);
 
          --  clear sensitive information
          Matrix_cP.Zero_Array;
@@ -365,13 +353,15 @@ package body RSA_Frontend is
          Matrix_t2.Zero_Array;
          Matrix_t3.Zero_Array;
          Matrix_t4.Zero_Array;
+         Matrix_t5.Zero_Array;
+         Matrix_Random.Zero_Array;
 
          --  encode output to standard form
-         return NN_Encode (HugeNumber => Matrix_t5,
+         return NN_Encode (HugeNumber => Matrix_t6,
                            numDigits  => Natural (Private_Key.MsgSize));
       end;
 
-   end Encrypt_PKCS;
+   end Private_Transformation;
 
 
    ----------------------------
