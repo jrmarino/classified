@@ -13,7 +13,7 @@
 --  ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 --  OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-with Ada.Text_IO; use Ada.Text_IO;
+
 with Radix64; use Radix64;
 with NN;      use NN;
 
@@ -277,8 +277,7 @@ package body RSA_Frontend is
          Matrix_t4     : QuadByteMatrix.TData := QuadByteMatrix.Construct;
          Matrix_t5     : QuadByteMatrix.TData := QuadByteMatrix.Construct;
          Matrix_t6     : QuadByteMatrix.TData := QuadByteMatrix.Construct;
-         Matrix_Random : QuadByteMatrix.TData := NN_Random_Number
-                                         (Modulus => Private_Key.Modulus);
+         Matrix_Random : QuadByteMatrix.TData := NN_Random_Number;
          Matrix_Blind  : constant QuadByteMatrix.TData := NN_Blind (
                                Real_Matrix   => Matrix_c,
                                Random_Number => Matrix_Random,

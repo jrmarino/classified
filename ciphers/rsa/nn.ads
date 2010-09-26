@@ -114,8 +114,7 @@ package NN is
    --  the input.
 
 
-   function NN_Random_Number (Modulus : QuadByteMatrix.TData)
-   return QuadByteMatrix.TData;
+   function NN_Random_Number return QuadByteMatrix.TData;
    --  Returns a random number ranging from 1 to 2^32 -1 (4.3 E9)
 
 

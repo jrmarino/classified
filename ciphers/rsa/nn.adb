@@ -12,7 +12,7 @@
 --  WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
 --  ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 --  OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-with Ada.Text_IO; use Ada.Text_IO;
+
 
 with RSA_Utilities; use RSA_Utilities;
 with Ada.Numerics.Discrete_Random;
@@ -686,8 +686,7 @@ package body NN is
    --  NN_Random_Number  --
    ------------------------
 
-   function NN_Random_Number (Modulus : QuadByteMatrix.TData)
-   return QuadByteMatrix.TData is
+   function NN_Random_Number return QuadByteMatrix.TData is
       type TRandomQB is range 1 .. MQuadByte'Last;
       package RandQuadByte is new Ada.Numerics.Discrete_Random (TRandomQB);
       result : QuadByteMatrix.TData := QuadByteMatrix.Construct;
@@ -695,15 +694,25 @@ package body NN is
    begin
       result.CurrentLen := 1;
       RandQuadByte.Reset (QuadByte_Gen);
-      Sara :
-         loop
-            result.Matrix (0) :=
-                   MQuadByte (RandQuadByte.Random (QuadByte_Gen));
-            exit Sara when NN_GCD_Is_1 (Modulus   => Modulus,
-                                        Candidate => result);
-         end loop Sara;
-put_line ("###### RANDOM ###### " & long_long_integer'image (long_long_integer (result.Matrix (0))));
+
+      --  The following code was disabled because it's not really needed.
+      --  The modulus by definition is the product of prime numbers p and q
+      --  So the only random numbers candidates that wouldn't have a GCD
+      --  of 1 are p and q.  Since we limit our candidates to a mere 4.3B
+      --  which is many magnitudes less than the smallest prime, we are
+      --  guaranteed that GCD always equals 1.
+
+      --  Sara :
+      --    loop
+      --       result.Matrix (0) :=
+      --              MQuadByte (RandQuadByte.Random (QuadByte_Gen));
+      --       exit Sara when NN_GCD_Is_1 (Modulus   => Modulus,
+      --                                  Candidate => result);
+      --    end loop Sara;
+
+      result.Matrix (0) := MQuadByte (RandQuadByte.Random (QuadByte_Gen));
       return result;
+
    end NN_Random_Number;
 
 
@@ -740,18 +749,14 @@ put_line ("###### RANDOM ###### " & long_long_integer'image (long_long_integer (
                         pub_modulus    : QuadByteMatrix.TData)
    return QuadByteMatrix.TData is
       RandInv : QuadByteMatrix.TData := QuadByteMatrix.Construct;
-test : QuadByteMatrix.TData := QuadByteMatrix.Construct;
    begin
+
       RandInv := NN_ModInv (Value   => Random_Number,
                             Modulus => pub_modulus);
-test := NN_Mult (Random_Number, RandInv);
-      if test.IsOne then
-         Put_Line ("inversion worked");
-      else
-         Put_Line ("I knew that shit wouldn't work");
-      end if;
 
-      return NN_Mult (LHS => RandInv, RHS => Blinded_Matrix);
+      return NN_ModMult (LHS    => RandInv,
+                         RHS    => Blinded_Matrix,
+                         Modulo => pub_modulus);
 
    end NN_Unblind;
 
@@ -823,7 +828,6 @@ test := NN_Mult (Random_Number, RandInv);
             return result;
          end;
       else
-put_Line ("Result U1 Length is " & integer'image (integer (u1.currentLen)));
          return u1;
       end if;
 
