@@ -486,8 +486,8 @@ package body NN is
    function NN_Mod (Dividend : QuadByteMatrix.TData;
                     Divisor  : QuadByteMatrix.TData)
    return QuadByteMatrix.TData is
-      scratch : QuadByteMatrix.TData;
-      result  : QuadByteMatrix.TData;
+      scratch : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+      result  : QuadByteMatrix.TData := QuadByteMatrix.Construct;
    begin
       NN_Div (ResDiv => scratch,
               ResMod => result,
@@ -552,7 +552,7 @@ package body NN is
       --  Store LHS, LHS^2 mod Modulo, and LHS^3 mod Modulo
       LHS.CopyTo (destination => BPower (0));
 
-      BPower (1) := NN_ModMult (LHS    => BPower (0),
+      BPower (1) := NN_ModMult (LHS    => LHS,
                                 RHS    => LHS,
                                 Modulo => Modulo);
 
@@ -582,7 +582,7 @@ package body NN is
                                   Modulo => Modulo);
 
                Tp2 := NN_ModMult (LHS    => Tp1,
-                                  RHS    => Tp2,
+                                  RHS    => Tp1,
                                   Modulo => Modulo);
 
                S := Digit_2MSB (ci);
@@ -739,10 +739,17 @@ put_line ("###### RANDOM ###### " & long_long_integer'image (long_long_integer (
                         Random_Number  : QuadByteMatrix.TData;
                         pub_modulus    : QuadByteMatrix.TData)
    return QuadByteMatrix.TData is
-      RandInv : QuadByteMatrix.TData;
+      RandInv : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+test : QuadByteMatrix.TData := QuadByteMatrix.Construct;
    begin
       RandInv := NN_ModInv (Value   => Random_Number,
                             Modulus => pub_modulus);
+test := NN_Mult (Random_Number, RandInv);
+      if test.IsOne then
+         Put_Line ("inversion worked");
+      else
+         Put_Line ("I knew that shit wouldn't work");
+      end if;
 
       return NN_Mult (LHS => RandInv, RHS => Blinded_Matrix);
 
@@ -759,14 +766,14 @@ put_line ("###### RANDOM ###### " & long_long_integer'image (long_long_integer (
    return QuadByteMatrix.TData is
       type TU1Sign is range -1 .. 1;
       u1Sign  : TU1Sign := 1;
-      q       : QuadByteMatrix.TData;
-      t1      : QuadByteMatrix.TData;
-      t3      : QuadByteMatrix.TData;
-      u1      : QuadByteMatrix.TData;
-      u3      : QuadByteMatrix.TData;
+      q       : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+      t1      : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+      t3      : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+      u1      : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+      u3      : QuadByteMatrix.TData := QuadByteMatrix.Construct;
       v1      : QuadByteMatrix.TData := QuadByteMatrix.Construct;
-      v3      : QuadByteMatrix.TData;
-      w       : QuadByteMatrix.TData;
+      v3      : QuadByteMatrix.TData := QuadByteMatrix.Construct;
+      w       : QuadByteMatrix.TData := QuadByteMatrix.Construct;
       discard : MQuadByte;
    begin
       --  Apply extended Euclidean algorithm, modified to avoid
@@ -803,7 +810,7 @@ put_line ("###### RANDOM ###### " & long_long_integer'image (long_long_integer (
       --  Negate result if sign is negative.
       if u1Sign < 0 then
          declare
-            result : QuadByteMatrix.TData;
+            result : QuadByteMatrix.TData := QuadByteMatrix.Construct;
          begin
             NN_Sub (Result    => result,
                     A_Index   => 0,
@@ -816,6 +823,7 @@ put_line ("###### RANDOM ###### " & long_long_integer'image (long_long_integer (
             return result;
          end;
       else
+put_Line ("Result U1 Length is " & integer'image (integer (u1.currentLen)));
          return u1;
       end if;
 

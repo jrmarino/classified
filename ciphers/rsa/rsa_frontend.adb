@@ -13,7 +13,7 @@
 --  ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 --  OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-
+with Ada.Text_IO; use Ada.Text_IO;
 with Radix64; use Radix64;
 with NN;      use NN;
 
@@ -342,7 +342,7 @@ package body RSA_Frontend is
 
          Matrix_t6 := NN_Unblind (Blinded_Matrix => Matrix_t5,
                                   Random_Number  => Matrix_Random,
-                                  pub_modulus   => Private_Key.Modulus);
+                                  pub_modulus    => Private_Key.Modulus);
 
          --  clear sensitive information
          Matrix_cP.Zero_Array;
