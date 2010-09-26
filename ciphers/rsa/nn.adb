@@ -161,23 +161,23 @@ package body NN is
    --  NN_LShift  --
    -----------------
 
-   procedure NN_LShift (A         : out QuadByteMatrix.TData;
-                        B         : in  QuadByteMatrix.TData;
+   procedure NN_LShift (Result    : out QuadByteMatrix.TData;
+                        LHS       : in  QuadByteMatrix.TData;
                         numBits   : in  TDigit;
                         carry     : out MQuadByte)
    is
    begin
-      --  This computes A := B * 2^numBits, returns carry and modifies A
+      --  This computes Result := LHS * 2^numBits, returns carry
       carry := 0;
       if numBits = 0 then
-         B.CopyTo (destination => A);
+         LHS.CopyTo (destination => Result);
          return;
       end if;
 
-      A.Zero_Array;
+      Result.Zero_Array;
       declare
          factor     : constant MQuadByte := MQuadByte (2 ** Natural (numBits));
-         numDigits  : constant QuadByteMatrixLen := B.CurrentLen;
+         numDigits  : constant QuadByteMatrixLen := LHS.CurrentLen;
          antibits   : constant Natural := NN_DIGIT_BITS - Natural (numBits);
          antifactor : constant MQuadByte := MQuadByte (2 ** antibits);
          antimask   : constant MQuadByte := antifactor - 1;
@@ -187,13 +187,14 @@ package body NN is
       begin
          for x in QuadByteMatrixLen range 1 .. numDigits loop
             last_carry       := carry;
-            carry            := (B.Matrix (index) and mask) / antifactor;
-            A.Matrix (index) := (B.Matrix (index) and antimask) * factor;
-            A.Matrix (index) := A.Matrix (index) or last_carry;
+            carry            := (LHS.Matrix (index) and mask) / antifactor;
+            Result.Matrix (index) := (LHS.Matrix (index) and antimask) *
+                                      factor;
+            Result.Matrix (index) := Result.Matrix (index) or last_carry;
             index := index + 1;
          end loop;
       end;
-      A.CurrentLen := A.Significant_Length;
+      Result.CurrentLen := Result.Significant_Length;
 
    end NN_LShift;
 
@@ -203,37 +204,39 @@ package body NN is
    --  NN_RShift  --
    -----------------
 
-   procedure NN_RShift (A         : out QuadByteMatrix.TData;
-                        B         : in  QuadByteMatrix.TData;
+   procedure NN_RShift (Result    : out QuadByteMatrix.TData;
+                        LHS       : in  QuadByteMatrix.TData;
                         numBits   : in  TDigit;
                         carry     : out MQuadByte)
    is
    begin
-   --  This computes A := B / 2^bits, returns carry and modifies A
+   --  This computes Result := LHS / 2^bits, returns carry
       carry := 0;
       if numBits = 0 then
-         B.CopyTo (destination => A);
+         LHS.CopyTo (destination => Result);
          return;
       end if;
 
-      A.Zero_Array;
+      Result.Zero_Array;
       declare
          factor     : constant MQuadByte := MQuadByte (2 ** Natural (numBits));
          mask       : constant MQuadByte := factor - 1;
-         numDigits  : constant QuadByteMatrixLen := B.CurrentLen;
+         numDigits  : constant QuadByteMatrixLen := LHS.CurrentLen;
          antibits   : constant Natural := NN_DIGIT_BITS - Natural (numBits);
          antifactor : constant MQuadByte := MQuadByte (2 ** antibits);
          last_carry : MQuadByte;
          index      : QuadByteDigitIndex;
       begin
          for x in QuadByteMatrixLen range 1 .. numDigits loop
-            last_carry       := carry * antifactor;
-            index            := QuadByteDigitIndex (numDigits - x);
-            carry            := B.Matrix (index) and mask;
-            A.Matrix (index) := (B.Matrix (index) / factor) or last_carry;
+            last_carry := carry * antifactor;
+            index      := QuadByteDigitIndex (numDigits - x);
+            carry      := LHS.Matrix (index) and mask;
+
+            Result.Matrix (index) := (LHS.Matrix (index) / factor) or
+                                      last_carry;
          end loop;
       end;
-      A.CurrentLen := A.Significant_Length;
+      Result.CurrentLen := Result.Significant_Length;
 
    end NN_RShift;
 
@@ -338,14 +341,14 @@ package body NN is
       shift := TDigit (NN_DIGIT_BITS - D.Significant_Bits
                (index => QuadByteDigitIndex (DD_Digits - 1)));
 
-      NN_LShift (A         => CC_Internal,
-                 B         => C,
+      NN_LShift (Result    => CC_Internal,
+                 LHS       => C,
                  numBits   => shift,
                  carry     => carry);
       CC_Internal.Matrix (QuadByteDigitIndex (C_Digits)) := carry;
 
-      NN_LShift (A         => DD_Internal,
-                 B         => D,
+      NN_LShift (Result    => DD_Internal,
+                 LHS       => D,
                  numBits   => shift,
                  carry     => carry);
       S := DD_Internal.Matrix (QuadByteDigitIndex (DD_Digits - 1));
@@ -467,8 +470,8 @@ package body NN is
 
 <<Determine_Modulus>>
 
-      NN_RShift (A         => ResMod,
-                 B         => CC_Internal,
+      NN_RShift (Result    => ResMod,
+                 LHS       => CC_Internal,
                  numBits   => shift,
                  carry     => carry);
 

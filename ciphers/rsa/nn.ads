@@ -19,23 +19,21 @@ with Key_4096; use Key_4096;
 
 package NN is
 
-   procedure NN_LShift (A         : out QuadByteMatrix.TData;
-                        B         : in  QuadByteMatrix.TData;
+   procedure NN_LShift (Result    : out QuadByteMatrix.TData;
+                        LHS       : in  QuadByteMatrix.TData;
                         numBits   : in  TDigit;
                         carry     : out MQuadByte);
-   --  This computes A := B * 2^numBits, and returns the carry.
-   --  In other words, it shifts B left by "numBits" bits and returns result
-   --  as A.
+   --  This computes Result := LHS * 2^numBits, and returns the carry.
+   --  In other words, it shifts LHS left by "numBits" bits
 
 
 
-   procedure NN_RShift (A         : out QuadByteMatrix.TData;
-                        B         : in  QuadByteMatrix.TData;
+   procedure NN_RShift (Result    : out QuadByteMatrix.TData;
+                        LHS       : in  QuadByteMatrix.TData;
                         numBits   : in  TDigit;
                         carry     : out MQuadByte);
-   --  This computes A := B / 2^bits, returns carry and modifies A
-   --  In other words, if shifts B right by "bits" bits and returns result
-   --  as A.  A and B are the same lenght.
+   --  This computes Result := LHS / 2^bits, and returns carry
+   --  In other words, if shifts LHS right by "numBits" bits
 
 
 
