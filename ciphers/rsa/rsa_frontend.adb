@@ -29,13 +29,70 @@ package body RSA_Frontend is
    --  Decrypt_With_Private_Key  --
    --------------------------------
 
-   procedure Decrypt_With_Private_Key (Private_Key   : in  TPrivateKey;
-                                       Scrambled_R64 : in  String;
-                                       Plain_Text    : out String;
-                                       Status        : out TCryptoError)
-   is
+   function Decrypt_With_Private_Key (Private_Key   : in  TPrivateKey;
+                                      Scrambled_R64 : in  String)
+   return String is
+      Bytes_Mod : constant Positive := Positive (Private_Key.KeySize) / 8;
+      scrambled : constant TBinaryString := Decode_Radix64 (Scrambled_R64);
+      OutputLen : Integer;
+      z         : Natural := 2;
    begin
-      null;
+      Last_Error := Get_Radix_Coding_Status;
+      if Last_Error /= 0 then
+         return error_msg;
+      end if;
+
+      if scrambled'Length > Bytes_Mod then
+         Last_Error := 8;  -- Encrypted message is larger than key modulus
+         return error_msg;
+      end if;
+
+      declare
+         Revealed_Bytecode : constant TBinaryString := Private_Transformation (
+                                          Private_Key => Private_Key,
+                                          Bytecode   => scrambled);
+      begin
+         if DPKCS_Error /= 0 then
+            Last_Error := DPKCS_Error;
+            return error_msg;
+         end if;
+
+         if (Revealed_Bytecode (0) /= 0) or
+            (Revealed_Bytecode (1) /= 2) then
+            Last_Error := 6;  --  Decrypt error (doesn't start with 02)
+            return error_msg;
+         end if;
+
+         declare
+            maxZ      : constant Integer := Bytes_Mod - 1;
+         begin
+            Samantha :
+               loop
+                  exit Samantha when z > maxZ;
+                  exit Samantha when Revealed_Bytecode (z) = 0;
+                  z := z + 1;
+               end loop Samantha;
+            if (Revealed_Bytecode (z) /= 0) or
+               (z < 10) then
+               Last_Error := 6;  --  Decrypt error (no zero bookend or pad < 8)
+                                 --  means msg at least 11 chars less than mod
+               return error_msg;
+            end if;
+         end;
+
+         z := z + 1;
+         OutputLen := Bytes_Mod - z;
+         declare
+            output : String (1 .. OutputLen);
+         begin
+            for x in Integer range 1 .. OutputLen loop
+               output (x) := Character'Val (Revealed_Bytecode (z));
+               z := z + 1;
+            end loop;
+            return output;
+         end;
+      end;
+
    end Decrypt_With_Private_Key;
 
 

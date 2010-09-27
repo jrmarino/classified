@@ -73,10 +73,13 @@ package RSA_Frontend is
    --  "out" parameter of a procedure as hoped.
 
 
-   procedure Decrypt_With_Private_Key (Private_Key   : in  TPrivateKey;
-                                       Scrambled_R64 : in  String;
-                                       Plain_Text    : out String;
-                                       Status        : out TCryptoError);
+   function Decrypt_With_Private_Key (Private_Key   : in  TPrivateKey;
+                                      Scrambled_R64 : in  String)
+   return String;
+   --  This function returns a plain text string after processing a radix64
+   --  encoded, encrypted message.  The message is expected to be encoded by
+   --  the public key.  Failure to decrypt will result in the text "ERROR!"
+   --  and the error code can be checked with the cryption_status function.
 
 
    function Decrypt_With_Public_Key (Public_Key    : TPublicKey;
