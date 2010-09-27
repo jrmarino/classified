@@ -93,14 +93,17 @@ package RSA_Frontend is
    --  This function returns a radix64 encoded message, which is the encrypted
    --  version of the plain text message provided along with the private key
    --  that is used to encrypt it.  Failure to encrypt will result in the
-   --  plain text message "ERROR!" and the error code can be chcked with the
+   --  plain text message "ERROR!" and the error code can be checked with the
    --  cryption status function.
 
 
-   procedure Encrypt_With_Public_Key (Public_Key    : in  TPublicKey;
-                                      Scrambled_R64 : out String;
-                                      Plain_Text    : in  String;
-                                      Status        : out TCryptoError);
+   function Encrypt_With_Public_Key (Public_Key    : in  TPublicKey;
+                                     Plain_Text    : in  String) return String;
+   --  This function returns a radix64 encoded message, which is the encrypted
+   --  version of the plain text message provided along with the public key
+   --  that is used to encrypt it.  Failure to encrypt will result in the
+   --  plain text message "ERROR!" and the error code can be checked with the
+   --  cryption status function.
 
 
    function Get_Status_Message (Status : TCryptoError) return String;

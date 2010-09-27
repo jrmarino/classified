@@ -168,13 +168,49 @@ package body RSA_Frontend is
    --  Encrypt_With_Public_Key  --
    -------------------------------
 
-   procedure Encrypt_With_Public_Key (Public_Key    : in  TPublicKey;
-                                      Scrambled_R64 : out String;
-                                      Plain_Text    : in  String;
-                                      Status        : out TCryptoError)
-   is
+   function Encrypt_With_Public_Key (Public_Key    : in  TPublicKey;
+                                     Plain_Text    : in  String)
+   return String is
+      InputLen : constant Natural := Plain_Text'Length;
+      Plain_Bytecode : TBinaryString := Message_Template (
+                        ModulusSize => Public_Key.MsgSize,
+                        MessageSize => InputLen,
+                        BlockType   => 2);
+      border   : constant Natural :=
+                          Natural (Public_Key.MsgSize) - InputLen - 1;
    begin
-      null;
+      Last_Error := 0;
+
+      if InputLen + 11 > Natural (Public_Key.MsgSize) then
+         Last_Error := 7;  -- Encryption: Message too long for modulus.
+         return error_msg;
+      end if;
+
+      for x in Integer range 1 .. InputLen loop
+         Plain_Bytecode (border + x) := Character'Pos (Plain_Text (x));
+      end loop;
+
+      declare
+         Encrypted_Bytecode : constant TBinaryString :=
+                                 Public_Transformation (
+                                       Public_Key  => Public_Key,
+                                       Bytecode    => Plain_Bytecode);
+      begin
+         --  clear sensitive information from memory
+         Plain_Bytecode := (others => 0);
+
+         if EPKCS_Error /= 0 then
+            Last_Error := EPKCS_Error;
+            return error_msg;
+         end if;
+
+         declare
+            result : constant String := Encode_to_Radix64 (Encrypted_Bytecode);
+         begin
+            return result;
+         end;
+      end;
+
    end Encrypt_With_Public_Key;
 
 
@@ -603,7 +639,7 @@ package body RSA_Frontend is
       Byte_Gen  : RandByte.Generator;
       BMax      : constant Natural := Natural (ModulusSize) - 1;
       Bytecode  : TBinaryString (0 .. BMax) := (others => 0);
-      PadLength : Natural := Natural (ModulusSize) - 3 - MessageSize;
+      PadLength : constant Natural := Natural (ModulusSize) - 3 - MessageSize;
    begin
       --  Index 0: must be zero
       --  Index 1: most be 1 or 2 (BlockType)
