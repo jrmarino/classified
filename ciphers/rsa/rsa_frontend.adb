@@ -14,6 +14,7 @@
 --  OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 
+with Ada.Numerics.Discrete_Random;
 with Radix64; use Radix64;
 with NN;      use NN;
 
@@ -58,7 +59,7 @@ package body RSA_Frontend is
       end if;
 
       if scrambled'Length > Bytes_Mod then
-         Last_Error := 4;  -- Encrypted message is larger than key modulus
+         Last_Error := 8;  -- Encrypted message is larger than key modulus
          return error_msg;
       end if;
 
@@ -71,13 +72,10 @@ package body RSA_Frontend is
             Last_Error := DPKCS_Error;
             return error_msg;
          end if;
-         if Revealed_Bytecode'Length /= Bytes_Mod then
-            Last_Error := 5;  --  PKCS block is not same length as key modulus.
-            return error_msg;
-         end if;
+
          if (Revealed_Bytecode (0) /= 0) or
             (Revealed_Bytecode (1) /= 1) then
-            Last_Error := 6;  --  PKCS block does not start with <01>
+            Last_Error := 6;  --  Decrypt error (doesn't start with 01)
             return error_msg;
          end if;
 
@@ -87,25 +85,19 @@ package body RSA_Frontend is
             Samantha :
                loop
                   exit Samantha when z > maxZ;
-                  exit Samantha when Revealed_Bytecode (z) /= 16#FF#;
+                  exit Samantha when Revealed_Bytecode (z) = 0;
                   z := z + 1;
                end loop Samantha;
+            if (Revealed_Bytecode (z) /= 0) or
+               (z < 10) then
+               Last_Error := 6;  --  Decrypt error (no zero bookend or pad < 8)
+                                 --  means msg at least 11 chars less than mod
+               return error_msg;
+            end if;
          end;
-
-         if Revealed_Bytecode (z) /= 0 then
-            Last_Error := 7;  --  PKCS block separator pattern not <FFFFFF??00>
-            return error_msg;
-         end if;
 
          z := z + 1;
          OutputLen := Bytes_Mod - z;
-         if OutputLen + 11 > Bytes_Mod then
-            Last_Error := 8;  --  Plain text output 11+ chars longer than mod.
-            return error_msg;
-         end if;
-
-         Last_Error := 0;
-
          declare
             output : String (1 .. OutputLen);
          begin
@@ -128,23 +120,20 @@ package body RSA_Frontend is
    function Encrypt_With_Private_Key (Private_Key   : TPrivateKey;
                                       Plain_Text    : String)
    return String is
-      PBMax : constant Natural := Natural (Private_Key.MsgSize) - 1;
-      Plain_Bytecode : TBinaryString (0 .. PBMax) := (others => 16#FF#);
       InputLen : constant Natural := Plain_Text'Length;
+      Plain_Bytecode : TBinaryString := Message_Template (
+                        ModulusSize => Private_Key.MsgSize,
+                        MessageSize => InputLen,
+                        BlockType   => 1);
       border   : constant Natural :=
                           Natural (Private_Key.MsgSize) - InputLen - 1;
    begin
       Last_Error := 0;
 
       if InputLen + 11 > Natural (Private_Key.MsgSize) then
-         Last_Error := 11;  -- Encryption: Message too long for modulus.
+         Last_Error := 7;  -- Encryption: Message too long for modulus.
          return error_msg;
       end if;
-
-      --  PKCS format
-      Plain_Bytecode (0) := 0;
-      Plain_Bytecode (1) := 1;  --  block type 1
-      Plain_Bytecode (border) := 0;
 
       for x in Integer range 1 .. InputLen loop
          Plain_Bytecode (border + x) := Character'Pos (Plain_Text (x));
@@ -209,7 +198,9 @@ package body RSA_Frontend is
                      Index     => 0,
                      ExtData   => Public_Key.Modulus,
                      ExtDigits => Public_Key.MsgSize) >= 0 then
-         DPKCS_Error := 9; --  Data Mismatch, message length > key modulus
+         DPKCS_Error := 8; --  Data Mismatch, message length > key modulus
+                           --  Should never get here, this is normally checked
+                           --  before this function is called.
          return error_result;
       end if;
 
@@ -259,7 +250,7 @@ package body RSA_Frontend is
                         Index     => 0,
                         ExtData   => Private_Key.Modulus,
                         ExtDigits => Private_Key.Modulus.CurrentLen) >= 0 then
-         EPKCS_Error := 17;
+         EPKCS_Error := 7;  -- should never get here
          return PKCSErr;
       end if;
 
@@ -370,29 +361,22 @@ package body RSA_Frontend is
    function Get_Status_Message (Status : TCryptoError)
    return String is
    begin
+      --  RFC 3447 standard messages:
+      --      "message too long"  (encryption)
+      --      "decryption error"  (decryption)
       case Status is
          when  0 => return "No errors.";
          when  1 => return "Radix-64 message length not divisible by 4.";
          when  2 => return "Radix-64 encoding bad, 7th bit used or mismapped.";
          when  3 => return "Radix-64 encoding bad, 4th place pad doesn't " &
                            "follow 3rd place pad.";
-         when  4 => return "Encrypted message is larger than key modulus.";
-         when  5 => return "PKCS block is not same length as key modulus.";
-         when  6 => return "PKCS block does not start with <01>.";
-         when  7 => return "PKCS block separator pattern is not <FFFFFF??00>.";
-         when  8 => return "Plain text output is more than 11 chars longer " &
-                           "than key modulus.";
-         when  9 => return "Data mismatch, message length > key modulus.";
-         when 10 => return "Encryption: Message length doesn't match modulus.";
-         when 11 => return "Encryption: Message too long for modulus.";
-         when 12 => return "Radix-64 encoding bad, found pad away from end.";
-         when 13 => return "Radix-64 encoding bad, character previous to " &
+         when  4 => return "Radix-64 encoding bad, found pad away from end.";
+         when  5 => return "Radix-64 encoding bad, character previous to " &
                            "pad doesn't have clear trailing bits.";
-         when 14 => return "Encryption: Incorrect Block Type found.";
-         when 15 => return "Encryption: Encrypted array of bytes is too " &
-                           "long for modulus.";
-         when 16 => return "Encryption: Internal separator is too short.";
-         when 17 => return "PKCS coding: Byte String longer than modulus.";
+         when  6 => return "decryption error";
+         when  7 => return "message too long";
+
+         when  8 => return "Encrypted message is larger than key modulus.";
       end case;
    end Get_Status_Message;
 
@@ -603,5 +587,39 @@ package body RSA_Frontend is
    begin
       return Last_Error;
    end Cryption_Status;
+
+
+
+   ------------------------
+   --  Message_Template  --
+   ------------------------
+
+   function Message_Template (ModulusSize : QuadByteMatrixLen;
+                              MessageSize : Natural;
+                              BlockType   : TBlockType)
+   return TBinaryString is
+      type TRandomByte is range 1 .. MByte'Last;
+      package RandByte is new Ada.Numerics.Discrete_Random (TRandomByte);
+      Byte_Gen  : RandByte.Generator;
+      BMax      : constant Natural := Natural (ModulusSize) - 1;
+      Bytecode  : TBinaryString (0 .. BMax) := (others => 0);
+      PadLength : Natural := Natural (ModulusSize) - 3 - MessageSize;
+   begin
+      --  Index 0: must be zero
+      --  Index 1: most be 1 or 2 (BlockType)
+      --  Index 2 - X: Random padding, but can't be zero
+      --  Index X + 1: must be zero
+      --  remainder:   message goes here, leave as zero
+
+      Bytecode (1) := MByte (BlockType);
+
+      RandByte.Reset (Byte_Gen);
+      for x in Natural range 2 .. PadLength - 1 loop
+         Bytecode (x) := MByte (RandByte.Random (Byte_Gen));
+      end loop;
+
+      return Bytecode;
+
+   end Message_Template;
 
 end RSA_Frontend;

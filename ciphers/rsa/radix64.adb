@@ -202,7 +202,7 @@ package body Radix64 is
             enc (1 + y) := ASC2BIN (TAscii (c (1 + y)));
             if (c (1 + y) = PAD) then
                if not ((x = triples) and y >= 2) then
-                  Internal_Error_Code := 12;  -- Pad not found at end
+                  Internal_Error_Code := 4;  -- Pad not found at end (was 12)
                   return error_msg;
                end if;
             else
@@ -225,13 +225,13 @@ package body Radix64 is
                return error_msg;
             end if;
             if (enc (2) and 15) > 0 then
-               Internal_Error_Code := 13;  -- previous 4 bits not clear
+               Internal_Error_Code := 5;  -- previous 4 bits not clear (13)
                return error_msg;
             end if;
          else
             if c (4) = PAD then
                if (enc (3) and 3) > 0 then
-                  Internal_Error_Code := 13;  -- previous 2 bits not clear
+                  Internal_Error_Code := 5;  -- previous 2 bits not clear
                   return error_msg;
                end if;
                enc (4) := 0;

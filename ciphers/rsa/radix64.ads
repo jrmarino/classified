@@ -111,13 +111,13 @@ private
 
 
    function Scroll_Left (original : MByte;
-                        bits     : ShiftRange) return MByte;
+                         bits     : ShiftRange) return MByte;
    --  Recieves a byte, and shifts it left by "bits" bits, but doesn't
    --  wrap them around.  Overflown bits just fall off.
 
 
    function Scroll_Right (original : MByte;
-                        bits     : ShiftRange) return MByte;
+                          bits     : ShiftRange) return MByte;
    --  Recieves a byte, and shifts it right by "bits" bits, but doesn't
    --  wrap them around.  Overflown bits just fall off.
 

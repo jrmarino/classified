@@ -109,6 +109,8 @@ package RSA_Frontend is
 
 private
 
+   type TBlockType is range 1 .. 2;
+
    function Public_Transformation (Public_Key : TPublicKey;
                                    Bytecode   : TBinaryString)
    return TBinaryString;
@@ -121,5 +123,12 @@ private
    --  Raw public key operation.  Returned Bytecode has same length of modulus.
 
 
+   function Message_Template (ModulusSize : QuadByteMatrixLen;
+                              MessageSize : Natural;
+                              BlockType   : TBlockType) return TBinaryString;
+   --  Returns a message formatted per PKCS#1 version 2.1, RSAES-PKCS1-V1.5
+   --  Mainly this takes care of the random numbers in the padding.
+   --  Messages encrypted with private key are type 1
+   --  Messages encrypted with public key are type 2
 
 end RSA_Frontend;

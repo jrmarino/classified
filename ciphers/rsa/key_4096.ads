@@ -28,9 +28,6 @@ package Key_4096 is
                                           (ModLength / NN_DIGIT_BYTES) + 1;
    NN_Dig2X   : constant T2XMAXNNDigits := T2XMAXNNDigits (NN_Digits * 2);
 
-   subtype LongKeyString is String (1 .. ModLength);
-   subtype HalfKeyString is String (1 .. ModLength / 2);
-
 
    --  The *MatrixLen ranges are supposed to start with 1
    --  However, for some reason the generics aren't liking it.
