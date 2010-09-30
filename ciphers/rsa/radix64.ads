@@ -43,6 +43,8 @@ package Radix64 is
 
    subtype OctetString   is String (1 .. 2);
    type TAscii is range 0 .. 127;
+   type TCRC24 is mod 16#1000000#;
+
 
    function Encode_to_Radix64 (BinaryString : TBinaryString) return String;
    --  Converts an array of bytes to 64-bit encoded ASCII text
@@ -63,6 +65,18 @@ package Radix64 is
    --  Converts a string of hexadecimal characters to an array of bytes.
    --  The string must have an even number of digits, otherwise it returns
    --  zero.
+
+
+   function CRC (BinaryString : TBinaryString) return TCRC24;
+   --  This returns the Cyclic Redundancy Check (CRC) checksum on plain text.
+   --  It is used for the armored messages of OpenPGP;
+
+
+   function CRC_Radix64 (BinaryString : TBinaryString) return String;
+   --  The returns the Cyclic Redundancy Check (CRC) checksum on plain text
+   --  converted into Radix64, and preceeded by an equal sign character as
+   --  specified in openPGP.
+
 
 private
 
@@ -112,14 +126,15 @@ private
 
    function Scroll_Left (original : MByte;
                          bits     : ShiftRange) return MByte;
-   --  Recieves a byte, and shifts it left by "bits" bits, but doesn't
-   --  wrap them around.  Overflown bits just fall off.
+   --  Recieves a byte, and shifts it left by "bits" bits.
+   --  Overflown bits just fall off.
 
 
    function Scroll_Right (original : MByte;
                           bits     : ShiftRange) return MByte;
    --  Recieves a byte, and shifts it right by "bits" bits, but doesn't
    --  wrap them around.  Overflown bits just fall off.
+
 
 
 

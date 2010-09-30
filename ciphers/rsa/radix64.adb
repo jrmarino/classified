@@ -200,8 +200,8 @@ package body Radix64 is
                return error_msg;
             end if;
             enc (1 + y) := ASC2BIN (TAscii (c (1 + y)));
-            if (c (1 + y) = PAD) then
-               if not ((x = triples) and y >= 2) then
+            if c (1 + y) = PAD then
+               if not ((x = triples) and then (y >= 2)) then
                   Internal_Error_Code := 4;  -- Pad not found at end (was 12)
                   return error_msg;
                end if;
@@ -256,9 +256,9 @@ package body Radix64 is
 
 
 
-   ------------------
+   -------------------
    --  Scroll_Left  --
-   ------------------
+   -------------------
 
    function Scroll_Left (original : MByte;
                          bits     : ShiftRange)
@@ -271,18 +271,16 @@ package body Radix64 is
    end Scroll_Left;
 
 
-   -------------------
+   --------------------
    --  Scroll_Right  --
-   -------------------
+   --------------------
 
    function Scroll_Right (original : MByte;
                           bits     : ShiftRange)
    return MByte is
-      mask   : constant MByte := MByte ((2 ** (8 - bits)) - 1);
       factor : constant MByte := MByte (2 ** bits);
-      canvas : constant MByte := original / factor;
    begin
-      return canvas and mask;
+      return original / factor;
    end Scroll_Right;
 
 
@@ -296,5 +294,56 @@ package body Radix64 is
    begin
       return Internal_Error_Code;
    end Get_Radix_Coding_Status;
+
+
+
+   -----------
+   --  CRC  --
+   -----------
+
+   function CRC (BinaryString : TBinaryString)
+   return TCRC24 is
+      type TCRC32 is mod 16#100000000#;
+      CRC24_INIT : constant TCRC32 := 16#B704CE#;
+      CRC24_POLY : constant TCRC32 := 16#1864FB#;
+      factor     : constant TCRC32 := 2 ** 16;
+      checksum   : TCRC32 := CRC24_INIT;
+      result     : TCRC24;
+   begin
+      for x in Natural range 0 .. BinaryString'Length - 1 loop
+         checksum := checksum xor (TCRC32 (BinaryString (x)) * factor);
+         for k in Positive range 1 .. 8 loop
+            checksum := checksum * 2;  -- shift right 1 bit
+            if (checksum and 16#1000000#) > 0 then
+               checksum := checksum xor CRC24_POLY;
+            end if;
+         end loop;
+      end loop;
+
+      result := TCRC24 (checksum and 16#FFFFFF#);
+      return result;
+   end CRC;
+
+
+
+   -------------------
+   --  CRC_Radix64  --
+   -------------------
+
+   function CRC_Radix64 (BinaryString : TBinaryString)
+   return String is
+      result   : String (1 .. 9) := "=AAAAAAAA";
+      checksum : constant TCRC24 := CRC (BinaryString);
+      factor4  : constant TCRC24 := 2 * 16;
+      factor2  : constant TCRC24 := 2 * 8;
+      scratch  : TBinaryString (0 .. 3);
+   begin
+      scratch (0) := MByte ((checksum and 16#FF0000#) / factor4);
+      scratch (1) := MByte ((checksum and 16#00FF00#) / factor2);
+      scratch (2) := MByte (checksum and 16#0000FF#);
+      result (2 .. 9) := Encode_to_Radix64 (BinaryString => scratch);
+
+      return result;
+   end CRC_Radix64;
 
 end Radix64;
