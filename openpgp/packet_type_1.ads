@@ -56,6 +56,21 @@ package Packet_Type_1 is
    --  For Elgamal keys, this function return the MPI value of my^k mod p
 
 
+   function Construct_Type_1_RSA_Packet (KeyID     : TKeyID;
+                                         Value_men : TMPI)
+   return TOctet_Array;
+   --  This function will build a Type 1 RSA packet given a key ID and the
+   --  value of m^e mod n
+
+
+   function Construct_Type_1_Elgamal_Packet (KeyID      : TKeyID;
+                                             Value_gkp  : TMPI;
+                                             Value_mykp : TMPI)
+   return TOctet_Array;
+   --  This function will build a Type 1 Elgamal packet given a key ID, the
+   --  value of g^k mod p and the value of my^k mod p.
+
+
 private
 
    subtype TRaw_Data is TOctet_Array (0 .. 511);
