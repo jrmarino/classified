@@ -35,6 +35,33 @@ package Packet_Type_2 is
    type TSigVersion is (illegal, three, four);
    type TLeft16 is mod 16#10000#;
    type TScalarCount is mod 16#10000#;
+   type TPreferences   is array (1 .. 5) of TOctet;
+   type TFingerprint   is array (1 .. 22) of TOctet;
+   type TNotation      is array (1 .. 4) of TOctet;
+   type TKeyServPref   is array (1 .. 1) of TOctet;
+   type TKeyFlags      is array (1 .. 1) of TOctet;
+   type TFeatures      is array (1 .. 1) of TOctet;
+   type TSigTarget     is array (1 .. 66) of TOctet;
+
+   type TSignatureType is (
+      Undefined,
+      binary_document,
+      canonical_text_document,
+      standalone,
+      generic_certification,
+      persona_certification,
+      casual_certification,
+      positive_certification,
+      subkey_binding,
+      primary_key_binding,
+      key_directly,
+      key_revocation,
+      subkey_revocation,
+      certificate_revocation,
+      timestamp,
+      third_party_confirmation
+   );
+
 
    type TPacket_2_3_Fixed is record
       Version        : TVersion          := 0;
@@ -56,6 +83,59 @@ package Packet_Type_2 is
       Hashed_Subpackets : TScalarCount      := 0;
       Plain_Subpackets  : TScalarCount      := 0;
       Error             : TP2_Error         := no_error;
+   end record;
+
+   type TSignature_Subpacket is (
+      signature_creation_time,
+      signature_expiration_time,
+      exportable_certification,
+      trust_signature,
+      regular_expression,
+      revocable,
+      key_expiration_time,
+      backwards_compatibility,
+      preferred_symmetrics,
+      revocation_key,
+      issuer,
+      notation_data,
+      preferred_hashes,
+      preferred_compressions,
+      server_preferences,
+      preferred_key_server,
+      primary_user_id,
+      policy_uri,
+      key_flags,
+      signers_user_id,
+      reason_for_revocation,
+      features,
+      signature_target,
+      embedded_signature
+   );
+
+   type TSignature_Subpacket_Flags is record
+      signature_creation_time   : TUnixTime    := 0;              --  5.2.3.4
+      issuer                    : TKeyID       := (others => 0);  --  5.2.3.5
+      key_expiration_time       : TUnixTime    := 0;              --  5.2.3.6
+      preferred_symmetrics      : TPreferences := (others => 0);  --  5.2.3.7
+      preferred_hashes          : TPreferences := (others => 0);  --  5.2.3.8
+      preferred_compressions    : TPreferences := (others => 0);  --  5.2.3.9
+      signature_expiration_time : TUnixTime    := 0;              --  5.2.3.10
+      exportable_certification  : TOctet       := 1;              --  5.2.3.11
+      revocable                 : TOctet       := 1;              --  5.2.3.12
+      trust_signature           : TOctet       := 0;              --  5.2.3.13
+      flag_regular_expression   : Boolean      := False;          --  5.2.3.14
+      revocation_key            : TFingerprint := (others => 0);  --  5.2.3.15
+      notation_data             : TNotation    := (others => 0);  --  5.2.3.16
+      server_preferences        : TKeyServPref := (others => 0);  --  5.2.3.17
+      flag_preferred_key_server : Boolean      := False;          --  5.2.3.18
+      primary_user_id           : TOctet       := 0;              --  5.2.3.19
+      flag_policy_uri           : Boolean      := False;          --  5.2.3.20
+      key_flags                 : TKeyFlags    := (others => 0);  --  5.2.3.21
+      flag_signers_user_id      : Boolean      := False;          --  5.2.3.22
+      reason_for_revocation     : TOctet       := 0;              --  5.2.3.23
+      features                  : TFeatures    := (others => 0);  --  5.2.3.24
+      signature_target          : TSigTarget   := (others => 0);  --  5.2.3.25
+      flag_embedded_signature   : Boolean      := False;          --  5.2.3.26
    end record;
 
    function Determine_Version (Header : TPacket_Header;

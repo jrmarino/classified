@@ -153,24 +153,5 @@ package OpenPGP_Types is
       Length : Natural := 1;
    end record;
 
-   type TSignatureType is (
-      Undefined,
-      binary_document,
-      canonical_text_document,
-      standalone,
-      generic_certification,
-      persona_certification,
-      casual_certification,
-      positive_certification,
-      subkey_binding,
-      primary_key_binding,
-      key_directly,
-      key_revocation,
-      subkey_revocation,
-      certificate_revocation,
-      timestamp,
-      third_party_confirmation
-   );
-
 
 end OpenPGP_Types;
