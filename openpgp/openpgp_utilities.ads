@@ -20,7 +20,7 @@ package OpenPGP_Utilities is
 
    function MPI_Byte_Size (Octet_1 : TOctet;
                            Octet_2 : TOctet) return Natural;
-   --  Two octets are passes to this function.  They needed to be considered as
+   --  Two octets are passed to this function.  They needed to be considered as
    --  Big Endian, meaning Octet_1 is multiplied by 256.
    --  The result is ( Octet_1 * 256 + Octet2 + 7 ) / 8 and represents the
    --  number of bytes (Octets) that the MPI occupies.
@@ -28,10 +28,32 @@ package OpenPGP_Utilities is
 
    function MPI_Total_Bits (Octet_1 : TOctet;
                             Octet_2 : TOctet) return Natural;
-   --  Two octets are passes to this function.  They needed to be considered as
+   --  Two octets are passed to this function.  They needed to be considered as
    --  Big Endian, meaning Octet_1 is multiplied by 256.
    --  The result is  Octet_1 * 256 + Octet2  and represents the
    --  number of significant bits that compose the MPI.
+
+
+   function Construct_Unix_Time (Octet_1 : TOctet;
+                                 Octet_2 : TOctet;
+                                 Octet_3 : TOctet;
+                                 Octet_4 : TOctet) return TUnixTime;
+   --  Four octets are passed to this function.  They are considered to be in
+   --  Big Endian format, so the bytes are shifted by 24, 16, 8, and 0
+   --  respectively to form a 32-bit integer.
+
+
+   function Convert_Octet_To_PK_Algorithm (Octet : TOctet)
+   return TPubKey_Algorithm;
+   --  This function converts an octet into a known public key algorithm ID.
+   --  If the provided octet is unknown, the value "Undefined" is returned.
+
+
+   function Convert_Octet_To_Hash_ID (Octet : TOctet)
+   return THash_Algorithm;
+   --  This function converts an octet into a known hash algorithm ID.
+   --  If the provided octet is unknown, the value "Undefined" is returned.
+
 
 end OpenPGP_Utilities;
 

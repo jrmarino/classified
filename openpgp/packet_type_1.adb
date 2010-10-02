@@ -41,33 +41,9 @@ package body Packet_Type_1 is
          return result;
       end if;
 
-      result.Version := 3;
-      result.KeyID := Packet (index + 1 .. index + 8);
-
-      case Packet (index + 9) is
-         when   1 => result.Algorithm := RSA_Encrypt_Or_Sign;
-         when   2 => result.Algorithm := RSA_Encrypt_Only;
-         when   3 => result.Algorithm := RSA_Sign_Only;
-         when  16 => result.Algorithm := Elgamal_Encrypt_Only;
-         when  17 => result.Algorithm := DSA;
-         when  18 => result.Algorithm := Reserved_Elliptic_Curve;
-         when  19 => result.Algorithm := Reserved_ECDSA;
-         when  20 => result.Algorithm := Reserved_20;
-         when  21 => result.Algorithm := Reserved_Diffie_Hellman;
-         when 100 => result.Algorithm := Private_100;
-         when 101 => result.Algorithm := Private_101;
-         when 102 => result.Algorithm := Private_102;
-         when 103 => result.Algorithm := Private_103;
-         when 104 => result.Algorithm := Private_104;
-         when 105 => result.Algorithm := Private_105;
-         when 106 => result.Algorithm := Private_106;
-         when 107 => result.Algorithm := Private_107;
-         when 108 => result.Algorithm := Private_108;
-         when 109 => result.Algorithm := Private_109;
-         when 110 => result.Algorithm := Private_110;
-         when others =>
-                     result.Algorithm := Undefined;
-      end case;
+      result.Version   := 3;
+      result.KeyID     := Packet (index + 1 .. index + 8);
+      result.Algorithm := Convert_Octet_To_PK_Algorithm (Packet (index + 9));
 
       --  RFC 4880 is very unclear regarding the format of the DSA Encrypted
       --  session key.  It specifically addresses Elgamal and RSA.  It appears
@@ -86,7 +62,7 @@ package body Packet_Type_1 is
          Size : constant Natural := MPI_Byte_Size (
                                        Octet_1 => Packet (index + 10),
                                        Octet_2 => Packet (index + 11));
-         Remaining : constant Natural := Packet'Length - 12;
+         Remaining : constant Natural := Packet'Length - index - 11;
       begin
          if Size > Remaining then
             result.Error := MPI_1_missing_data;
@@ -113,10 +89,10 @@ package body Packet_Type_1 is
                return result;
             end if;
          end if;
-         MPI_1st := (Head   => index + 10,
-                     Tail   => index + 9 + Size,
-                     Length => Size);
          Bodylen := Size + 2;
+         MPI_1st := (Head   => index + 10,
+                     Tail   => index + 11 + Size,
+                     Length => Bodylen);
       end;
 
       if (result.Algorithm = RSA_Encrypt_Or_Sign)
@@ -126,7 +102,7 @@ package body Packet_Type_1 is
             Size : constant Natural := MPI_Byte_Size (
                                        Octet_1 => Packet (index2),
                                        Octet_2 => Packet (index2 + 1));
-            Remaining : constant Natural := Packet'Length - MPI_1st.Length - 14;
+            Remaining : constant Natural := Packet'Length - MPI_1st.Tail;
          begin
             if Size > Remaining then
                result.Error := MPI_2_missing_data;
@@ -144,15 +120,14 @@ package body Packet_Type_1 is
                   return result;
                end if;
             end if;
-
-            MPI_2nd := (Head   => index2,
-                        Tail   => index2 + 1 + Size,
-                        Length => Size);
             Bodylen := Bodylen + Size + 2;
+            MPI_2nd := (Head   => index2,
+                        Tail   => index2 + Size + 1,
+                        Length => Size + 2);
          end;
       end if;
 
-      Raw_data (0 .. Bodylen) := Packet (10 .. Bodylen + 9);
+      Raw_data (0 .. Bodylen - 1) := Packet (10 .. 9 + Bodylen);
       return result;
 
    end Scan_Packet;

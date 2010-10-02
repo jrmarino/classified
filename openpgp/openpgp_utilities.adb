@@ -45,4 +45,91 @@ package body OpenPGP_Utilities is
 
 
 
+   ---------------------------
+   --  Construct_Unix_Time  --
+   ---------------------------
+
+   function Construct_Unix_Time (Octet_1 : TOctet;
+                                 Octet_2 : TOctet;
+                                 Octet_3 : TOctet;
+                                 Octet_4 : TOctet)
+   return TUnixTime is
+      NOct1 : constant TUnixTime := TUnixTime (Octet_1) * (2 ** 24);
+      NOct2 : constant TUnixTime := TUnixTime (Octet_2) * (2 ** 16);
+      NOct3 : constant TUnixTime := TUnixTime (Octet_3) * (2 ** 8);
+      NOct4 : constant TUnixTime := TUnixTime (Octet_4);
+   begin
+      return NOct1 + NOct2 + NOct3 + NOct4;
+   end Construct_Unix_Time;
+
+
+
+   -------------------------------------
+   --  Convert_Octet_To_PK_Algorithm  --
+   -------------------------------------
+
+   function Convert_Octet_To_PK_Algorithm (Octet : TOctet)
+   return TPubKey_Algorithm is
+   begin
+      case Octet is
+         when      1 => return RSA_Encrypt_Or_Sign;
+         when      2 => return RSA_Encrypt_Only;
+         when      3 => return RSA_Sign_Only;
+         when     16 => return Elgamal_Encrypt_Only;
+         when     17 => return DSA;
+         when     18 => return Reserved_Elliptic_Curve;
+         when     19 => return Reserved_ECDSA;
+         when     20 => return Reserved_20;
+         when     21 => return Reserved_Diffie_Hellman;
+         when    100 => return Private_100;
+         when    101 => return Private_101;
+         when    102 => return Private_102;
+         when    103 => return Private_103;
+         when    104 => return Private_104;
+         when    105 => return Private_105;
+         when    106 => return Private_106;
+         when    107 => return Private_107;
+         when    108 => return Private_108;
+         when    109 => return Private_109;
+         when    110 => return Private_110;
+         when others => return Undefined;
+      end case;
+   end Convert_Octet_To_PK_Algorithm;
+
+
+
+   --------------------------------
+   --  Convert_Octet_To_Hash_ID  --
+   --------------------------------
+
+   function Convert_Octet_To_Hash_ID (Octet : TOctet)
+   return THash_Algorithm is
+   begin
+      case Octet is
+         when      1 => return MD5;
+         when      2 => return SHA_1;
+         when      3 => return RIPE_MD160;
+         when      4 => return reserved_4;
+         when      5 => return reserved_5;
+         when      6 => return reserved_6;
+         when      7 => return reserved_7;
+         when      8 => return SHA_256;
+         when      9 => return SHA_384;
+         when     10 => return SHA_512;
+         when     11 => return SHA_224;
+         when    100 => return Private_100;
+         when    101 => return Private_101;
+         when    102 => return Private_102;
+         when    103 => return Private_103;
+         when    104 => return Private_104;
+         when    105 => return Private_105;
+         when    106 => return Private_106;
+         when    107 => return Private_107;
+         when    108 => return Private_108;
+         when    109 => return Private_109;
+         when    110 => return Private_110;
+         when others => return Undefined;
+      end case;
+   end Convert_Octet_To_Hash_ID;
+
 end OpenPGP_Utilities;

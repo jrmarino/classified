@@ -118,6 +118,7 @@ package OpenPGP_Types is
    );
 
    type THash_Algorithm is (
+      Undefined,
       MD5,
       SHA_1,
       RIPE_MD160,
@@ -145,11 +146,31 @@ package OpenPGP_Types is
    subtype TVersion is TOctet;
    subtype TKeyID is TOctet_Array (0 .. 7);
    subtype TMPI is TOctet_Array;
-
+   type TUnixTime is range 0 .. 16#FFFFFFFF#;
    type TSegment is record
       Head   : Natural := 0;
       Tail   : Natural := 1;
       Length : Natural := 1;
    end record;
+
+   type TSignatureType is (
+      Undefined,
+      binary_document,
+      canonical_text_document,
+      standalone,
+      generic_certification,
+      persona_certification,
+      casual_certification,
+      positive_certification,
+      subkey_binding,
+      primary_key_binding,
+      key_directly,
+      key_revocation,
+      subkey_revocation,
+      certificate_revocation,
+      timestamp,
+      third_party_confirmation
+   );
+
 
 end OpenPGP_Types;
