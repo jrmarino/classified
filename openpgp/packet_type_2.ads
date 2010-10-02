@@ -35,6 +35,7 @@ package Packet_Type_2 is
    type TSigVersion is (illegal, three, four);
    type TLeft16 is mod 16#10000#;
    type TScalarCount is mod 16#10000#;
+   type TNotationType is (name, value, flags);
    subtype Range_Preferences is Integer range 1 .. 5;
    subtype TPreferences   is TOctet_Array (Range_Preferences);
    subtype TFingerprint   is TOctet_Array (1 .. 22);
@@ -173,6 +174,32 @@ package Packet_Type_2 is
    function Retrieve_DSA_s return TMPI;
    --  For DSA keys, this function return the MPI value of s
 
+
+   function Subpacket_value (Block          : TOctet_Array;
+                             SubPacket_Type : TSig_SubPacket_Type)
+   return String;
+   --  For subpacket types of regular_expression, flag_preferred_key_server,
+   --  flag_policy_uri, flag_signers_user_id, reason_for_revocation
+
+
+   function Notation_Keypair (Block        : TOctet_Array;
+                              NotationType : TNotationType;
+                              number       : Positive) return String;
+   --  This function returns a string, either the notation's name or value.
+   --  The input index must be at least 1, which stands for notation #1 and it
+   --  must be less than the total number of notations in the subpacket.
+   --  If the index is too high or there are no notations, a blank string is
+   --  returned.  The four flags can be passed as a 4-character string using
+   --  the notation type of "flags"
+
+
+   function Retrieve_Embedded_Signature (Block : TOctet_Array)
+   return TOctet_Array;
+   --  If the provided subpacket contains an embedded signature, it will return
+   --  the entire octet array for separate processing.  If not, an array of
+   --  one octet will be returned with a value of zero.
+
+
 private
 
    function convert_octet_to_signature_type (Octet : TOctet)
@@ -226,6 +253,9 @@ private
    --  type for all implemented types.  If the octet value is not recognized,
    --  or the type is reserved or otherwise non-functional, the value of
    --  "unimplemented" will be returned.
+
+   function convert_octet_array_to_string (Block : TOctet_Array) return String;
+   --  This function will convert an array of octets to a UTF-8 string.
 
 
 end Packet_Type_2;

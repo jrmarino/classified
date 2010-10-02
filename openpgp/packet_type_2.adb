@@ -664,4 +664,237 @@ package body Packet_Type_2 is
 
 
 
+   -----------------------
+   --  Subpacket_value  --
+   -----------------------
+
+   function Subpacket_value (Block          : TOctet_Array;
+                             SubPacket_Type : TSig_SubPacket_Type)
+   return String is
+      blank      : constant String := "";
+      index      : Natural := 0;
+      MaxIndex   : constant Natural := Block'Length - 1;
+      Size       : TBody_Length;
+      SampleType : TSig_SubPacket_Type;
+   begin
+      while index <= MaxIndex - 3 loop  -- 3 bytes min for length + content
+
+         --  Calculate field size
+         --  If the Size is > 2Gb, it will overflow the Natural index...
+         if Block (index) < 192 then
+            Size := TBody_Length (Block (index));
+            index := index + 1;
+         elsif Block (index) < 255 then
+            Size := Two_Octet_Length (Block (index), Block (index + 1));
+            index := index + 2;
+         else
+            --  we might not have enough bytes, so check first
+            if index + 5 < MaxIndex then
+               Size := Four_Octet_Length (Octet_1 => Block (index + 1),
+                                          Octet_2 => Block (index + 2),
+                                          Octet_3 => Block (index + 3),
+                                          Octet_4 => Block (index + 4));
+            else
+               Size := 0;
+            end if;
+            index := index + 5;
+         end if;
+
+         if index + Natural (Size) <= MaxIndex then
+            SampleType := convert_octet_to_sig_subpacket_type (Block (index));
+            if SampleType = SubPacket_Type then
+               declare
+                  SmallBlock : constant TOctet_Array :=
+                               Block (index + 1 .. index + Natural (Size));
+               begin
+                  case SampleType is
+                     when regular_expression   |
+                          preferred_key_server |
+                          policy_uri           |
+                          signers_user_id      =>
+                        return convert_octet_array_to_string (SmallBlock);
+                     when reason_for_revocation =>
+                        return convert_octet_array_to_string
+                              (SmallBlock (1 .. SmallBlock'Last));
+                     when others => null;
+                  end case;
+               end;
+            end if;
+         end if;
+         index := index + Natural (Size);
+      end loop;
+
+      return blank;
+
+   end Subpacket_value;
+
+
+
+   -------------------------------------
+   --  convert_octet_array_to_string  --
+   -------------------------------------
+
+   function convert_octet_array_to_string (Block : TOctet_Array)
+   return String is
+      result : String (1 .. Block'Length);
+      index  : Natural := 0;
+   begin
+      for x in Natural range 0 .. Block'Length loop
+         index := index + 1;
+         result (index) := Character'Val (Block (x));
+      end loop;
+      return result;
+   end convert_octet_array_to_string;
+
+
+
+   ------------------------
+   --  Notation_Keypair  --
+   ------------------------
+
+   function Notation_Keypair (Block        : TOctet_Array;
+                              NotationType : TNotationType;
+                              number       : Positive)
+   return String is
+      blank      : constant String := "";
+      index      : Natural := 0;
+      MaxIndex   : constant Natural := Block'Length - 1;
+      Size       : TBody_Length;
+      SampleType : TSig_SubPacket_Type;
+      current    : Positive := 1;
+   begin
+      while index <= MaxIndex - 3 loop  -- 3 bytes min for length + content
+
+         --  Calculate field size
+         --  If the Size is > 2Gb, it will overflow the Natural index...
+         if Block (index) < 192 then
+            Size := TBody_Length (Block (index));
+            index := index + 1;
+         elsif Block (index) < 255 then
+            Size := Two_Octet_Length (Block (index), Block (index + 1));
+            index := index + 2;
+         else
+            --  we might not have enough bytes, so check first
+            if index + 5 < MaxIndex then
+               Size := Four_Octet_Length (Octet_1 => Block (index + 1),
+                                          Octet_2 => Block (index + 2),
+                                          Octet_3 => Block (index + 3),
+                                          Octet_4 => Block (index + 4));
+            else
+               Size := 0;
+            end if;
+            index := index + 5;
+         end if;
+
+         if index + Natural (Size) <= MaxIndex then
+            SampleType := convert_octet_to_sig_subpacket_type (Block (index));
+            if SampleType = notation_data then
+               if current = number then
+                  case NotationType is
+                     when flags =>
+                        declare
+                           result : String (1 .. 4);
+                        begin
+                           for x in Positive range 1 .. 4 loop
+                              result (x) := Character'Val (Block (index + x));
+                           end loop;
+                           return result;
+                        end;
+                     when name =>
+                        declare
+                           mlen : constant TBody_Length := Two_Octet_Length (
+                                          Octet_1 => Block (index + 5),
+                                          Octet_2 => Block (index + 6));
+                           result : String (1 .. Natural (mlen));
+                           offset : constant Natural := index + 8;
+                        begin
+                           for x in Positive range 1 .. Positive (mlen) loop
+                              result (x) := Character'Val (Block (x + offset));
+                           end loop;
+                           return result;
+                        end;
+                     when value =>
+                        declare
+                           mlen : constant TBody_Length := Two_Octet_Length (
+                                          Octet_1 => Block (index + 5),
+                                          Octet_2 => Block (index + 6));
+                           nlen : constant TBody_Length := Two_Octet_Length (
+                                          Octet_1 => Block (index + 7),
+                                          Octet_2 => Block (index + 8));
+                           result : String (1 .. Natural (nlen));
+                           offset : constant Natural :=
+                                             index + 8 + Natural (mlen);
+                        begin
+                           for x in Positive range 1 .. Positive (nlen) loop
+                              result (x) := Character'Val (Block (x + offset));
+                           end loop;
+                           return result;
+                        end;
+                  end case;
+               end if;
+               current := current + 1;
+            end if;
+         end if;
+         index := index + Natural (Size);
+      end loop;
+
+      return blank;
+
+   end Notation_Keypair;
+
+
+
+   -----------------------------------
+   --  Retrieve_Embedded_Signature  --
+   -----------------------------------
+
+   function Retrieve_Embedded_Signature (Block : TOctet_Array)
+   return TOctet_Array is
+      blank      : constant TOctet_Array (1 .. 1) := (0 => 0);
+      index      : Natural := 0;
+      MaxIndex   : constant Natural := Block'Length - 1;
+      Size       : TBody_Length;
+      SampleType : TSig_SubPacket_Type;
+   begin
+      while index <= MaxIndex - 3 loop  -- 3 bytes min for length + content
+
+         --  Calculate field size
+         --  If the Size is > 2Gb, it will overflow the Natural index...
+         if Block (index) < 192 then
+            Size := TBody_Length (Block (index));
+            index := index + 1;
+         elsif Block (index) < 255 then
+            Size := Two_Octet_Length (Block (index), Block (index + 1));
+            index := index + 2;
+         else
+            --  we might not have enough bytes, so check first
+            if index + 5 < MaxIndex then
+               Size := Four_Octet_Length (Octet_1 => Block (index + 1),
+                                          Octet_2 => Block (index + 2),
+                                          Octet_3 => Block (index + 3),
+                                          Octet_4 => Block (index + 4));
+            else
+               Size := 0;
+            end if;
+            index := index + 5;
+         end if;
+
+         if index + Natural (Size) <= MaxIndex then
+            SampleType := convert_octet_to_sig_subpacket_type (Block (index));
+            if SampleType = embedded_signature then
+               declare
+                  result : constant TOctet_Array :=
+                                    Block (index + 1 .. index + Natural (Size));
+               begin
+                  return result;
+               end;
+            end if;
+         end if;
+      end loop;
+
+      return blank;
+
+   end Retrieve_Embedded_Signature;
+
+
 end Packet_Type_2;
