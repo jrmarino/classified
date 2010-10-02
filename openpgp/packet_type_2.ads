@@ -38,7 +38,6 @@ package Packet_Type_2 is
    subtype Range_Preferences is Integer range 1 .. 5;
    subtype TPreferences   is TOctet_Array (Range_Preferences);
    subtype TFingerprint   is TOctet_Array (1 .. 22);
-   subtype TNotation      is TOctet_Array (1 .. 8);
    subtype TKeyServPref   is TOctet_Array (1 .. 1);
    subtype TKeyFlags      is TOctet_Array (1 .. 1);
    subtype TFeatures      is TOctet_Array (1 .. 1);
@@ -104,7 +103,7 @@ package Packet_Type_2 is
       trust_signature           : TTrust       := (others => 0);  --  5.2.3.13
       flag_regular_expression   : Boolean      := False;          --  5.2.3.14
       revocation_key            : TFingerprint := (others => 0);  --  5.2.3.15
-      notation_data             : TNotation    := (others => 0);  --  5.2.3.16
+      total_notations           : Natural      := 0;              --  5.2.3.16
       server_preferences        : TKeyServPref := (others => 0);  --  5.2.3.17
       flag_preferred_key_server : Boolean      := False;          --  5.2.3.18
       primary_user_id           : TOctet       := 0;              --  5.2.3.19
@@ -115,6 +114,8 @@ package Packet_Type_2 is
       features                  : TFeatures    := (others => 0);  --  5.2.3.24
       signature_target          : TSigTarget   := (others => 0);  --  5.2.3.25
       flag_embedded_signature   : Boolean      := False;          --  5.2.3.26
+      Subpacket_Position        : Natural      := 0;
+      Subpacket_Length          : Natural      := 0;
    end record;
 
 
@@ -210,7 +211,8 @@ private
    function Second_TMPI return TMPI;
    --  This function interprets the second segment as an MPI and returns it.
 
-   function Breakdown_Subpacket (Block : TOctet_Array)
+   function Breakdown_Subpacket (Block    : TOctet_Array;
+                                 Position : Natural)
    return TSignature_Subpacket;
    --  Given an array of bytes that is supposedly formatted as a signature
    --  subpacket, the block will be analyzed and the fixed-size data will be

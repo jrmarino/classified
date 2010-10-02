@@ -231,14 +231,22 @@ package body Packet_Type_2 is
 
       declare
          base : constant Natural := index + Natural (hashed_subpacket_size);
+         maxIndex : Natural;
       begin
          plain_subpacket_size := convert_octets_to_scalar_count (
                                     Octet_1 => Packet (base + 6),
                                     Octet_2 => Packet (base + 7));
-      end;
 
-      --  to do, store hashed subpackets
-      --  to do, store unhashed subpackets
+         maxIndex := index + Natural (hashed_subpacket_size) + 5;
+         result.Hashed_Subpackets := Breakdown_Subpacket (
+            Block    => Packet (index + 6 .. maxIndex),
+            Position => index + 6);
+
+         maxIndex := base + Natural (plain_subpacket_size) + 7;
+         result.Plain_Subpackets := Breakdown_Subpacket (
+            Block    => Packet (base + 8 .. maxIndex),
+            Position => base + 8);
+      end;
 
       FIndex := index + Natural (hashed_subpacket_size) + 2 +
                         Natural (plain_subpacket_size);
@@ -509,7 +517,8 @@ package body Packet_Type_2 is
    --  Breakdown_Subpacket  --
    ---------------------------
 
-   function Breakdown_Subpacket (Block : TOctet_Array)
+   function Breakdown_Subpacket (Block    : TOctet_Array;
+                                 Position : Natural)
    return TSignature_Subpacket is
       result         : TSignature_Subpacket;
       index          : Natural := 0;
@@ -518,6 +527,9 @@ package body Packet_Type_2 is
       SubPacket_Type : TSig_SubPacket_Type;
       MaxPref        : Natural;
    begin
+      result.Subpacket_Length   := Block'Length;
+      result.Subpacket_Position := Position;
+
       while index <= MaxIndex - 3 loop  -- 3 bytes min for length + content
 
          --  Calculate field size
@@ -606,9 +618,10 @@ package body Packet_Type_2 is
                when revocation_key =>
                   result.revocation_key := Block (index + 1 .. index + 22);
                when notation_data =>
-                  result.notation_data := Block (index + 1 .. index + 8);
-                  --  The remaining name data (M octets) and value data
-                  --  (N octets) are variable length, so retrieve later.
+                  result.total_notations := result.total_notations + 1;
+                  --  There can be more than one notation in the subpacket.
+                  --  The name data (M octets) and value data (N octets) are
+                  --  variable length, so retrieve later by notation number.
                when server_preferences =>
                   result.server_preferences := Block (index + 1 .. index + 1);
                when preferred_key_server =>
