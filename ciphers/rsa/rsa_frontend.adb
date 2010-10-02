@@ -57,7 +57,7 @@ package body RSA_Frontend is
             return error_msg;
          end if;
 
-         if (Revealed_Bytecode (0) /= 0) or
+         if (Revealed_Bytecode (0) /= 0) or else
             (Revealed_Bytecode (1) /= 2) then
             Last_Error := 6;  --  Decrypt error (doesn't start with 02)
             return error_msg;
@@ -72,8 +72,7 @@ package body RSA_Frontend is
                   exit Samantha when Revealed_Bytecode (z) = 0;
                   z := z + 1;
                end loop Samantha;
-            if (Revealed_Bytecode (z) /= 0) or
-               (z < 10) then
+            if (Revealed_Bytecode (z) /= 0) or else (z < 10) then
                Last_Error := 6;  --  Decrypt error (no zero bookend or pad < 8)
                                  --  means msg at least 11 chars less than mod
                return error_msg;
@@ -130,7 +129,7 @@ package body RSA_Frontend is
             return error_msg;
          end if;
 
-         if (Revealed_Bytecode (0) /= 0) or
+         if (Revealed_Bytecode (0) /= 0) or else
             (Revealed_Bytecode (1) /= 1) then
             Last_Error := 6;  --  Decrypt error (doesn't start with 01)
             return error_msg;
@@ -145,8 +144,7 @@ package body RSA_Frontend is
                   exit Samantha when Revealed_Bytecode (z) = 0;
                   z := z + 1;
                end loop Samantha;
-            if (Revealed_Bytecode (z) /= 0) or
-               (z < 10) then
+            if (Revealed_Bytecode (z) /= 0) or else (z < 10) then
                Last_Error := 6;  --  Decrypt error (no zero bookend or pad < 8)
                                  --  means msg at least 11 chars less than mod
                return error_msg;
@@ -593,27 +591,27 @@ package body RSA_Frontend is
             code := 1;
             goto complete;
          end if;
-         if (num_bits_pubexp  rem 32 /= 0) or
+         if (num_bits_pubexp  rem 32 /= 0) or else
             (num_bits_privexp rem 32 /= 0) then
             code := 2;
             goto complete;
          end if;
-         if (num_bits_p     rem 32 /= 0) or
-            (num_bits_q     rem 32 /= 0) or
-            (num_bits_expp  rem 32 /= 0) or
-            (num_bits_expq  rem 32 /= 0) or
+         if (num_bits_p     rem 32 /= 0) or else
+            (num_bits_q     rem 32 /= 0) or else
+            (num_bits_expp  rem 32 /= 0) or else
+            (num_bits_expq  rem 32 /= 0) or else
             (num_bits_coeff rem 32 /= 0) then
             code := 3;
             goto complete;
          end if;
-         if not ((num_bits_modulus = num_bits_pubexp) and
+         if not ((num_bits_modulus = num_bits_pubexp) and then
                  (num_bits_modulus = num_bits_privexp)) then
             code := 4;
             goto complete;
          end if;
-         if not ((num_bits_p = num_bits_q) and
-                 (num_bits_p = num_bits_expp) and
-                 (num_bits_p = num_bits_expq) and
+         if not ((num_bits_p = num_bits_q) and then
+                 (num_bits_p = num_bits_expp) and then
+                 (num_bits_p = num_bits_expq) and then
                  (num_bits_p = num_bits_coeff)) then
             code := 5;
             goto complete;

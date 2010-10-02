@@ -149,7 +149,7 @@ package body Generic_Matrix is
                elsif Data.Matrix (newIndex) < ExtData.Matrix (dcIndex) then
                   result := -1;
                end if;
-               exit Repeat_Until when (result /= 0) or (digitCounter = 0);
+               exit Repeat_Until when (result /= 0) or else digitCounter = 0;
             end loop Repeat_Until;
       end if;
       return result;

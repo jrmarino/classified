@@ -388,9 +388,9 @@ package body NN is
                end if;
                T1 := T1 - MQuadByte (High_Half (U)) - V;
 
-               while (T1 > MQuadByte (CHigh)) or
-                     ((T1 = MQuadByte (CHigh)) and (T0 >= Shift_To_High_Half
-                            (CLow))) loop
+               while (T1 > MQuadByte (CHigh)) or else
+                     ((T1 = MQuadByte (CHigh)) and then
+                      (T0 >= Shift_To_High_Half (CLow))) loop
                   postShiftL := Shift_To_High_Half (CLow);
                   T0 := Flowguard_Sub (T0, postShiftL);
                   if T0 > Flowguard_Sub (MAX_NN_DIGIT, postShiftL) then
@@ -404,7 +404,7 @@ package body NN is
                   ALow := High_Half (T1);
                else
                   ALow := MDualByte (Flowguard_Add (
-                          MQuadByte (Shift_To_High_Half (MDualByte (T1))),
+                          Shift_To_High_Half (MDualByte (T1)),
                           MQuadByte (High_Half (T0))) /
                           MQuadByte (CHigh + 1));
                end if;
@@ -422,7 +422,7 @@ package body NN is
                end if;
                T1 := Flowguard_Sub (T1, MQuadByte (High_Half (V)));
 
-               while (T1 > 0) or ((T1 = 0) and (T0 >= S)) loop
+               while (T1 > 0) or else ((T1 = 0) and then (T0 >= S)) loop
                   T0 := Flowguard_Sub (T0, S);
                   if T0 > Flowguard_Sub (MAX_NN_DIGIT, S) then
                      T1 := T1 - 1;
@@ -445,7 +445,7 @@ package body NN is
             ndx := K + QuadByteDigitIndex (DD_Digits);
             CC_Internal.Matrix (ndx) := CC_Internal.Matrix (ndx) - borrow;
 
-            while (CC_Internal.Matrix (ndx) > 0) or
+            while (CC_Internal.Matrix (ndx) > 0) or else
                   (CC_Internal.Compared_With (
                     Index     => K,
                     ExtData   => DD_Internal,
@@ -470,10 +470,12 @@ package body NN is
 
 <<Determine_Modulus>>
 
+      pragma Warnings (Off);  -- disable "(carry) value never referenced"
       NN_RShift (Result    => ResMod,
                  LHS       => CC_Internal,
                  numBits   => shift,
                  carry     => carry);
+      pragma Warnings (On);
 
       ResMod.CurrentLen := ResMod.Significant_Length;
       ResDiv.CurrentLen := ResDiv.Significant_Length;
