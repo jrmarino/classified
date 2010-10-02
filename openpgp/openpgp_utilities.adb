@@ -132,4 +132,42 @@ package body OpenPGP_Utilities is
       end case;
    end Convert_Octet_To_Hash_ID;
 
+
+
+   ------------------------
+   --  Two_Octet_Length  --
+   ------------------------
+
+   function Two_Octet_Length (Octet_1 : TOctet;
+                              Octet_2 : TOctet)
+   return TBody_Length is
+      shift8  : constant TBody_Length := 2 ** 8;
+   begin
+      return TBody_Length (Octet_1) - 192) * shift8 +
+             TBody_Length (Octet_2) +
+             192;
+   end Two_Octet_Length;
+
+
+
+   -------------------------
+   --  Four_Octet_Length  --
+   -------------------------
+
+   function Four_Octet_Length (Octet_1 : TOctet;
+                               Octet_2 : TOctet;
+                               Octet_3 : TOctet;
+                               Octet_4 : TOctet)
+   return TBody_Length is
+      shift24 : constant TBody_Length := 2 ** 24;
+      shift16 : constant TBody_Length := 2 ** 16;
+      shift8  : constant TBody_Length := 2 ** 8;
+   begin
+      return TBody_Length (Octet_1) * shift24 +
+             TBody_Length (Octet_2) * shift16 +
+             TBody_Length (Octet_3) * shift8  +
+             TBody_Length (Octet_4);
+   end Four_Octet_Length;
+
+
 end OpenPGP_Utilities;

@@ -35,13 +35,15 @@ package Packet_Type_2 is
    type TSigVersion is (illegal, three, four);
    type TLeft16 is mod 16#10000#;
    type TScalarCount is mod 16#10000#;
-   type TPreferences   is array (1 .. 5) of TOctet;
-   type TFingerprint   is array (1 .. 22) of TOctet;
-   type TNotation      is array (1 .. 4) of TOctet;
-   type TKeyServPref   is array (1 .. 1) of TOctet;
-   type TKeyFlags      is array (1 .. 1) of TOctet;
-   type TFeatures      is array (1 .. 1) of TOctet;
-   type TSigTarget     is array (1 .. 66) of TOctet;
+   subtype Range_Preferences is Integer range 1 .. 5;
+   subtype TPreferences   is TOctet_Array (Range_Preferences);
+   subtype TFingerprint   is TOctet_Array (1 .. 22);
+   subtype TNotation      is TOctet_Array (1 .. 8);
+   subtype TKeyServPref   is TOctet_Array (1 .. 1);
+   subtype TKeyFlags      is TOctet_Array (1 .. 1);
+   subtype TFeatures      is TOctet_Array (1 .. 1);
+   subtype TSigTarget     is TOctet_Array (1 .. 66);
+   subtype TTrust         is TOctet_Array (1 .. 2);
 
    type TSignatureType is (
       Undefined,
@@ -62,30 +64,7 @@ package Packet_Type_2 is
       third_party_confirmation
    );
 
-
-   type TPacket_2_3_Fixed is record
-      Version        : TVersion          := 0;
-      Signature_Type : TSignatureType    := Undefined;
-      Creation_Time  : TUnixTime         := 0;
-      KeyID          : TKeyID            := (others => 0);
-      Algorithm      : TPubKey_Algorithm := Undefined;
-      Hash           : THash_Algorithm   := Undefined;
-      Left16         : TLeft16           := 0;
-      Error          : TP2_Error         := no_error;
-   end record;
-
-   type TPacket_2_4_Fixed is record
-      Version           : TVersion          := 0;
-      Signature_Type    : TSignatureType    := Undefined;
-      Algorithm         : TPubKey_Algorithm := Undefined;
-      Hash              : THash_Algorithm   := Undefined;
-      Left16            : TLeft16           := 0;
-      Hashed_Subpackets : TScalarCount      := 0;
-      Plain_Subpackets  : TScalarCount      := 0;
-      Error             : TP2_Error         := no_error;
-   end record;
-
-   type TSignature_Subpacket is (
+   type TSig_SubPacket_Type is (
       signature_creation_time,
       signature_expiration_time,
       exportable_certification,
@@ -93,7 +72,6 @@ package Packet_Type_2 is
       regular_expression,
       revocable,
       key_expiration_time,
-      backwards_compatibility,
       preferred_symmetrics,
       revocation_key,
       issuer,
@@ -109,10 +87,11 @@ package Packet_Type_2 is
       reason_for_revocation,
       features,
       signature_target,
-      embedded_signature
+      embedded_signature,
+      unimplemented
    );
 
-   type TSignature_Subpacket_Flags is record
+   type TSignature_Subpacket is record
       signature_creation_time   : TUnixTime    := 0;              --  5.2.3.4
       issuer                    : TKeyID       := (others => 0);  --  5.2.3.5
       key_expiration_time       : TUnixTime    := 0;              --  5.2.3.6
@@ -122,7 +101,7 @@ package Packet_Type_2 is
       signature_expiration_time : TUnixTime    := 0;              --  5.2.3.10
       exportable_certification  : TOctet       := 1;              --  5.2.3.11
       revocable                 : TOctet       := 1;              --  5.2.3.12
-      trust_signature           : TOctet       := 0;              --  5.2.3.13
+      trust_signature           : TTrust       := (others => 0);  --  5.2.3.13
       flag_regular_expression   : Boolean      := False;          --  5.2.3.14
       revocation_key            : TFingerprint := (others => 0);  --  5.2.3.15
       notation_data             : TNotation    := (others => 0);  --  5.2.3.16
@@ -137,6 +116,30 @@ package Packet_Type_2 is
       signature_target          : TSigTarget   := (others => 0);  --  5.2.3.25
       flag_embedded_signature   : Boolean      := False;          --  5.2.3.26
    end record;
+
+
+   type TPacket_2_3_Fixed is record
+      Version        : TVersion          := 0;
+      Signature_Type : TSignatureType    := Undefined;
+      Creation_Time  : TUnixTime         := 0;
+      KeyID          : TKeyID            := (others => 0);
+      Algorithm      : TPubKey_Algorithm := Undefined;
+      Hash           : THash_Algorithm   := Undefined;
+      Left16         : TLeft16           := 0;
+      Error          : TP2_Error         := no_error;
+   end record;
+
+   type TPacket_2_4_Fixed is record
+      Version           : TVersion             := 0;
+      Signature_Type    : TSignatureType       := Undefined;
+      Algorithm         : TPubKey_Algorithm    := Undefined;
+      Hash              : THash_Algorithm      := Undefined;
+      Left16            : TLeft16              := 0;
+      Error             : TP2_Error            := no_error;
+      Hashed_Subpackets : TSignature_Subpacket;
+      Plain_Subpackets  : TSignature_Subpacket;
+   end record;
+
 
    function Determine_Version (Header : TPacket_Header;
                                Packet : TOctet_Array) return TSigVersion;
@@ -206,5 +209,21 @@ private
 
    function Second_TMPI return TMPI;
    --  This function interprets the second segment as an MPI and returns it.
+
+   function Breakdown_Subpacket (Block : TOctet_Array)
+   return TSignature_Subpacket;
+   --  Given an array of bytes that is supposedly formatted as a signature
+   --  subpacket, the block will be analyzed and the fixed-size data will be
+   --  returned in the TSignature_Subpacket record.  For those few data that
+   --  are variable length, a flag will be set to show this is present, but
+   --  the fields will have be extracted by another function.
+
+   function convert_octet_to_sig_subpacket_type (Octet : TOctet)
+   return TSig_SubPacket_Type;
+   --  This function will accept an octet, and return a signature subpacket
+   --  type for all implemented types.  If the octet value is not recognized,
+   --  or the type is reserved or otherwise non-functional, the value of
+   --  "unimplemented" will be returned.
+
 
 end Packet_Type_2;

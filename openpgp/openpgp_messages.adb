@@ -14,6 +14,8 @@
 --  OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 
+with OpenPGP_Utilities; use OpenPGP_Utilities;
+
 package body OpenPGP_Messages is
 
 
@@ -25,9 +27,6 @@ package body OpenPGP_Messages is
    return TPacket_Header is
       blank   : TPacket_Header;
       work    : TPacket_Header;
-      shift24 : constant TBody_Length := 2 ** 24;
-      shift16 : constant TBody_Length := 2 ** 16;
-      shift8  : constant TBody_Length := 2 ** 8;
    begin
       if Packet'Length < 2 then
          return blank;
@@ -65,17 +64,16 @@ package body OpenPGP_Messages is
          if Packet'Length < 3 then
             return blank;
          end if;
-         work.Body_Length := ((TBody_Length (Packet (1)) - 192) * shift8) +
-                               TBody_Length (Packet (2)) + 192;
+         work.Body_Length := Two_Octet_Length (Packet (1), Packet (2));
          work.Body_Starts := 3;
       elsif Packet (1) = 255 then
          if Packet'Length < 6 then
             return blank;
          end if;
-         work.Body_Length := (TBody_Length (Packet (2)) * shift24) +
-                             (TBody_Length (Packet (3)) * shift16) +
-                             (TBody_Length (Packet (4)) * shift8)  +
-                              TBody_Length (Packet (5));
+         work.Body_Length := Four_Octet_Length (Octet_1 => Packet (2),
+                                                Octet_2 => Packet (3),
+                                                Octet_3 => Packet (4),
+                                                Octet_4 => Packet (5));
          work.Body_Starts := 6;
       else
          --  Indeterminate length

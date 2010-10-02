@@ -189,6 +189,8 @@ package body Packet_Type_2 is
       result  : TPacket_2_4_Fixed;
       Bodylen : Natural := 0;
       FIndex  : Natural;
+      hashed_subpacket_size : TScalarCount;
+      plain_subpacket_size  : TScalarCount;
    begin
       if Header.Body_Length < 7 then
          result.Error := header_too_short;
@@ -219,18 +221,18 @@ package body Packet_Type_2 is
       end if;
 
       result.Hash := Convert_Octet_To_Hash_ID (Octet => Packet (index + 3));
-      result.Hashed_Subpackets := convert_octets_to_scalar_count (
+      hashed_subpacket_size := convert_octets_to_scalar_count (
                                     Octet_1 => Packet (index + 4),
                                     Octet_2 => Packet (index + 5));
-      if Header.Body_Length < TBody_Length (6 + result.Hashed_Subpackets) then
+      if Header.Body_Length < TBody_Length (6 + hashed_subpacket_size) then
          result.Error := header_too_short;
          return result;
       end if;
 
       declare
-         base : constant Natural := index + Natural (result.Hashed_Subpackets);
+         base : constant Natural := index + Natural (hashed_subpacket_size);
       begin
-         result.Plain_Subpackets := convert_octets_to_scalar_count (
+         plain_subpacket_size := convert_octets_to_scalar_count (
                                     Octet_1 => Packet (base + 6),
                                     Octet_2 => Packet (base + 7));
       end;
@@ -238,8 +240,8 @@ package body Packet_Type_2 is
       --  to do, store hashed subpackets
       --  to do, store unhashed subpackets
 
-      FIndex := index + Natural (result.Hashed_Subpackets) + 2 +
-                        Natural (result.Plain_Subpackets);
+      FIndex := index + Natural (hashed_subpacket_size) + 2 +
+                        Natural (plain_subpacket_size);
       declare
          --  all known algorithms have at least one MPI, check that it is valid
          Size : constant Natural := MPI_Byte_Size (
@@ -463,6 +465,189 @@ package body Packet_Type_2 is
    begin
       return Second_TMPI;
    end Retrieve_DSA_s;
+
+
+
+   -------------------------------------------
+   --  convert_octet_to_sig_subpacket_type  --
+   -------------------------------------------
+
+   function convert_octet_to_sig_subpacket_type (Octet : TOctet)
+   return TSig_SubPacket_Type is
+   begin
+      case Octet is
+         when      2 => return signature_creation_time;
+         when      3 => return signature_expiration_time;
+         when      4 => return exportable_certification;
+         when      5 => return trust_signature;
+         when      6 => return regular_expression;
+         when      7 => return revocable;
+         when      9 => return key_expiration_time;
+         when     11 => return preferred_symmetrics;
+         when     12 => return revocation_key;
+         when     16 => return issuer;
+         when     20 => return notation_data;
+         when     21 => return preferred_hashes;
+         when     22 => return preferred_compressions;
+         when     23 => return server_preferences;
+         when     24 => return preferred_key_server;
+         when     25 => return primary_user_id;
+         when     26 => return policy_uri;
+         when     27 => return key_flags;
+         when     28 => return signers_user_id;
+         when     29 => return reason_for_revocation;
+         when     30 => return features;
+         when     31 => return signature_target;
+         when     32 => return embedded_signature;
+         when others => return unimplemented;
+      end case;
+   end convert_octet_to_sig_subpacket_type;
+
+
+
+   ---------------------------
+   --  Breakdown_Subpacket  --
+   ---------------------------
+
+   function Breakdown_Subpacket (Block : TOctet_Array)
+   return TSignature_Subpacket is
+      result         : TSignature_Subpacket;
+      index          : Natural := 0;
+      MaxIndex       : constant Natural := Block'Length - 1;
+      Size           : TBody_Length;
+      SubPacket_Type : TSig_SubPacket_Type;
+      MaxPref        : Natural;
+   begin
+      while index <= MaxIndex - 3 loop  -- 3 bytes min for length + content
+
+         --  Calculate field size
+         --  If the Size is > 2Gb, it will overflow the Natural index...
+         if Block (index) < 192 then
+            Size := TBody_Length (Block (index));
+            index := index + 1;
+         elsif Block (index) < 255 then
+            Size := Two_Octet_Length (Block (index), Block (index + 1));
+            index := index + 2;
+         else
+            --  we might not have enough bytes, so check first
+            if index + 5 < MaxIndex then
+               Size := Four_Octet_Length (Octet_1 => Block (index + 1),
+                                          Octet_2 => Block (index + 2),
+                                          Octet_3 => Block (index + 3),
+                                          Octet_4 => Block (index + 4));
+            else
+               Size := 0;
+            end if;
+            index := index + 5;
+         end if;
+         if index + Natural (Size) <= MaxIndex then
+            SubPacket_Type :=
+                  convert_octet_to_sig_subpacket_type (Block (index));
+            case SubPacket_Type is
+               when signature_creation_time =>
+                  result.signature_creation_time := Construct_Unix_Time (
+                     Octet_1 => Block (index + 1),
+                     Octet_2 => Block (index + 2),
+                     Octet_3 => Block (index + 3),
+                     Octet_4 => Block (index + 4));
+               when issuer =>
+                  result.issuer := Block (index + 1 .. index + 8);
+               when key_expiration_time =>
+                  result.key_expiration_time := Construct_Unix_Time (
+                     Octet_1 => Block (index + 1),
+                     Octet_2 => Block (index + 2),
+                     Octet_3 => Block (index + 3),
+                     Octet_4 => Block (index + 4));
+               when preferred_symmetrics =>
+                  --  initializing in case this is 2nd+ of this type
+                  result.preferred_symmetrics := (others => 0);
+                  if Size < TBody_Length (Range_Preferences'Last) then
+                     MaxPref := Natural (Size);
+                  else
+                     MaxPref := Natural (Range_Preferences'Last);
+                  end if;
+                  result.preferred_symmetrics (1 .. MaxPref) :=
+                        Block (index + 1 .. index + MaxPref);
+               when preferred_hashes =>
+                  --  initializing in case this is 2nd+ of this type
+                  result.preferred_hashes := (others => 0);
+                  if Size < TBody_Length (Range_Preferences'Last) then
+                     MaxPref := Natural (Size);
+                  else
+                     MaxPref := Natural (Range_Preferences'Last);
+                  end if;
+                  result.preferred_hashes (1 .. MaxPref) :=
+                        Block (index + 1 .. index + MaxPref);
+               when preferred_compressions =>
+                  --  initializing in case this is 2nd+ of this type
+                  result.preferred_compressions := (others => 0);
+                  if Size < TBody_Length (Range_Preferences'Last) then
+                     MaxPref := Natural (Size);
+                  else
+                     MaxPref := Natural (Range_Preferences'Last);
+                  end if;
+                  result.preferred_compressions (1 .. MaxPref) :=
+                        Block (index + 1 .. index + MaxPref);
+               when signature_expiration_time =>
+                  result.signature_expiration_time := Construct_Unix_Time (
+                     Octet_1 => Block (index + 1),
+                     Octet_2 => Block (index + 2),
+                     Octet_3 => Block (index + 3),
+                     Octet_4 => Block (index + 4));
+               when exportable_certification =>
+                  result.exportable_certification := Block (index + 1);
+               when revocable =>
+                  result.revocable := Block (index + 1);
+               when trust_signature =>
+                  result.trust_signature := Block (index + 1 .. index + 2);
+               when regular_expression =>
+                  result.flag_regular_expression := True;
+                  --  Variable length, so we can only flag that it exists.
+               when revocation_key =>
+                  result.revocation_key := Block (index + 1 .. index + 22);
+               when notation_data =>
+                  result.notation_data := Block (index + 1 .. index + 8);
+                  --  The remaining name data (M octets) and value data
+                  --  (N octets) are variable length, so retrieve later.
+               when server_preferences =>
+                  result.server_preferences := Block (index + 1 .. index + 1);
+               when preferred_key_server =>
+                  result.flag_preferred_key_server := True;
+                  --  Variable length, so we can only flag that it exists.
+               when primary_user_id =>
+                  result.primary_user_id := Block (index + 1);
+               when policy_uri =>
+                  result.flag_policy_uri := True;
+                  --  Variable length, so we can only flag that it exists.
+               when key_flags =>
+                  result.key_flags := Block (index + 1 .. index + 1);
+               when signers_user_id =>
+                  result.flag_signers_user_id := True;
+                  --  Variable length, so we can only flag that it exists.
+               when reason_for_revocation =>
+                  result.reason_for_revocation := Block (index + 1);
+                  --  The remaining human readable reason (N octets) is
+                  --  variable length and needs to be retrieved later.
+               when features =>
+                    result.features := Block (index + 1 .. index + 1);
+               when signature_target =>
+                  --  initializing in case this is 2nd+ of this type
+                  result.signature_target := (others => 0);
+                  result.signature_target (0 .. Natural (Size) - 1) :=
+                        Block (index + 1 .. index + Natural (Size));
+               when embedded_signature =>
+                  result.flag_embedded_signature := True;
+                  --  The variable data is an entire embedded sig packet!
+               when others =>
+                  null;
+            end case;
+         end if;
+         index := index + Natural (Size);
+      end loop;
+
+      return result;
+
+   end Breakdown_Subpacket;
 
 
 

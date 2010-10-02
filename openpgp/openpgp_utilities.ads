@@ -55,5 +55,18 @@ package OpenPGP_Utilities is
    --  If the provided octet is unknown, the value "Undefined" is returned.
 
 
+   function Two_Octet_Length (Octet_1 : TOctet;
+                              Octet_2 : TOctet) return TBody_Length;
+   --  This calculates the length of the following data using two octets.  The
+   --  calling code must have already determined it's a 2-octet length.
+
+
+   function Four_Octet_Length (Octet_1 : TOctet;
+                               Octet_2 : TOctet;
+                               Octet_3 : TOctet;
+                               Octet_4 : TOctet) return TBody_Length;
+   --  This calculates the length of the following data using four octets.  The
+   --  calling code must have already determined it's a 4-octet length.
+
 end OpenPGP_Utilities;
 
