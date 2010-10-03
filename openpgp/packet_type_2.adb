@@ -529,6 +529,7 @@ package body Packet_Type_2 is
    begin
       result.Subpacket_Length   := Block'Length;
       result.Subpacket_Position := Position;
+      result.total_notations    := 0;
 
       while index <= MaxIndex - 3 loop  -- 3 bytes min for length + content
 
@@ -613,20 +614,41 @@ package body Packet_Type_2 is
                when trust_signature =>
                   result.trust_signature := Block (index + 1 .. index + 2);
                when regular_expression =>
-                  result.flag_regular_expression := True;
-                  --  Variable length, so we can only flag that it exists.
+                  result.regular_expression :=
+                        convert_octet_array_to_unbounded_string (
+                              Block (index + 1 .. index + Natural (Size)));
                when revocation_key =>
                   result.revocation_key := Block (index + 1 .. index + 22);
                when notation_data =>
                   result.total_notations := result.total_notations + 1;
-                  --  There can be more than one notation in the subpacket.
-                  --  The name data (M octets) and value data (N octets) are
-                  --  variable length, so retrieve later by notation number.
+                  if result.total_notations <= 10 then
+                     result.notational_data (result.total_notations).flags :=
+                        Block (index + 1 .. index + 4);
+                     declare
+                        mlen : constant TBody_Length := Two_Octet_Length (
+                                             Octet_1 => Block (index + 5),
+                                             Octet_2 => Block (index + 6));
+                        nlen : constant TBody_Length := Two_Octet_Length (
+                                             Octet_1 => Block (index + 7),
+                                             Octet_2 => Block (index + 8));
+                        offsetn : constant Natural := index + 8;
+                        offsetv : constant Natural :=
+                                             index + 8 + Natural (mlen);
+                     begin
+                        result.notational_data (result.total_notations).name :=
+                           convert_octet_array_to_unbounded_string (
+                              Block (offsetn + 1 .. offsetn + Natural (mlen)));
+                        result.notational_data (result.total_notations).value :=
+                           convert_octet_array_to_unbounded_string (
+                              Block (offsetv + 1 .. offsetv + Natural (nlen)));
+                     end;
+                  end if;
                when server_preferences =>
                   result.server_preferences := Block (index + 1 .. index + 1);
                when preferred_key_server =>
-                  result.flag_preferred_key_server := True;
-                  --  Variable length, so we can only flag that it exists.
+                  result.preferred_key_server :=
+                        convert_octet_array_to_unbounded_string (
+                              Block (index + 1 .. index + Natural (Size)));
                when primary_user_id =>
                   result.primary_user_id := Block (index + 1);
                when policy_uri =>
@@ -635,12 +657,14 @@ package body Packet_Type_2 is
                when key_flags =>
                   result.key_flags := Block (index + 1 .. index + 1);
                when signers_user_id =>
-                  result.flag_signers_user_id := True;
-                  --  Variable length, so we can only flag that it exists.
+                  result.signers_user_id :=
+                        convert_octet_array_to_unbounded_string (
+                              Block (index + 1 .. index + Natural (Size)));
                when reason_for_revocation =>
                   result.reason_for_revocation := Block (index + 1);
-                  --  The remaining human readable reason (N octets) is
-                  --  variable length and needs to be retrieved later.
+                  result.revocation_reason_text :=
+                        convert_octet_array_to_unbounded_string (
+                              Block (index + 2 .. index + Natural (Size)));
                when features =>
                     result.features := Block (index + 1 .. index + 1);
                when signature_target =>
@@ -664,72 +688,6 @@ package body Packet_Type_2 is
 
 
 
-   -----------------------
-   --  Subpacket_value  --
-   -----------------------
-
-   function Subpacket_value (Block          : TOctet_Array;
-                             SubPacket_Type : TSig_SubPacket_Type)
-   return String is
-      blank      : constant String := "";
-      index      : Natural := 0;
-      MaxIndex   : constant Natural := Block'Length - 1;
-      Size       : TBody_Length;
-      SampleType : TSig_SubPacket_Type;
-   begin
-      while index <= MaxIndex - 3 loop  -- 3 bytes min for length + content
-
-         --  Calculate field size
-         --  If the Size is > 2Gb, it will overflow the Natural index...
-         if Block (index) < 192 then
-            Size := TBody_Length (Block (index));
-            index := index + 1;
-         elsif Block (index) < 255 then
-            Size := Two_Octet_Length (Block (index), Block (index + 1));
-            index := index + 2;
-         else
-            --  we might not have enough bytes, so check first
-            if index + 5 < MaxIndex then
-               Size := Four_Octet_Length (Octet_1 => Block (index + 1),
-                                          Octet_2 => Block (index + 2),
-                                          Octet_3 => Block (index + 3),
-                                          Octet_4 => Block (index + 4));
-            else
-               Size := 0;
-            end if;
-            index := index + 5;
-         end if;
-
-         if index + Natural (Size) <= MaxIndex then
-            SampleType := convert_octet_to_sig_subpacket_type (Block (index));
-            if SampleType = SubPacket_Type then
-               declare
-                  SmallBlock : constant TOctet_Array :=
-                               Block (index + 1 .. index + Natural (Size));
-               begin
-                  case SampleType is
-                     when regular_expression   |
-                          preferred_key_server |
-                          policy_uri           |
-                          signers_user_id      =>
-                        return convert_octet_array_to_string (SmallBlock);
-                     when reason_for_revocation =>
-                        return convert_octet_array_to_string
-                              (SmallBlock (1 .. SmallBlock'Last));
-                     when others => null;
-                  end case;
-               end;
-            end if;
-         end if;
-         index := index + Natural (Size);
-      end loop;
-
-      return blank;
-
-   end Subpacket_value;
-
-
-
    -------------------------------------
    --  convert_octet_array_to_string  --
    -------------------------------------
@@ -748,99 +706,16 @@ package body Packet_Type_2 is
 
 
 
-   ------------------------
-   --  Notation_Keypair  --
-   ------------------------
+   -----------------------------------------------
+   --  convert_octet_array_to_unbounded_string  --
+   -----------------------------------------------
 
-   function Notation_Keypair (Block        : TOctet_Array;
-                              NotationType : TNotationType;
-                              number       : Positive)
-   return String is
-      blank      : constant String := "";
-      index      : Natural := 0;
-      MaxIndex   : constant Natural := Block'Length - 1;
-      Size       : TBody_Length;
-      SampleType : TSig_SubPacket_Type;
-      current    : Positive := 1;
+   function convert_octet_array_to_unbounded_string (Block : TOctet_Array)
+   return SU.Unbounded_String is
+      scratch : constant String := convert_octet_array_to_string (Block);
    begin
-      while index <= MaxIndex - 3 loop  -- 3 bytes min for length + content
-
-         --  Calculate field size
-         --  If the Size is > 2Gb, it will overflow the Natural index...
-         if Block (index) < 192 then
-            Size := TBody_Length (Block (index));
-            index := index + 1;
-         elsif Block (index) < 255 then
-            Size := Two_Octet_Length (Block (index), Block (index + 1));
-            index := index + 2;
-         else
-            --  we might not have enough bytes, so check first
-            if index + 5 < MaxIndex then
-               Size := Four_Octet_Length (Octet_1 => Block (index + 1),
-                                          Octet_2 => Block (index + 2),
-                                          Octet_3 => Block (index + 3),
-                                          Octet_4 => Block (index + 4));
-            else
-               Size := 0;
-            end if;
-            index := index + 5;
-         end if;
-
-         if index + Natural (Size) <= MaxIndex then
-            SampleType := convert_octet_to_sig_subpacket_type (Block (index));
-            if SampleType = notation_data then
-               if current = number then
-                  case NotationType is
-                     when flags =>
-                        declare
-                           result : String (1 .. 4);
-                        begin
-                           for x in Positive range 1 .. 4 loop
-                              result (x) := Character'Val (Block (index + x));
-                           end loop;
-                           return result;
-                        end;
-                     when name =>
-                        declare
-                           mlen : constant TBody_Length := Two_Octet_Length (
-                                          Octet_1 => Block (index + 5),
-                                          Octet_2 => Block (index + 6));
-                           result : String (1 .. Natural (mlen));
-                           offset : constant Natural := index + 8;
-                        begin
-                           for x in Positive range 1 .. Positive (mlen) loop
-                              result (x) := Character'Val (Block (x + offset));
-                           end loop;
-                           return result;
-                        end;
-                     when value =>
-                        declare
-                           mlen : constant TBody_Length := Two_Octet_Length (
-                                          Octet_1 => Block (index + 5),
-                                          Octet_2 => Block (index + 6));
-                           nlen : constant TBody_Length := Two_Octet_Length (
-                                          Octet_1 => Block (index + 7),
-                                          Octet_2 => Block (index + 8));
-                           result : String (1 .. Natural (nlen));
-                           offset : constant Natural :=
-                                             index + 8 + Natural (mlen);
-                        begin
-                           for x in Positive range 1 .. Positive (nlen) loop
-                              result (x) := Character'Val (Block (x + offset));
-                           end loop;
-                           return result;
-                        end;
-                  end case;
-               end if;
-               current := current + 1;
-            end if;
-         end if;
-         index := index + Natural (Size);
-      end loop;
-
-      return blank;
-
-   end Notation_Keypair;
+      return SU.To_Unbounded_String (scratch);
+   end convert_octet_array_to_unbounded_string;
 
 
 

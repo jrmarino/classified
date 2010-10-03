@@ -15,8 +15,11 @@
 
 
 with OpenPGP_Types; use OpenPGP_Types;
+with Ada.Strings.Unbounded;
 
 package Packet_Type_2 is
+
+   package SU renames Ada.Strings.Unbounded;
 
    type TP2_Error is (
       no_error,
@@ -91,6 +94,13 @@ package Packet_Type_2 is
       unimplemented
    );
 
+   type TNotationRecord is record
+      flags : TOctet_Array (1 .. 4) := (others => 0);
+      name  : SU.Unbounded_String   := SU.Null_Unbounded_String;
+      value : SU.Unbounded_String   := SU.Null_Unbounded_String;
+   end record;
+   type TNotationSet is array (1 .. 10) of TNotationRecord;
+
    type TSignature_Subpacket is record
       signature_creation_time   : TUnixTime    := 0;              --  5.2.3.4
       issuer                    : TKeyID       := (others => 0);  --  5.2.3.5
@@ -102,16 +112,22 @@ package Packet_Type_2 is
       exportable_certification  : TOctet       := 1;              --  5.2.3.11
       revocable                 : TOctet       := 1;              --  5.2.3.12
       trust_signature           : TTrust       := (others => 0);  --  5.2.3.13
-      flag_regular_expression   : Boolean      := False;          --  5.2.3.14
+      regular_expression        : SU.Unbounded_String :=
+                                  SU.Null_Unbounded_String;       --  5.2.3.14
       revocation_key            : TFingerprint := (others => 0);  --  5.2.3.15
-      total_notations           : Natural      := 0;              --  5.2.3.16
+      total_notations           : Natural      := 0;
+      notational_data           : TNotationSet;                   --  5.2.3.16
       server_preferences        : TKeyServPref := (others => 0);  --  5.2.3.17
-      flag_preferred_key_server : Boolean      := False;          --  5.2.3.18
+      preferred_key_server      : SU.Unbounded_String :=
+                                  SU.Null_Unbounded_String;       --  5.2.3.18
       primary_user_id           : TOctet       := 0;              --  5.2.3.19
       flag_policy_uri           : Boolean      := False;          --  5.2.3.20
       key_flags                 : TKeyFlags    := (others => 0);  --  5.2.3.21
-      flag_signers_user_id      : Boolean      := False;          --  5.2.3.22
-      reason_for_revocation     : TOctet       := 0;              --  5.2.3.23
+      signers_user_id           : SU.Unbounded_String :=
+                                  SU.Null_Unbounded_String;       --  5.2.3.22
+      reason_for_revocation     : TOctet       := 0;
+      revocation_reason_text    : SU.Unbounded_String :=
+                                  SU.Null_Unbounded_String;       --  5.2.3.23
       features                  : TFeatures    := (others => 0);  --  5.2.3.24
       signature_target          : TSigTarget   := (others => 0);  --  5.2.3.25
       flag_embedded_signature   : Boolean      := False;          --  5.2.3.26
@@ -173,24 +189,6 @@ package Packet_Type_2 is
 
    function Retrieve_DSA_s return TMPI;
    --  For DSA keys, this function return the MPI value of s
-
-
-   function Subpacket_value (Block          : TOctet_Array;
-                             SubPacket_Type : TSig_SubPacket_Type)
-   return String;
-   --  For subpacket types of regular_expression, flag_preferred_key_server,
-   --  flag_policy_uri, flag_signers_user_id, reason_for_revocation
-
-
-   function Notation_Keypair (Block        : TOctet_Array;
-                              NotationType : TNotationType;
-                              number       : Positive) return String;
-   --  This function returns a string, either the notation's name or value.
-   --  The input index must be at least 1, which stands for notation #1 and it
-   --  must be less than the total number of notations in the subpacket.
-   --  If the index is too high or there are no notations, a blank string is
-   --  returned.  The four flags can be passed as a 4-character string using
-   --  the notation type of "flags"
 
 
    function Retrieve_Embedded_Signature (Block : TOctet_Array)
@@ -257,5 +255,8 @@ private
    function convert_octet_array_to_string (Block : TOctet_Array) return String;
    --  This function will convert an array of octets to a UTF-8 string.
 
+   function convert_octet_array_to_unbounded_string (Block : TOctet_Array)
+   return SU.Unbounded_String;
+   --  This function will convert an array of octets to an unbounded string.
 
 end Packet_Type_2;
