@@ -92,5 +92,12 @@ package OpenPGP_Utilities is
    --  is considered reserved, do not use.
 
 
+   function convert_octet_array_to_string (Block : TOctet_Array) return String;
+   --  This function will convert an array of octets to a UTF-8 string.
+
+
+   function convert_string_to_octet_array (data : String) return TOctet_Array;
+   --  This funciton converts a string to an array of octets.
+
 end OpenPGP_Utilities;
 

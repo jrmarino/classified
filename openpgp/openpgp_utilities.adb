@@ -311,4 +311,40 @@ package body OpenPGP_Utilities is
    end Convert_Packet_Tag_To_Octet;
 
 
+
+   -------------------------------------
+   --  convert_octet_array_to_string  --
+   -------------------------------------
+
+   function convert_octet_array_to_string (Block : TOctet_Array)
+   return String is
+      result : String (1 .. Block'Length);
+      index  : Natural := 0;
+   begin
+      for x in Natural range 0 .. Block'Length loop
+         index := index + 1;
+         result (index) := Character'Val (Block (x));
+      end loop;
+      return result;
+   end convert_octet_array_to_string;
+
+
+
+   -------------------------------------
+   --  convert_string_to_octet_array  --
+   -------------------------------------
+
+   function convert_string_to_octet_array (data : String)
+   return TOctet_Array is
+      result : TOctet_Array (0 .. data'Length - 1);
+      index  : Natural := 0;
+   begin
+      for x in data'Range loop
+         result (index) := TOctet (Character'Pos (data (x)));
+         index := index + 1;
+      end loop;
+      return result;
+   end convert_string_to_octet_array;
+
+
 end OpenPGP_Utilities;
