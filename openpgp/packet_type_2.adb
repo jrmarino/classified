@@ -789,20 +789,28 @@ package body Packet_Type_2 is
                            Encode_Body_Length (Hashed_Subpacket'Length);
       PS_Length : constant TOctet_Array :=
                            Encode_Body_Length (Plain_Subpacket'Length);
-      Total_Size : constant Integer := 6 +
+      Body_Length : constant TBody_Length := 6 +
                                        HS_Length'Length +
                                        PS_Length'Length +
                                        Hashed_Subpacket'Length +
                                        Plain_Subpacket'Length +
                                        Value_mdn'Length;
-      result : TOctet_Array (0 .. Total_Size - 1) := (others => 0);
-      ndx0 : Natural := 4;
-      ndx1 : Natural := HS_Length'Length + ndx0 - 1;
+      enclen : constant TOctet_Array := Encode_Body_Length (Body_Length);
+      Last_Index : constant Natural := Natural (Body_Length) + enclen'Length;
+      result : TOctet_Array (0 .. Last_Index) := (others => 0);
+      ndx0 : Natural := enclen'Length + 1;
+      ndx1 : Natural;
    begin
-      result (0) := 4;   --  version 4
-      result (1) := convert_signature_type_to_octet (Signature_Type);
-      result (2) := 1;   --  RSA Encrypt or Sign
-      result (3) := Convert_Hash_ID_To_Octet (hash_Algorithm => Hash);
+      result (0) := Convert_Packet_Tag_To_Octet (Signature);
+      result (1 .. enclen'Length) := enclen;
+
+      result (ndx0) := 4;   --  version 4
+      result (ndx0 + 1) := convert_signature_type_to_octet (Signature_Type);
+      result (ndx0 + 2) := 1;   --  RSA Encrypt or Sign
+      result (ndx0 + 3) := Convert_Hash_ID_To_Octet (hash_Algorithm => Hash);
+
+      ndx0 := ndx0 + 4;
+      ndx1 := ndx0 + HS_Length'Last;
       result (ndx0 .. ndx1) := HS_Length;
 
       ndx0 := ndx1 + 1;
@@ -847,21 +855,29 @@ package body Packet_Type_2 is
                            Encode_Body_Length (Hashed_Subpacket'Length);
       PS_Length : constant TOctet_Array :=
                            Encode_Body_Length (Plain_Subpacket'Length);
-      Total_Size : constant Integer := 6 +
+      Body_Length : constant TBody_Length := 6 +
                                        HS_Length'Length +
                                        PS_Length'Length +
                                        Hashed_Subpacket'Length +
                                        Plain_Subpacket'Length +
                                        Value_r'Length +
                                        Value_s'Length;
-      result : TOctet_Array (0 .. Total_Size - 1) := (others => 0);
-      ndx0 : Natural := 4;
-      ndx1 : Natural := HS_Length'Length + ndx0 - 1;
+      enclen : constant TOctet_Array := Encode_Body_Length (Body_Length);
+      Last_Index : constant Natural := Natural (Body_Length) + enclen'Length;
+      result : TOctet_Array (0 .. Last_Index) := (others => 0);
+      ndx0 : Natural := enclen'Length + 1;
+      ndx1 : Natural;
    begin
-      result (0) := 4;   --  version 4
-      result (1) := convert_signature_type_to_octet (Signature_Type);
-      result (2) := 17;  --  DSA
-      result (3) := Convert_Hash_ID_To_Octet (hash_Algorithm => Hash);
+      result (0) := Convert_Packet_Tag_To_Octet (Signature);
+      result (1 .. enclen'Length) := enclen;
+
+      result (ndx0) := 4;   --  version 4
+      result (ndx0 + 1) := convert_signature_type_to_octet (Signature_Type);
+      result (ndx0 + 2) := 17;  --  DSA
+      result (ndx0 + 3) := Convert_Hash_ID_To_Octet (hash_Algorithm => Hash);
+
+      ndx0 := ndx0 + 4;
+      ndx1 := ndx0 + HS_Length'Last;
       result (ndx0 .. ndx1) := HS_Length;
 
       ndx0 := ndx1 + 1;
