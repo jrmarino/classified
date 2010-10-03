@@ -276,4 +276,39 @@ package body OpenPGP_Utilities is
    end Encode_Body_Length;
 
 
+
+   -----------------------------------
+   --  Convert_Packet_Tag_To_Octet  --
+   -----------------------------------
+
+   function Convert_Packet_Tag_To_Octet (Packet_Tag : TPacket_Tag)
+   return TOctet is
+   begin
+      case Packet_Tag is
+         when Public_Key_Encrypted_Session           => return 1;
+         when Signature                              => return 2;
+         when Symmetic_Key_Encrypted_Session         => return 3;
+         when One_Pass_Signature_Packet              => return 4;
+         when Secret_Key                             => return 5;
+         when Public_key                             => return 6;
+         when Secret_Subkey                          => return 7;
+         when Compressed_Data                        => return 8;
+         when Symmetrically_Encrypted_Data           => return 9;
+         when Marker                                 => return 10;
+         when Literal_Data                           => return 11;
+         when Trust                                  => return 12;
+         when User_ID                                => return 13;
+         when Public_Subkey                          => return 14;
+         when User_Attribute                         => return 17;
+         when Sym_Encrypted_Integrity_Protected_Data => return 18;
+         when Modification_Detection_Code            => return 19;
+         when Private_60                             => return 60;
+         when Private_61                             => return 61;
+         when Private_62                             => return 62;
+         when Private_63                             => return 63;
+         when others                                 => return 0;
+      end case;
+   end Convert_Packet_Tag_To_Octet;
+
+
 end OpenPGP_Utilities;

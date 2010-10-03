@@ -85,5 +85,12 @@ package OpenPGP_Utilities is
    --  a 4-element octet array (complement of Construct_Unix_Time).
 
 
+   function Convert_Packet_Tag_To_Octet (Packet_Tag : TPacket_Tag)
+   return TOctet;
+   --  This function accepts a packet tag enumeration and returns the
+   --  corresponding octet value.  Undefined is given the value of 0, which
+   --  is considered reserved, do not use.
+
+
 end OpenPGP_Utilities;
 
