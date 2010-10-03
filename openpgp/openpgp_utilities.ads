@@ -80,5 +80,10 @@ package OpenPGP_Utilities is
    --  equivalent value in 1, 2, or 5 octets.
 
 
+   function Breakdown_Unix_Time (UnixTime : TUnixTime) return TOctet_Array;
+   --  This disintegrates a 32-bit integer representing the unix timestamp into
+   --  a 4-element octet array (complement of Construct_Unix_Time).
+
+
 end OpenPGP_Utilities;
 

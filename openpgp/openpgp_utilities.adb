@@ -64,6 +64,34 @@ package body OpenPGP_Utilities is
 
 
 
+   ---------------------------
+   --  Breakdown_Unix_Time  --
+   ---------------------------
+
+   function Breakdown_Unix_Time (UnixTime : TUnixTime)
+   return TOctet_Array is
+      type TMod32 is mod 16#100000000#;
+      result  : TOctet_Array (0 .. 3) := (others => 0);
+      shift24 : constant TMod32 := 2 ** 24;
+      shift16 : constant TMod32 := 2 ** 16;
+      shift8  : constant TMod32 := 2 ** 8;
+      Mask54  : constant TMod32 := 16#00FF0000#;
+      Mask32  : constant TMod32 := 16#0000FF00#;
+      Mask10  : constant TMod32 := 16#000000FF#;
+      Mod32   : constant TMod32 := TMod32 (UnixTime);
+   begin
+
+      result (0) := TOctet  (Mod32             / shift24);
+      result (1) := TOctet ((Mod32 and Mask54) / shift16);
+      result (2) := TOctet ((Mod32 and Mask32) / shift8);
+      result (3) := TOctet  (Mod32 and Mask10);
+
+      return result;
+
+   end Breakdown_Unix_Time;
+
+
+
    -------------------------------------
    --  Convert_Octet_To_PK_Algorithm  --
    -------------------------------------

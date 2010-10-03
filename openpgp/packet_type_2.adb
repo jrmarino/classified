@@ -652,8 +652,9 @@ package body Packet_Type_2 is
                when primary_user_id =>
                   result.primary_user_id := Block (index + 1);
                when policy_uri =>
-                  result.flag_policy_uri := True;
-                  --  Variable length, so we can only flag that it exists.
+                  result.policy_uri :=
+                        convert_octet_array_to_unbounded_string (
+                              Block (index + 1 .. index + Natural (Size)));
                when key_flags =>
                   result.key_flags := Block (index + 1 .. index + 1);
                when signers_user_id =>
@@ -661,7 +662,8 @@ package body Packet_Type_2 is
                         convert_octet_array_to_unbounded_string (
                               Block (index + 1 .. index + Natural (Size)));
                when reason_for_revocation =>
-                  result.reason_for_revocation := Block (index + 1);
+                  result.reason_for_revocation :=
+                        convert_octet_to_revoke_reason (Block (index + 1));
                   result.revocation_reason_text :=
                         convert_octet_array_to_unbounded_string (
                               Block (index + 2 .. index + Natural (Size)));
@@ -724,8 +726,8 @@ package body Packet_Type_2 is
    -----------------------------------
 
    function Retrieve_Embedded_Signature (Block : TOctet_Array)
-   return TOctet_Array is
-      blank      : constant TOctet_Array (1 .. 1) := (0 => 0);
+   return TEmbedSignature is
+      blank      : constant TEmbedSignature (0 .. -1) := (others => 0);
       index      : Natural := 0;
       MaxIndex   : constant Natural := Block'Length - 1;
       Size       : TBody_Length;
@@ -907,5 +909,676 @@ package body Packet_Type_2 is
       return result;
    end convert_16_bits_to_octet_array;
 
+
+   -------------------------------------------------
+   --  convert_Signature_SubPacket_Type_to_Octet  --
+   -------------------------------------------------
+
+   function convert_Signature_SubPacket_Type_to_Octet (
+                                       SubPacket_Type : TSig_SubPacket_Type)
+   return TOctet is
+   begin
+      case SubPacket_Type is
+         when signature_creation_time   => return 2;
+         when signature_expiration_time => return 3;
+         when exportable_certification  => return 4;
+         when trust_signature           => return 5;
+         when regular_expression        => return 6;
+         when revocable                 => return 7;
+         when key_expiration_time       => return 9;
+         when preferred_symmetrics      => return 11;
+         when revocation_key            => return 12;
+         when issuer                    => return 16;
+         when notation_data             => return 20;
+         when preferred_hashes          => return 21;
+         when preferred_compressions    => return 22;
+         when server_preferences        => return 23;
+         when preferred_key_server      => return 24;
+         when primary_user_id           => return 25;
+         when policy_uri                => return 26;
+         when key_flags                 => return 27;
+         when signers_user_id           => return 28;
+         when reason_for_revocation     => return 29;
+         when features                  => return 30;
+         when signature_target          => return 31;
+         when embedded_signature        => return 32;
+         when unimplemented             => return 16#FF#;
+      end case;
+   end convert_Signature_SubPacket_Type_to_Octet;
+
+
+
+   -------------------------
+   --  count_preferences  --
+   -------------------------
+
+   function count_preferences (preferences : TPreferences)
+   return Natural is
+      result : Natural := 0;
+   begin
+      for x in preferences'Range loop
+         if preferences (x) /= 0 then
+            result := result + 1;
+         end if;
+      end loop;
+      if result = 0 then
+         return result;
+      else
+         return result + 2;
+      end if;
+   end count_preferences;
+
+
+
+   ----------------------
+   --  count_unixtime  --
+   ----------------------
+
+   function count_unixtime (UnixTime : TUnixTime)
+   return Natural is
+      result : Natural := 6;
+   begin
+      if UnixTime = 0 then
+         result := 0;
+      end if;
+      return result;
+   end count_unixtime;
+
+
+
+   ----------------------------------
+   --  count_type_converted_array  --
+   ----------------------------------
+
+   function count_type_converted_array (octet_array : TOctet_Array)
+   return Natural is
+      use_it : Boolean := False;
+   begin
+      for x in octet_array'Range loop
+         if x /= 0 then
+            use_it := True;
+         end if;
+      end loop;
+      if use_it then
+         declare
+            result : Natural := octet_array'Length;
+            reslen : constant TBody_Length := TBody_Length (result);
+            enclen : constant TOctet_Array := Encode_Body_Length (reslen);
+         begin
+            result := result + 1 + enclen'Length;
+            return result;
+         end;
+      else
+         return 0;
+      end if;
+   end count_type_converted_array;
+
+
+
+   --------------------
+   --  count_string  --
+   --------------------
+
+   function count_string (data : SU.Unbounded_String)
+   return Natural is
+      strlen : Natural := SU.Length (data);
+   begin
+      if strlen = 0 then
+         return 0;
+      end if;
+      declare
+         reslen : constant TBody_Length := TBody_Length (strlen);
+         enclen : constant TOctet_Array := Encode_Body_Length (reslen);
+      begin
+         strlen := strlen + 1 + enclen'Length;
+      end;
+      return strlen;
+
+   end count_string;
+
+
+
+   -----------------------
+   --  count_notations  --
+   -----------------------
+
+   function count_notations (NotationSet : TNotationSet)
+   return Natural is
+      total    : Natural := 0;
+      namelen  : Natural;
+      valuelen : Natural;
+   begin
+      for x in NotationSet'Range loop
+         namelen  := SU.Length (NotationSet (x).name);
+         valuelen := SU.Length (NotationSet (x).value);
+         if namelen > 0 and then
+            valuelen > 0 then
+            total := total + 8 + namelen + valuelen;
+         end if;
+      end loop;
+      if total = 0 then
+         return total;
+      end if;
+      declare
+         reslen : constant TBody_Length := TBody_Length (total);
+         enclen : constant TOctet_Array := Encode_Body_Length (reslen);
+      begin
+         total := total + 1 + enclen'Length;
+      end;
+      return total;
+
+   end count_notations;
+
+
+
+   ------------------------
+   --  count_revocation  --
+   ------------------------
+
+   function count_revocation (human_readable   : SU.Unbounded_String;
+                              signature_type   : TSignatureType)
+   return Natural is
+   begin
+      if signature_type = key_revocation or else
+         signature_type = subkey_revocation or else
+         signature_type = certificate_revocation then
+         declare
+            result : Natural := 1 + SU.Length (human_readable);
+            reslen : constant TBody_Length := TBody_Length (result);
+            enclen : constant TOctet_Array := Encode_Body_Length (reslen);
+         begin
+            result := result + 1 + enclen'Length;
+            return result;
+         end;
+      else
+         return 0;
+      end if;
+   end count_revocation;
+
+
+
+   -----------------------------------
+   --  determine_space_requirement  --
+   -----------------------------------
+
+   function determine_space_requirement (sig_subpacket : TSignature_Subpacket;
+                                         signature_type : TSignatureType)
+   return TBody_Length is
+      total : Natural;
+   begin
+      total := count_unixtime (sig_subpacket.signature_creation_time)
+             + count_type_converted_array (sig_subpacket.issuer)
+             + count_unixtime (sig_subpacket.key_expiration_time)
+             + count_preferences (sig_subpacket.preferred_symmetrics)
+             + count_preferences (sig_subpacket.preferred_hashes)
+             + count_preferences (sig_subpacket.preferred_compressions)
+             + count_unixtime (sig_subpacket.signature_expiration_time)
+             + 3  --  sig_subpacket.exportable_certification
+             + 3  --  sig_subpacket.revocable
+             + count_type_converted_array (sig_subpacket.trust_signature)
+             + count_string (sig_subpacket.regular_expression)
+             + count_type_converted_array (sig_subpacket.revocation_key)
+             + count_notations (sig_subpacket.notational_data)
+             + count_type_converted_array (sig_subpacket.server_preferences)
+             + count_string (sig_subpacket.preferred_key_server)
+             + 3  --  primary_user_id
+             + count_string (sig_subpacket.policy_uri)
+             + count_type_converted_array (sig_subpacket.key_flags)
+             + count_string (sig_subpacket.signers_user_id)
+             + count_revocation (
+                  human_readable => sig_subpacket.revocation_reason_text,
+                  signature_type => signature_type)
+             + count_type_converted_array (sig_subpacket.features)
+             + count_type_converted_array (sig_subpacket.signature_target);
+
+      return TBody_Length (total);
+   end determine_space_requirement;
+
+
+
+   --------------------
+   --  insert_field  --
+   --------------------
+
+   procedure insert_field (data      : in     TOctet_Array;
+                           data_type : in     TSig_SubPacket_Type;
+                           index     : in out Natural;
+                           subpacket : in out TPackedSubpacket)
+   is
+      datalen : constant TBody_Length := TBody_Length (data'Length);
+      enclen  : constant TOctet_Array := Encode_Body_Length (datalen);
+   begin
+
+      subpacket (index .. index + enclen'Last) := enclen;
+      index := index + enclen'Length;
+
+      subpacket (index) :=
+            convert_Signature_SubPacket_Type_to_Octet (data_type);
+      index := index + 1;
+
+      subpacket (index .. index + data'Last) := data;
+      index := index + data'Length;
+
+   end insert_field;
+
+
+   -------------------------
+   --  build_preferences  --
+   -------------------------
+
+   function build_preferences (preferences : TPreferences)
+   return TOctet_Array is
+      scratch : TOctet_Array (preferences'Range) := (others => 0);
+      index : Natural := 0;
+   begin
+      for x in preferences'Range loop
+         if preferences (x) /= 0 then
+            scratch (index) := preferences (x);
+            index := index + 1;
+         end if;
+      end loop;
+      return scratch (0 .. index - 1);
+   end build_preferences;
+
+
+   -------------------------------------
+   --  convert_unbounded_string_back  --
+   -------------------------------------
+
+   function convert_unbounded_string_back (data : SU.Unbounded_String)
+   return TOctet_Array is
+      work   : constant String := SU.To_String (Source => data);
+      result : TOctet_Array (0 .. work'Length - 1);
+      index  : Natural := 0;
+   begin
+      for x in work'Range loop
+         result (index) := TOctet (Character'Pos (work (x)));
+         index := index + 1;
+      end loop;
+      return result;
+   end convert_unbounded_string_back;
+
+
+
+   --------------------------------------
+   --  convert_revoke_reason_to_octet  --
+   --------------------------------------
+
+   function convert_revoke_reason_to_octet (reason : TRevokeReason)
+   return TOctet is
+   begin
+      case reason is
+         when no_reason          => return 0;
+         when key_is_superceded  => return 1;
+         when key_is_compromised => return 2;
+         when key_is_retired     => return 3;
+         when user_id_invalid    => return 32;
+         when private_100        => return 100;
+         when private_101        => return 101;
+         when private_102        => return 102;
+         when private_103        => return 103;
+         when private_104        => return 104;
+         when private_105        => return 105;
+         when private_106        => return 106;
+         when private_107        => return 107;
+         when private_108        => return 108;
+         when private_109        => return 109;
+         when private_110        => return 110;
+         when others             => return 16#FF#;
+      end case;
+   end convert_revoke_reason_to_octet;
+
+
+
+   --------------------------------------
+   --  convert_revoke_reason_to_octet  --
+   --------------------------------------
+
+   function convert_octet_to_revoke_reason (Octet : TOctet)
+   return TRevokeReason is
+   begin
+      case Octet is
+         when   0 => return no_reason;
+         when   1 => return key_is_superceded;
+         when   2 => return key_is_compromised;
+         when   3 => return key_is_retired;
+         when  32 => return user_id_invalid;
+         when 100 => return private_100;
+         when 101 => return private_101;
+         when 102 => return private_102;
+         when 103 => return private_103;
+         when 104 => return private_104;
+         when 105 => return private_105;
+         when 106 => return private_106;
+         when 107 => return private_107;
+         when 108 => return private_108;
+         when 109 => return private_109;
+         when 110 => return private_110;
+         when others => return Undefined;
+      end case;
+   end convert_octet_to_revoke_reason;
+
+
+   ------------------------------
+   --  build_revocation_field  --
+   ------------------------------
+
+   function build_revocation_field (machine_readable : TRevokeReason;
+                                    human_readable   : SU.Unbounded_String)
+   return TOctet_Array is
+      result : TOctet_Array (0 .. SU.Length (Source => human_readable));
+   begin
+      result (0) := convert_revoke_reason_to_octet (machine_readable);
+      result (1 .. result'Last) :=
+                              convert_unbounded_string_back (human_readable);
+      return result;
+   end build_revocation_field;
+
+
+
+   -----------------------
+   --  build_notations  --
+   -----------------------
+
+   function build_notations (NotationSet : TNotationSet;
+                             x           : Natural)
+   return TOctet_Array is
+      namelen  : Natural;
+      valuelen : Natural;
+   begin
+      namelen  := SU.Length (NotationSet (x).name);
+      valuelen := SU.Length (NotationSet (x).value);
+      declare
+         total  : constant Natural := namelen + valuelen + 8;
+         result : TOctet_Array (0 .. total - 1) := (others => 0);
+         index  : Natural := 0;
+      begin
+         result (index + 0) := 16#80#;
+         result (index + 4) := TOctet (namelen / 256);
+         result (index + 5) := TOctet (namelen rem 256);
+         result (index + 6) := TOctet (valuelen / 256);
+         result (index + 7) := TOctet (valuelen rem 256);
+         index := index + 8;
+         result (index .. index + namelen - 1) :=
+                convert_unbounded_string_back (data => NotationSet (x).name);
+         index := index + namelen;
+         result (index .. index + valuelen - 1) :=
+                convert_unbounded_string_back (data => NotationSet (x).value);
+
+         return result;
+      end;
+
+   end build_notations;
+
+
+   ---------------------------
+   --  Construct_Subpacket  --
+   ---------------------------
+
+   function Construct_Subpacket (Subpacket_Data : TSignature_Subpacket;
+                                 signature_type : TSignatureType)
+   return TPackedSubpacket is
+   --  This function will accept the TSignature_Subpacket record and build a
+   --  proper subpacket based on its contents.  It will not include an
+   --  embedded signature.  If this is needed, use the function
+   --  "Construct_Subpacket_with_Embedded_Sig";
+      subpacket_size : constant TBody_Length := determine_space_requirement (
+                                 sig_subpacket  => Subpacket_Data,
+                                 signature_type => signature_type);
+      subpacket : TPackedSubpacket (0 .. Natural (subpacket_size) - 1);
+      test  : Natural;
+      index : Natural := 0;
+   begin
+      test := count_unixtime (Subpacket_Data.signature_creation_time);
+      if test > 0 then
+         insert_field (data      => Breakdown_Unix_Time
+                                    (Subpacket_Data.signature_creation_time),
+                       data_type => signature_creation_time,
+                       index     => index,
+                       subpacket => subpacket);
+      end if;
+
+      test := count_type_converted_array (Subpacket_Data.issuer);
+      if test > 0 then
+         insert_field (data      => Subpacket_Data.issuer,
+                       data_type => issuer,
+                       index     => index,
+                       subpacket => subpacket);
+      end if;
+
+      test := count_unixtime (Subpacket_Data.key_expiration_time);
+      if test > 0 then
+         insert_field (data      => Breakdown_Unix_Time
+                                    (Subpacket_Data.key_expiration_time),
+                       data_type => key_expiration_time,
+                       index     => index,
+                       subpacket => subpacket);
+      end if;
+
+      test := count_preferences (Subpacket_Data.preferred_symmetrics);
+      if test > 0 then
+
+         insert_field (data      => build_preferences
+                                    (Subpacket_Data.preferred_symmetrics),
+                       data_type => preferred_symmetrics,
+                       index     => index,
+                       subpacket => subpacket);
+      end if;
+
+      test := count_preferences (Subpacket_Data.preferred_hashes);
+      if test > 0 then
+
+         insert_field (data      => build_preferences
+                                    (Subpacket_Data.preferred_hashes),
+                       data_type => preferred_hashes,
+                       index     => index,
+                       subpacket => subpacket);
+      end if;
+
+      test := count_preferences (Subpacket_Data.preferred_compressions);
+      if test > 0 then
+
+         insert_field (data      => build_preferences
+                                    (Subpacket_Data.preferred_compressions),
+                       data_type => preferred_compressions,
+                       index     => index,
+                       subpacket => subpacket);
+      end if;
+
+      test := count_unixtime (Subpacket_Data.signature_expiration_time);
+      if test > 0 then
+         insert_field (data      => Breakdown_Unix_Time
+                                    (Subpacket_Data.signature_expiration_time),
+                       data_type => signature_expiration_time,
+                       index     => index,
+                       subpacket => subpacket);
+      end if;
+
+      insert_field (data      => (0 => Subpacket_Data.exportable_certification),
+                    data_type => exportable_certification,
+                    index     => index,
+                    subpacket => subpacket);
+
+      insert_field (data      => (0 => Subpacket_Data.revocable),
+                    data_type => revocable,
+                    index     => index,
+                    subpacket => subpacket);
+
+      test := count_type_converted_array (Subpacket_Data.trust_signature);
+      if test > 0 then
+         insert_field (data      => Subpacket_Data.trust_signature,
+                       data_type => trust_signature,
+                       index     => index,
+                       subpacket => subpacket);
+      end if;
+
+      test := count_string (Subpacket_Data.regular_expression);
+      if test > 0 then
+         insert_field (data      => convert_unbounded_string_back
+                                    (Subpacket_Data.regular_expression),
+                       data_type => regular_expression,
+                       index     => index,
+                       subpacket => subpacket);
+      end if;
+
+      test := count_type_converted_array (Subpacket_Data.revocation_key);
+      if test > 0 then
+         insert_field (data      => Subpacket_Data.revocation_key,
+                       data_type => revocation_key,
+                       index     => index,
+                       subpacket => subpacket);
+      end if;
+
+      test := count_type_converted_array (Subpacket_Data.server_preferences);
+      if test > 0 then
+         insert_field (data      => Subpacket_Data.server_preferences,
+                       data_type => server_preferences,
+                       index     => index,
+                       subpacket => subpacket);
+      end if;
+
+      test := count_string (Subpacket_Data.preferred_key_server);
+      if test > 0 then
+         insert_field (data      => convert_unbounded_string_back
+                                    (Subpacket_Data.preferred_key_server),
+                       data_type => preferred_key_server,
+                       index     => index,
+                       subpacket => subpacket);
+      end if;
+
+      insert_field (data      => (0 => Subpacket_Data.primary_user_id),
+                    data_type => primary_user_id,
+                    index     => index,
+                    subpacket => subpacket);
+
+      test := count_string (Subpacket_Data.policy_uri);
+      if test > 0 then
+         insert_field (data      => convert_unbounded_string_back
+                                    (Subpacket_Data.policy_uri),
+                       data_type => policy_uri,
+                       index     => index,
+                       subpacket => subpacket);
+      end if;
+
+      test := count_type_converted_array (Subpacket_Data.key_flags);
+      if test > 0 then
+         insert_field (data      => Subpacket_Data.key_flags,
+                       data_type => key_flags,
+                       index     => index,
+                       subpacket => subpacket);
+      end if;
+
+      test := count_string (Subpacket_Data.signers_user_id);
+      if test > 0 then
+         insert_field (data      => convert_unbounded_string_back
+                                    (Subpacket_Data.signers_user_id),
+                       data_type => signers_user_id,
+                       index     => index,
+                       subpacket => subpacket);
+      end if;
+
+      test := count_type_converted_array (Subpacket_Data.features);
+      if test > 0 then
+         insert_field (data      => Subpacket_Data.features,
+                       data_type => features,
+                       index     => index,
+                       subpacket => subpacket);
+      end if;
+
+      test := count_type_converted_array (Subpacket_Data.signature_target);
+      if test > 0 then
+         insert_field (data      => Subpacket_Data.signature_target,
+                       data_type => signature_target,
+                       index     => index,
+                       subpacket => subpacket);
+      end if;
+
+      test := count_revocation (
+                  human_readable => Subpacket_Data.revocation_reason_text,
+                  signature_type => signature_type);
+      if test > 0 then
+         insert_field (data      => build_revocation_field (
+                machine_readable => Subpacket_Data.reason_for_revocation,
+                human_readable   => Subpacket_Data.revocation_reason_text),
+                       data_type => reason_for_revocation,
+                       index     => index,
+                       subpacket => subpacket);
+      end if;
+
+      test := count_notations (Subpacket_Data.notational_data);
+      if test > 0 then
+         declare
+            namelen  : Natural;
+            valuelen : Natural;
+         begin
+            for x in Subpacket_Data.notational_data'Range loop
+               namelen  := SU.Length (Subpacket_Data.notational_data (x).name);
+               valuelen := SU.Length (Subpacket_Data.notational_data (x).value);
+               if namelen > 0 and then valuelen > 0 then
+                  insert_field (data      => build_notations (
+                              NotationSet => Subpacket_Data.notational_data,
+                              x           => x),
+                                data_type => notation_data,
+                                index     => index,
+                                subpacket => subpacket);
+               end if;
+            end loop;
+         end;
+      end if;
+
+      return subpacket;
+   end Construct_Subpacket;
+
+
+
+
+   ---------------------------------------------
+   --  Construct_Subpacket_with_Embedded_Sig  --
+   ---------------------------------------------
+
+   function Construct_Subpacket_with_Embedded_Sig (
+                                    Subpacket_Data    : TSignature_Subpacket;
+                                    signature_type    : TSignatureType;
+                                    EmbeddedSignature : TEmbedSignature)
+   return TPackedSubpacket is
+      Basis : constant TPackedSubpacket :=
+                       Construct_Subpacket (Subpacket_Data => Subpacket_Data,
+                                            signature_type => signature_type);
+   begin
+      if EmbeddedSignature'Length = 0 then
+         return Basis;
+      end if;
+
+      declare
+         ES_Length : constant TOctet_Array :=
+                              Encode_Body_Length (EmbeddedSignature'Length);
+         SubpacketLen : constant Natural := Basis'Length +
+                                            ES_Length'Length +
+                                            EmbeddedSignature'Length +
+                                            1;  --  field type
+         ESType : constant TOctet_Array :=
+                           (0 => convert_Signature_SubPacket_Type_to_Octet
+                                 (embedded_signature));
+         result : TPackedSubpacket (0 .. SubpacketLen - 1) := (others => 0);
+         iFirst : Natural := 0;
+         iLast  : Natural := Basis'Last;
+      begin
+         result (iFirst .. iLast) := Basis;
+
+         iFirst := iLast + 1;
+         iLast  := iFirst;
+         result (iFirst .. iLast) := ESType;
+
+         iFirst := iLast + 1;
+         iLast  := iFirst + ES_Length'Last;
+         result (iFirst .. iLast) := ES_Length;
+
+         iFirst := iLast + 1;
+         iLast  := iFirst + EmbeddedSignature'Last;
+         result (iFirst .. iLast) := EmbeddedSignature;
+         return result;
+      end;
+
+   end Construct_Subpacket_with_Embedded_Sig;
 
 end Packet_Type_2;
