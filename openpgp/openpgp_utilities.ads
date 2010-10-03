@@ -55,6 +55,12 @@ package OpenPGP_Utilities is
    --  If the provided octet is unknown, the value "Undefined" is returned.
 
 
+   function Convert_Hash_ID_To_Octet (hash_Algorithm : THash_Algorithm)
+   return TOctet;
+   --  This function converts a hash algorithm ID into an octet.  If the
+   --  hash is set to Undefined, then the return value is set to zero.
+
+
    function Two_Octet_Length (Octet_1 : TOctet;
                               Octet_2 : TOctet) return TBody_Length;
    --  This calculates the length of the following data using two octets.  The
@@ -67,6 +73,12 @@ package OpenPGP_Utilities is
                                Octet_4 : TOctet) return TBody_Length;
    --  This calculates the length of the following data using four octets.  The
    --  calling code must have already determined it's a 4-octet length.
+
+
+   function Encode_Body_Length (Body_Length : TBody_Length) return TOctet_Array;
+   --  Depending on the value of Body_Length, this function will return the
+   --  equivalent value in 1, 2, or 5 octets.
+
 
 end OpenPGP_Utilities;
 

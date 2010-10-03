@@ -40,13 +40,14 @@ package Packet_Type_2 is
    type TScalarCount is mod 16#10000#;
    type TNotationType is (name, value, flags);
    subtype Range_Preferences is Integer range 1 .. 5;
-   subtype TPreferences   is TOctet_Array (Range_Preferences);
-   subtype TFingerprint   is TOctet_Array (1 .. 22);
-   subtype TKeyServPref   is TOctet_Array (1 .. 1);
-   subtype TKeyFlags      is TOctet_Array (1 .. 1);
-   subtype TFeatures      is TOctet_Array (1 .. 1);
-   subtype TSigTarget     is TOctet_Array (1 .. 66);
-   subtype TTrust         is TOctet_Array (1 .. 2);
+   subtype TPreferences     is TOctet_Array (Range_Preferences);
+   subtype TFingerprint     is TOctet_Array (1 .. 22);
+   subtype TKeyServPref     is TOctet_Array (1 .. 1);
+   subtype TKeyFlags        is TOctet_Array (1 .. 1);
+   subtype TFeatures        is TOctet_Array (1 .. 1);
+   subtype TSigTarget       is TOctet_Array (1 .. 66);
+   subtype TTrust           is TOctet_Array (1 .. 2);
+   subtype TPackedSubpacket is TOctet_Array;
 
    type TSignatureType is (
       Undefined,
@@ -99,7 +100,7 @@ package Packet_Type_2 is
       name  : SU.Unbounded_String   := SU.Null_Unbounded_String;
       value : SU.Unbounded_String   := SU.Null_Unbounded_String;
    end record;
-   type TNotationSet is array (1 .. 10) of TNotationRecord;
+   type TNotationSet is array (1 .. 20) of TNotationRecord;
 
    type TSignature_Subpacket is record
       signature_creation_time   : TUnixTime    := 0;              --  5.2.3.4
@@ -198,6 +199,31 @@ package Packet_Type_2 is
    --  one octet will be returned with a value of zero.
 
 
+   function Construct_Type_2_RSA_Packet (Signature_Type   : TSignatureType;
+                                         Hash             : THash_Algorithm;
+                                         Left16           : TLeft16;
+                                         Hashed_Subpacket : TPackedSubpacket;
+                                         Plain_Subpacket  : TPackedSubpacket;
+                                         Value_mdn        : TMPI)
+   return TOctet_Array;
+   --  This function constructs an RSA-based packet type 2 given the proper
+   --  components.  The packed subpackets (Hashed and Plain) must be previously
+   --  constructed and passed as an argument.
+
+
+   function Construct_Type_2_DSA_Packet (Signature_Type   : TSignatureType;
+                                         Hash             : THash_Algorithm;
+                                         Left16           : TLeft16;
+                                         Hashed_Subpacket : TPackedSubpacket;
+                                         Plain_Subpacket  : TPackedSubpacket;
+                                         Value_r          : TMPI;
+                                         Value_s          : TMPI)
+   return TOctet_Array;
+   --  This function constructs an DSA-based packet type 2 given the proper
+   --  components.  The packed subpackets (Hashed and Plain) must be previously
+   --  constructed and passed as an argument.
+
+
 private
 
    function convert_octet_to_signature_type (Octet : TOctet)
@@ -215,6 +241,12 @@ private
    function convert_octets_to_16_bits (Octet_1 : TOctet;
                                        Octet_2 : TOctet) return TLeft16;
    --  This function returns Octet_1 * 256 + Octet2
+
+
+   function convert_16_bits_to_octet_array (Left16 : TLeft16)
+   return TOctet_Array;
+   --  This function converts a 16-bit mod type into an array of 2 Octets,
+   --  Big Endian like everything else.
 
 
    function convert_octets_to_scalar_count (Octet_1 : TOctet;

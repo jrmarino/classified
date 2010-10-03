@@ -621,7 +621,7 @@ package body Packet_Type_2 is
                   result.revocation_key := Block (index + 1 .. index + 22);
                when notation_data =>
                   result.total_notations := result.total_notations + 1;
-                  if result.total_notations <= 10 then
+                  if result.total_notations <= result.notational_data'Last then
                      result.notational_data (result.total_notations).flags :=
                         Block (index + 1 .. index + 4);
                      declare
@@ -770,6 +770,142 @@ package body Packet_Type_2 is
       return blank;
 
    end Retrieve_Embedded_Signature;
+
+
+   -----------------------------------
+   --  Construct_Type_2_RSA_Packet  --
+   -----------------------------------
+
+   function Construct_Type_2_RSA_Packet (Signature_Type   : TSignatureType;
+                                         Hash             : THash_Algorithm;
+                                         Left16           : TLeft16;
+                                         Hashed_Subpacket : TPackedSubpacket;
+                                         Plain_Subpacket  : TPackedSubpacket;
+                                         Value_mdn        : TMPI)
+   return TOctet_Array is
+      HS_Length : constant TOctet_Array :=
+                           Encode_Body_Length (Hashed_Subpacket'Length);
+      PS_Length : constant TOctet_Array :=
+                           Encode_Body_Length (Plain_Subpacket'Length);
+      Total_Size : constant Integer := 6 +
+                                       HS_Length'Length +
+                                       PS_Length'Length +
+                                       Hashed_Subpacket'Length +
+                                       Plain_Subpacket'Length +
+                                       Value_mdn'Length;
+      result : TOctet_Array (0 .. Total_Size - 1) := (others => 0);
+      ndx0 : Natural := 4;
+      ndx1 : Natural := HS_Length'Length + ndx0 - 1;
+   begin
+      result (0) := 4;   --  version 4
+      result (1) := convert_signature_type_to_octet (Signature_Type);
+      result (2) := 1;   --  RSA Encrypt or Sign
+      result (3) := Convert_Hash_ID_To_Octet (hash_Algorithm => Hash);
+      result (ndx0 .. ndx1) := HS_Length;
+
+      ndx0 := ndx1 + 1;
+      ndx1 := Hashed_Subpacket'Length + ndx0 - 1;
+      result (ndx0 .. ndx1) := TOctet_Array (Hashed_Subpacket);
+
+      ndx0 := ndx1 + 1;
+      ndx1 := PS_Length'Length + ndx0 - 1;
+      result (ndx0 .. ndx1) := PS_Length;
+
+      ndx0 := ndx1 + 1;
+      ndx1 := Plain_Subpacket'Length + ndx0 - 1;
+      result (ndx0 .. ndx1) := TOctet_Array (Plain_Subpacket);
+
+      ndx0 := ndx1 + 1;
+      ndx1 := ndx0 + 1;
+      result (ndx0 .. ndx1) := convert_16_bits_to_octet_array (Left16);
+
+      ndx0 := ndx1 + 1;
+      ndx1 := Value_mdn'Length + ndx0 - 1;
+      result (ndx0 .. ndx1) := TOctet_Array (Value_mdn);
+
+      return result;
+
+   end Construct_Type_2_RSA_Packet;
+
+
+
+   -----------------------------------
+   --  Construct_Type_2_DSA_Packet  --
+   -----------------------------------
+
+   function Construct_Type_2_DSA_Packet (Signature_Type   : TSignatureType;
+                                         Hash             : THash_Algorithm;
+                                         Left16           : TLeft16;
+                                         Hashed_Subpacket : TPackedSubpacket;
+                                         Plain_Subpacket  : TPackedSubpacket;
+                                         Value_r          : TMPI;
+                                         Value_s          : TMPI)
+   return TOctet_Array is
+      HS_Length : constant TOctet_Array :=
+                           Encode_Body_Length (Hashed_Subpacket'Length);
+      PS_Length : constant TOctet_Array :=
+                           Encode_Body_Length (Plain_Subpacket'Length);
+      Total_Size : constant Integer := 6 +
+                                       HS_Length'Length +
+                                       PS_Length'Length +
+                                       Hashed_Subpacket'Length +
+                                       Plain_Subpacket'Length +
+                                       Value_r'Length +
+                                       Value_s'Length;
+      result : TOctet_Array (0 .. Total_Size - 1) := (others => 0);
+      ndx0 : Natural := 4;
+      ndx1 : Natural := HS_Length'Length + ndx0 - 1;
+   begin
+      result (0) := 4;   --  version 4
+      result (1) := convert_signature_type_to_octet (Signature_Type);
+      result (2) := 17;  --  DSA
+      result (3) := Convert_Hash_ID_To_Octet (hash_Algorithm => Hash);
+      result (ndx0 .. ndx1) := HS_Length;
+
+      ndx0 := ndx1 + 1;
+      ndx1 := Hashed_Subpacket'Length + ndx0 - 1;
+      result (ndx0 .. ndx1) := TOctet_Array (Hashed_Subpacket);
+
+      ndx0 := ndx1 + 1;
+      ndx1 := PS_Length'Length + ndx0 - 1;
+      result (ndx0 .. ndx1) := PS_Length;
+
+      ndx0 := ndx1 + 1;
+      ndx1 := Plain_Subpacket'Length + ndx0 - 1;
+      result (ndx0 .. ndx1) := TOctet_Array (Plain_Subpacket);
+
+      ndx0 := ndx1 + 1;
+      ndx1 := ndx0 + 1;
+      result (ndx0 .. ndx1) := convert_16_bits_to_octet_array (Left16);
+
+      ndx0 := ndx1 + 1;
+      ndx1 := Value_r'Length + ndx0 - 1;
+      result (ndx0 .. ndx1) := TOctet_Array (Value_r);
+
+      ndx0 := ndx1 + 1;
+      ndx1 := Value_s'Length + ndx0 - 1;
+      result (ndx0 .. ndx1) := TOctet_Array (Value_s);
+
+      return result;
+
+   end Construct_Type_2_DSA_Packet;
+
+
+
+   --------------------------------------
+   --  convert_16_bits_to_octet_array  --
+   --------------------------------------
+
+   function convert_16_bits_to_octet_array (Left16 : TLeft16)
+   return TOctet_Array is
+      mask1  : constant TLeft16 := 16#FF00#;
+      mask2  : constant TLeft16 := 16#00FF#;
+      Oct1   : constant TOctet := TOctet ((Left16 and mask1) / 256);
+      Oct2   : constant TOctet := TOctet (Left16 and mask2);
+      result : constant TOctet_Array (0 .. 1) := (0 => Oct1, 1 => Oct2);
+   begin
+      return result;
+   end convert_16_bits_to_octet_array;
 
 
 end Packet_Type_2;
