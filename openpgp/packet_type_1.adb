@@ -205,14 +205,21 @@ package body Packet_Type_1 is
    function Construct_Type_1_RSA_Packet (KeyID     : TKeyID;
                                          Value_men : TMPI)
    return TOctet_Array is
-      Last_Index : constant Natural := Value_men'Length + 9;
+      Body_Length : constant TBody_Length := Value_men'Length + 10;
+      enclen      : constant TOctet_Array := Encode_Body_Length (Body_Length);
+      Last_Index  : constant Natural := Natural (Body_Length) + enclen'Length;
       Result : TOctet_Array (0 .. Last_Index) := (others => 0);
+      index      : Natural;
    begin
 
-      Result (0)                := 3;     --  Version 3
-      Result (1 .. 8)           := KeyID;
-      Result (9)                := 1;     --  RSA_Encrypt_Or_Sign
-      Result (10 .. Last_Index) := Value_men;
+      Result (0) := Convert_Packet_Tag_To_Octet (Public_Key_Encrypted_Session);
+      Result (1 .. enclen'Length) := enclen;
+      index  := enclen'Length + 1;
+
+      Result (index)                    := 3;     --  Version 3
+      Result (index + 1 .. index + 8)   := KeyID;
+      Result (index + 9)                := 1;     --  RSA_Encrypt_Or_Sign
+      Result (index + 10 .. Last_Index) := Value_men;
 
       return Result;
 
@@ -228,16 +235,25 @@ package body Packet_Type_1 is
                                              Value_gkp  : TMPI;
                                              Value_mykp : TMPI)
    return TOctet_Array is
-      Last_Index : constant Natural := Value_gkp'Length +
-                                       Value_mykp'Length + 9;
-      Mid_Index  : constant Natural := Value_gkp'Length + 9;
-      Result : TOctet_Array (0 .. Last_Index) := (others => 0);
+      Body_Length : constant TBody_Length := Value_gkp'Length +
+                                             Value_mykp'Length + 10;
+      enclen      : constant TOctet_Array := Encode_Body_Length (Body_Length);
+
+      Last_Index : constant Natural := Natural (Body_Length) + enclen'Length;
+      Result     : TOctet_Array (0 .. Last_Index) := (others => 0);
+      index      : Natural;
+      Mid_Index  : Natural;
    begin
 
-      Result (0)                := 3;     --  Version 3
-      Result (1 .. 8)           := KeyID;
-      Result (9)                := 16;    --  Elgamal_Encrypt_Only
-      Result (10 .. Mid_Index)  := Value_gkp;
+      Result (0) := Convert_Packet_Tag_To_Octet (Public_Key_Encrypted_Session);
+      Result (1 .. enclen'Length) := enclen;
+      index      := enclen'Length + 1;
+      Mid_Index  := index + 10 + Value_gkp'Last;
+
+      Result (index)                       := 3;     --  Version 3
+      Result (index + 1 .. index + 8)      := KeyID;
+      Result (index + 9)                   := 16;    --  Elgamal_Encrypt_Only
+      Result (index + 10 .. Mid_Index)     := Value_gkp;
       Result (Mid_Index + 1 .. Last_Index) := Value_mykp;
 
       return Result;
