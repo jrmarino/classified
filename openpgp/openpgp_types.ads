@@ -100,6 +100,7 @@ package OpenPGP_Types is
    );
 
    type TCompression_Algorithm is (
+      Undefined,
       Uncompressed,
       ZIP_1951,
       ZLIB_1950,

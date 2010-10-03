@@ -16,23 +16,23 @@
 
 with OpenPGP_Types; use OpenPGP_Types;
 
-package Packet_Type_18 is
+package Packet_Type_8 is
 
-   function Retrieve_Version (Header : TPacket_Header;
-                              Packet : TOctet_Array)
-   return Natural;
-   --  Returns the version of the type 18 packet.
+   function Retrieve_Compression_Algoritm (Header : TPacket_Header;
+                                           Packet : TOctet_Array)
+   return TCompression_Algorithm;
+   --  Returns the enumeration of the compressed used.
 
 
-   function Retrieve_Encrypted_Data (Header : TPacket_Header;
-                                     Packet : TOctet_Array)
+   function Retrieve_Compressed_Data (Header : TPacket_Header;
+                                      Packet : TOctet_Array)
    return TOctet_Array;
-   --  Returns the encrypted data inside packet type 18.
+   --  Returns the compressed data inside packet type 8.
 
 
-   function Construct_Type_18_Packet (Encrypted_Data : TOctet_Array)
+   function Construct_Type_8_Packet (Data_Compressed : TOctet_Array;
+                                     Algorithm       : TCompression_Algorithm)
    return TOctet_Array;
-   --  This function returns a complete type 18 packet, which currently only
-   --  contains one significant data item, encrypted data.
+   --  This function returns a complete type 8 compressed data packet.
 
-end Packet_Type_18;
+end Packet_Type_8;

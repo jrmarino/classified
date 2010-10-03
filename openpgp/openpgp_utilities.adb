@@ -347,4 +347,62 @@ package body OpenPGP_Utilities is
    end convert_string_to_octet_array;
 
 
+
+   ----------------------------------------------
+   --  convert_octet_to_compression_algorithm  --
+   ----------------------------------------------
+
+   function convert_octet_to_compression_algorithm (Octet : TOctet)
+   return TCompression_Algorithm is
+   begin
+      case Octet is
+         when      0 => return Uncompressed;
+         when      1 => return ZIP_1951;
+         when      2 => return ZLIB_1950;
+         when      3 => return BZIP2;
+         when    100 => return Private_100;
+         when    101 => return Private_101;
+         when    102 => return Private_102;
+         when    103 => return Private_103;
+         when    104 => return Private_104;
+         when    105 => return Private_105;
+         when    106 => return Private_106;
+         when    107 => return Private_107;
+         when    108 => return Private_108;
+         when    109 => return Private_109;
+         when    110 => return Private_110;
+         when others => return Undefined;
+      end case;
+   end convert_octet_to_compression_algorithm;
+
+
+
+   ----------------------------------------------
+   --  convert_compression_algorithm_to_octet  --
+   ----------------------------------------------
+
+   function convert_compression_algorithm_to_octet
+                                       (Algorithm : TCompression_Algorithm)
+   return TOctet is
+   begin
+      case Algorithm is
+         when Uncompressed => return 0;
+         when ZIP_1951     => return 1;
+         when ZLIB_1950    => return 2;
+         when BZIP2        => return 3;
+         when Private_100  => return 100;
+         when Private_101  => return 101;
+         when Private_102  => return 102;
+         when Private_103  => return 103;
+         when Private_104  => return 104;
+         when Private_105  => return 105;
+         when Private_106  => return 106;
+         when Private_107  => return 107;
+         when Private_108  => return 108;
+         when Private_109  => return 109;
+         when Private_110  => return 110;
+         when others       => return 16#FF#;
+      end case;
+   end convert_compression_algorithm_to_octet;
+
 end OpenPGP_Utilities;

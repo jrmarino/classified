@@ -97,7 +97,20 @@ package OpenPGP_Utilities is
 
 
    function convert_string_to_octet_array (data : String) return TOctet_Array;
-   --  This funciton converts a string to an array of octets.
+   --  This function converts a string to an array of octets.
+
+
+   function convert_octet_to_compression_algorithm (Octet : TOctet)
+   return TCompression_Algorithm;
+   --  This function takes an octet and returns the equivalent compression
+   --  algorithm.  Unrecognized values are set to "Undefined" enumeration.
+
+
+   function convert_compression_algorithm_to_octet
+                                       (Algorithm : TCompression_Algorithm)
+   return TOctet;
+   --  This funciton takes a compression algorithm enumeration and returns the
+   --  associated octet value.
 
 end OpenPGP_Utilities;
 

@@ -16,44 +16,45 @@
 
 with OpenPGP_Utilities; use OpenPGP_Utilities;
 
-package body Packet_Type_18 is
+package body Packet_Type_8 is
 
 
-   ------------------------
-   --  Retreive_Version  --
-   ------------------------
+   -------------------------------------
+   --  Retrieve_Compression_Algoritm  --
+   -------------------------------------
 
-   function Retrieve_Version (Header : TPacket_Header;
-                              Packet : TOctet_Array)
-   return Natural is
+   function Retrieve_Compression_Algoritm (Header : TPacket_Header;
+                                           Packet : TOctet_Array)
+   return TCompression_Algorithm is
       index : constant Natural := Header.Body_Starts;
    begin
-      return Natural (Packet (index));
-   end Retreive_Version;
+      return convert_octet_to_compression_algorithm (Packet (index));
+   end Retrieve_Compression_Algoritm;
 
 
 
-   -------------------------------
-   --  Retrieve_Encrypted_Data  --
-   -------------------------------
+   --------------------------------
+   --  Retrieve_Compressed_Data  --
+   --------------------------------
 
-   function Retrieve_Encrypted_Data (Header : TPacket_Header;
-                                     Packet : TOctet_Array)
+   function Retrieve_Compressed_Data (Header : TPacket_Header;
+                                      Packet : TOctet_Array)
    return TOctet_Array is
       index : constant Natural := Header.Body_Starts;
    begin
       return Packet (index + 1 .. Packet'Last);
-   end Retrieve_Encrypted_Data;
+   end Retrieve_Compressed_Data;
 
 
 
-   --------------------------------
-   --  Construct_Type_19_Packet  --
-   --------------------------------
+   -------------------------------
+   --  Construct_Type_8_Packet  --
+   -------------------------------
 
-   function Construct_Type_18_Packet (Encrypted_Data : TOctet_Array)
+   function Construct_Type_8_Packet (Data_Compressed : TOctet_Array;
+                                     Algorithm       : TCompression_Algorithm)
    return TOctet_Array is
-      Body_Length : constant TBody_Length := Encrypted_Data'Length + 1;
+      Body_Length : constant TBody_Length := Data_Compressed'Length + 1;
       enclen      : constant TOctet_Array := Encode_Body_Length (Body_Length);
       result      : TOctet_Array (0 .. enclen'Length + Natural (Body_Length));
       index       : Natural;
@@ -63,11 +64,11 @@ package body Packet_Type_18 is
       result (1 .. enclen'Length) := enclen;
       index      := enclen'Length + 1;
 
-      result (index) := 1;    --  version
-      result (index + 1 .. result'Last) := Encrypted_Data;
+      result (index) := convert_compression_algorithm_to_octet (Algorithm);
+      result (index + 1 .. result'Last) := Data_Compressed;
       return result;
 
-   end Construct_Type_18_Packet;
+   end Construct_Type_8_Packet;
 
 
-end Packet_Type_18;
+end Packet_Type_8;
