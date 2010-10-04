@@ -14,6 +14,8 @@
 --  OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 
+with Ada.Strings.Fixed;
+
 package body ASCII_Armor is
 
 
@@ -105,6 +107,12 @@ package body ASCII_Armor is
       function Title (Armor_Type2 : TArmor_Type;
                       X           : Positive;
                       Y           : Positive) return String is
+         PartX : constant String := Ada.Strings.Fixed.Trim (
+                                                Source => Integer'Image (X),
+                                                Side   => Ada.Strings.Left);
+         SumY  : constant String := Ada.Strings.Fixed.Trim (
+                                                Source => Integer'Image (Y),
+                                                Side   => Ada.Strings.Left);
       begin
          case Armor_Type2 is
             when armor_message          => return "PGP MESSAGE";
@@ -112,10 +120,9 @@ package body ASCII_Armor is
             when armor_public_key       => return "PGP PUBLIC KEY BLOCK";
             when armor_private_key      => return "PGP PRIVATE KEY BLOCK";
             when armor_multipart_x      => return "PGP MESSAGE, PART " &
-                                                   Integer'Image (X);
+                                                   PartX;
             when armor_multipart_x_of_y => return "PGP MESSAGE, PART " &
-                                                   Integer'Image (X) & "/" &
-                                                   Integer'Image (Y);
+                                                   PartX & "/" & SumY;
          end case;
       end Title;
 
