@@ -346,4 +346,23 @@ package body Radix64 is
       return result;
    end CRC_Radix64;
 
+
+
+   ---------------------------------
+   --  convert_CRCR64_To_Integer  --
+   ---------------------------------
+
+   function convert_CRCR64_To_Integer (Checksum : CRCR64String)
+   return TCRC24 is
+      shift8  : constant TCRC24 := 2 ** 8;
+      shift16 : constant TCRC24 := 2 ** 16;
+      BS      : constant TBinaryString :=
+                         Decode_Radix64 (Checksum (2 .. Checksum'Last));
+   begin
+      return TCRC24 (BS (0)) +
+             TCRC24 (BS (1)) * shift8 +
+             TCRC24 (BS (2)) * shift16;
+
+   end convert_CRCR64_To_Integer;
+
 end Radix64;

@@ -79,6 +79,11 @@ package Radix64 is
    --  specified in openPGP.
 
 
+   function convert_CRCR64_To_Integer (Checksum : CRCR64String) return TCRC24;
+   --  This takes a 5-character Radix64 encoded cyclic checksom and converts
+   --  it into a 24-bit unsigned integer.
+
+
 private
 
    PAD : constant MByte := 16#3D#;  --  Character of "="
