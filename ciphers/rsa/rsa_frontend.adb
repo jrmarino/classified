@@ -15,15 +15,9 @@
 
 
 with Ada.Numerics.Discrete_Random;
-with Radix64; use Radix64;
 with NN;      use NN;
 
 package body RSA_Frontend is
-
-   DPKCS_Error : TCryptoError := 0;
-   EPKCS_Error : TCryptoError := 0;
-   Last_Error  : TCryptoError := 0;
-   error_msg   : constant String (1 .. 6) := "ERROR!";
 
    --------------------------------
    --  Decrypt_With_Private_Key  --
@@ -211,6 +205,7 @@ package body RSA_Frontend is
          declare
             result : constant String := Encode_to_Radix64 (Encrypted_Bytecode);
          begin
+            Last_CRCR64 := CRC_Radix64 (Encrypted_Bytecode);
             return result;
          end;
       end;
@@ -262,6 +257,7 @@ package body RSA_Frontend is
          declare
             result : constant String := Encode_to_Radix64 (Encrypted_Bytecode);
          begin
+            Last_CRCR64 := CRC_Radix64 (Encrypted_Bytecode);
             return result;
          end;
       end;
@@ -712,5 +708,17 @@ package body RSA_Frontend is
       return Bytecode;
 
    end Message_Template;
+
+
+
+   ------------------------
+   --  Get_CRC_Checksum  --
+   ------------------------
+
+   function Get_CRC_Checksum
+   return CRCR64String is
+   begin
+      return Last_CRCR64;
+   end Get_CRC_Checksum;
 
 end RSA_Frontend;

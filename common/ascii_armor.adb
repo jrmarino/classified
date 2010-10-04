@@ -95,6 +95,7 @@ package body ASCII_Armor is
                         Sum_Parts  : Positive)
    return String is
       Dashes : constant String := "-----";
+      CR     : constant String (1 .. 1) := (1 => Character'Val (10));
       function Title (Armor_Type2 : TArmor_Type;
                       X           : Positive;
                       Y           : Positive) return String;
@@ -129,7 +130,8 @@ package body ASCII_Armor is
       return Dashes &
              Prefix (Line_Type2 => Line_Type) &
              Title (Armor_Type2 => Armor_Type, X => Part_X, Y => Sum_Parts) &
-             Dashes;
+             Dashes &
+             CR;
    end Outer_Line;
 
 

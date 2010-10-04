@@ -41,7 +41,8 @@ with RSATypes; use RSATypes;
 
 package Radix64 is
 
-   subtype OctetString   is String (1 .. 2);
+   subtype OctetString  is String (1 .. 2);
+   subtype CRCR64String is String (1 .. 5);
    type TAscii is range 0 .. 127;
    type TCRC24 is mod 16#1000000#;
 
@@ -72,9 +73,9 @@ package Radix64 is
    --  It is used for the armored messages of OpenPGP;
 
 
-   function CRC_Radix64 (BinaryString : TBinaryString) return String;
+   function CRC_Radix64 (BinaryString : TBinaryString) return CRCR64String;
    --  The returns the Cyclic Redundancy Check (CRC) checksum on plain text
-   --  converted into Radix64, and preceeded by an equal sign character as
+   --  converted into Radix64, and preceded by an equal sign character as
    --  specified in openPGP.
 
 
@@ -134,10 +135,6 @@ private
                           bits     : ShiftRange) return MByte;
    --  Recieves a byte, and shifts it right by "bits" bits, but doesn't
    --  wrap them around.  Overflown bits just fall off.
-
-
-
-
 
 
 end Radix64;

@@ -331,17 +331,17 @@ package body Radix64 is
    -------------------
 
    function CRC_Radix64 (BinaryString : TBinaryString)
-   return String is
-      result   : String (1 .. 9) := "=AAAAAAAA";
+   return CRCR64String is
+      result   : CRCR64String := "=AAAA";
       checksum : constant TCRC24 := CRC (BinaryString);
-      factor4  : constant TCRC24 := 2 * 16;
-      factor2  : constant TCRC24 := 2 * 8;
-      scratch  : TBinaryString (0 .. 3);
+      factor4  : constant TCRC24 := 2 ** 16;
+      factor2  : constant TCRC24 := 2 ** 8;
+      scratch  : TBinaryString (0 .. 2);
    begin
       scratch (0) := MByte ((checksum and 16#FF0000#) / factor4);
       scratch (1) := MByte ((checksum and 16#00FF00#) / factor2);
       scratch (2) := MByte (checksum and 16#0000FF#);
-      result (2 .. 9) := Encode_to_Radix64 (BinaryString => scratch);
+      result (2 .. 5) := Encode_to_Radix64 (BinaryString => scratch);
 
       return result;
    end CRC_Radix64;

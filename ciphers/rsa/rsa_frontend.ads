@@ -16,6 +16,7 @@
 
 with Key_4096; use Key_4096;
 with RSATypes; use RSATypes;
+with Radix64;  use Radix64;
 
 package RSA_Frontend is
 
@@ -113,7 +114,17 @@ package RSA_Frontend is
    --  Returns a description of an error when provided the error code.
 
 
+   function Get_CRC_Checksum return CRCR64String;
+   --  Returns the Radix64 encoded checksum stored privately (Last_CRCR64)
+
 private
+
+   Last_CRCR64 : CRCR64String := "-+++-";
+
+   DPKCS_Error : TCryptoError := 0;
+   EPKCS_Error : TCryptoError := 0;
+   Last_Error  : TCryptoError := 0;
+   error_msg   : constant String (1 .. 6) := "ERROR!";
 
    type TBlockType is range 1 .. 2;
 
