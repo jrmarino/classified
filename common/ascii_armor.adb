@@ -229,13 +229,13 @@ package body ASCII_Armor is
             declare
                label     : constant String := Key (Keypair_Set (x).Header);
                labelSize : constant Natural := label'Length;
-               line      : constant String := label
+               linex     : constant String := label
                                    & SU.To_String (Keypair_Set (x).Value)
                                    & Ada.Characters.Latin_1.LF;
             begin
                if labelSize > 0 then
-                  result (index .. index + line'Length - 1) := line;
-                  index := index + line'Length;
+                  result (index .. index + linex'Length - 1) := linex;
+                  index := index + linex'Length;
                end if;
             end;
          end loop;
@@ -275,7 +275,7 @@ package body ASCII_Armor is
       Keypair_String := SU.Null_Unbounded_String;
       Payload_String := SU.Null_Unbounded_String;
       Scan_Error     := no_error;
-      Regex.Match (Regex.Compile (AARE), work, Matches);
+      Regex.Match (Matcher, work, Matches);
       if Matches (0).Last = 0 and then Matches (0).First = 0 then
          Scan_Error := message_corrupt;
          return;
@@ -341,15 +341,14 @@ package body ASCII_Armor is
                             work (Matches (4).First .. Matches (4).Last));
          tmppl2  : constant String := condense_payload (tmppl);
          tmppl3  : constant TOctet_Array := Decode_Radix64 (tmppl2);
-
          msgcrc  : constant String := "=" &
                             work (Matches (5).First .. Matches (5).Last);
-         xnewcrc : constant TCRC24 := CRC (BinaryString => tmppl3);
          xmsgcrc : constant TCRC24 := convert_CRCR64_To_Integer (msgcrc);
       begin
+         Checksum := CRC (BinaryString => tmppl3);
          Payload_String := SU.To_Unbounded_String (tmppl2);
 
-         if xnewcrc /= xmsgcrc then
+         if Checksum /= xmsgcrc then
             Scan_Error := checksum_failed;
          end if;
       end;
@@ -403,5 +402,79 @@ package body ASCII_Armor is
          return scratch;
       end;
    end condense_payload;
+
+
+
+   --------------------------
+   --  Break_Down_Headers  --
+   --------------------------
+
+   function Break_Down_Headers (Data : SU.Unbounded_String)
+   return TArmor_Keypair_Set is
+      datastr : constant String := SU.To_String (Data);
+      nothing : TArmor_Keypair_Set (1 .. 0);
+      numLF   : Natural := 0;
+   begin
+      if datastr'Length = 0 then
+         return nothing;
+      end if;
+      for x in Positive range datastr'Range loop
+         if datastr (x) = Ada.Characters.Latin_1.LF then
+            numLF := numLF + 1;
+         end if;
+      end loop;
+
+      declare
+         result  : TArmor_Keypair_Set (1 .. numLF);
+         pattern : constant String :=
+                            "^(Version|Comment|MessageID|Hash|Charset): (.+)$";
+         mach    : constant Regex.Pattern_Matcher := Regex.Compile (pattern);
+         matches : Regex.Match_Array (0 .. Regex.Paren_Count (mach));
+         start   : Positive := 1;
+         counter : Positive := 1;
+      begin
+         for x in Positive range datastr'Range loop
+            if datastr (x) = Ada.Characters.Latin_1.LF then
+               declare
+                  MyLine : constant String := datastr (start .. x - 1);
+               begin
+                  Regex.Match (mach, MyLine, matches);
+                  if matches (0).Last = 0 and then matches (1).First = 0 then
+                     result (counter).Header := Header_Unrecognized;
+                     result (counter).Value  := SU.To_Unbounded_String (MyLine);
+                  else
+                     declare
+                        word : constant String :=
+                               MyLine (matches (1).First .. matches (1).Last);
+                     begin
+                        if word = "Version" then
+                           result (counter).Header := Header_Version;
+                        elsif word = "Comment" then
+                           result (counter).Header := Header_Comment;
+                        elsif word = "MessageID" then
+                           result (counter).Header := Header_MessageID;
+                        elsif word = "Hash" then
+                           result (counter).Header := Header_Hash;
+                        elsif word = "Charset" then
+                           result (counter).Header := Header_Charset;
+                        else
+                           result (counter).Header := Header_Unrecognized;
+                           --  this is impossible to reach
+                        end if;
+                     end;
+                     result (counter).Value := SU.To_Unbounded_String (
+                           MyLine (matches (2).First .. matches (2).Last));
+                  end if;
+               end;
+               start := x + 1;
+               counter := counter + 1;
+            end if;
+         end loop;
+
+         return result;
+      end;
+
+   end Break_Down_Headers;
+
 
 end ASCII_Armor;

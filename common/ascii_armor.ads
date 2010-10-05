@@ -100,6 +100,14 @@ package ASCII_Armor is
    --  strips out the newline characters, and then converts the whole thing
    --  to a string of octets.
 
+
+   function Break_Down_Headers (Data : SU.Unbounded_String)
+   return TArmor_Keypair_Set;
+   --  This function takes the unbounded string produced by the
+   --  Scan_Armored_Message procedure and generates a variable length
+   --  array of header keypairs.
+
+
 private
 
    type TOuterLayer is (armor_head, armor_tail);
