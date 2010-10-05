@@ -15,7 +15,7 @@
 
 
 with Ada.Numerics.Discrete_Random;
-with NN;      use NN;
+with NN; use NN;
 
 package body RSA_Frontend is
 
@@ -27,11 +27,12 @@ package body RSA_Frontend is
                                       Scrambled_R64 : in  String)
    return String is
       Bytes_Mod : constant Positive := Positive (Private_Key.KeySize) / 8;
-      scrambled : constant TBinaryString := Decode_Radix64 (Scrambled_R64);
+      scrambled : constant TBinaryString := convert_octet_to_binary (
+                           Radix64.Decode_Radix64 (Scrambled_R64));
       OutputLen : Integer;
       z         : Natural := 2;
    begin
-      Last_Error := Get_Radix_Coding_Status;
+      Last_Error := Radix64.Get_Radix_Coding_Status;
       if Last_Error /= 0 then
          return error_msg;
       end if;
@@ -99,11 +100,12 @@ package body RSA_Frontend is
                                      Scrambled_R64 : String)
    return String is
       Bytes_Mod : constant Positive := Positive (Public_Key.KeySize) / 8;
-      scrambled : constant TBinaryString := Decode_Radix64 (Scrambled_R64);
+      scrambled : constant TBinaryString := convert_octet_to_binary (
+                           Radix64.Decode_Radix64 (Scrambled_R64));
       OutputLen : Integer;
       z         : Natural := 2;
    begin
-      Last_Error := Get_Radix_Coding_Status;
+      Last_Error := Radix64.Get_Radix_Coding_Status;
       if Last_Error /= 0 then
          return error_msg;
       end if;
@@ -189,10 +191,10 @@ package body RSA_Frontend is
       end loop;
 
       declare
-         Encrypted_Bytecode : constant TBinaryString :=
-                                 Private_Transformation (
-                                       Private_Key => Private_Key,
-                                       Bytecode    => Plain_Bytecode);
+         Encrypted_Bytecode : constant OpenPGP_Types.TOctet_Array :=
+               convert_binary_to_octet (Private_Transformation (
+                                          Private_Key => Private_Key,
+                                          Bytecode    => Plain_Bytecode));
       begin
          --  clear sensitive information from memory
          Plain_Bytecode := (others => 0);
@@ -203,9 +205,10 @@ package body RSA_Frontend is
          end if;
 
          declare
-            result : constant String := Encode_to_Radix64 (Encrypted_Bytecode);
+            result : constant String :=
+                              Radix64.Encode_to_Radix64 (Encrypted_Bytecode);
          begin
-            Last_CRCR64 := CRC_Radix64 (Encrypted_Bytecode);
+            Last_CRCR64 := Radix64.CRC_Radix64 (Encrypted_Bytecode);
             return result;
          end;
       end;
@@ -241,10 +244,10 @@ package body RSA_Frontend is
       end loop;
 
       declare
-         Encrypted_Bytecode : constant TBinaryString :=
-                                 Public_Transformation (
-                                       Public_Key  => Public_Key,
-                                       Bytecode    => Plain_Bytecode);
+         Encrypted_Bytecode : constant OpenPGP_Types.TOctet_Array :=
+               convert_binary_to_octet (Public_Transformation (
+                                          Public_Key  => Public_Key,
+                                          Bytecode    => Plain_Bytecode));
       begin
          --  clear sensitive information from memory
          Plain_Bytecode := (others => 0);
@@ -255,9 +258,10 @@ package body RSA_Frontend is
          end if;
 
          declare
-            result : constant String := Encode_to_Radix64 (Encrypted_Bytecode);
+            result : constant String :=
+                              Radix64.Encode_to_Radix64 (Encrypted_Bytecode);
          begin
-            Last_CRCR64 := CRC_Radix64 (Encrypted_Bytecode);
+            Last_CRCR64 := Radix64.CRC_Radix64 (Encrypted_Bytecode);
             return result;
          end;
       end;
@@ -517,8 +521,10 @@ package body RSA_Frontend is
          MsgSize := QuadByteMatrixLen (num_bits_modulus / 8);
       end;
       declare
-         public_mod : constant TBinaryString := Decode_HexString (Modulus);
-         public_exp : constant TBinaryString := Decode_HexString (Exponent);
+         public_mod : constant TBinaryString := convert_octet_to_binary (
+                               Radix64.Decode_HexString (Modulus));
+         public_exp : constant TBinaryString := convert_octet_to_binary (
+                               Radix64.Decode_HexString (Exponent));
       begin
          Modulus_Array  := NN_Decode (public_mod);
          Exponent_Array := NN_Decode (public_exp);
@@ -629,14 +635,22 @@ package body RSA_Frontend is
       end;
 
       declare
-         pumod : constant TBinaryString := Decode_HexString (Modulus);
-         puexp : constant TBinaryString := Decode_HexString (Public_Exponent);
-         prexp : constant TBinaryString := Decode_HexString (Private_Exponent);
-         prp   : constant TBinaryString := Decode_HexString (Prime_p);
-         prq   : constant TBinaryString := Decode_HexString (Prime_q);
-         prxp  : constant TBinaryString := Decode_HexString (Prime_Exp_p);
-         prxq  : constant TBinaryString := Decode_HexString (Prime_Exp_q);
-         prcof : constant TBinaryString := Decode_HexString (coefficient);
+         pumod : constant TBinaryString := convert_octet_to_binary (
+                          Radix64.Decode_HexString (Modulus));
+         puexp : constant TBinaryString := convert_octet_to_binary (
+                          Radix64.Decode_HexString (Public_Exponent));
+         prexp : constant TBinaryString := convert_octet_to_binary (
+                          Radix64.Decode_HexString (Private_Exponent));
+         prp   : constant TBinaryString := convert_octet_to_binary (
+                          Radix64.Decode_HexString (Prime_p));
+         prq   : constant TBinaryString := convert_octet_to_binary (
+                          Radix64.Decode_HexString (Prime_q));
+         prxp  : constant TBinaryString := convert_octet_to_binary (
+                          Radix64.Decode_HexString (Prime_Exp_p));
+         prxq  : constant TBinaryString := convert_octet_to_binary (
+                          Radix64.Decode_HexString (Prime_Exp_q));
+         prcof : constant TBinaryString := convert_octet_to_binary (
+                          Radix64.Decode_HexString (coefficient));
       begin
          Modulus_Array     := NN_Decode (pumod);
          PubExp_Array      := NN_Decode (puexp);
@@ -716,9 +730,40 @@ package body RSA_Frontend is
    ------------------------
 
    function Get_CRC_Checksum
-   return CRCR64String is
+   return Radix64.CRCR64String is
    begin
       return Last_CRCR64;
    end Get_CRC_Checksum;
+
+
+
+   -------------------------------
+   --  convert_binary_to_octet  --
+   -------------------------------
+
+   function convert_binary_to_octet (BinaryString : TBinaryString)
+   return OpenPGP_Types.TOctet_Array is
+      result : OpenPGP_Types.TOctet_Array (0 .. BinaryString'Last);
+   begin
+      for x in Natural range BinaryString'Range loop
+         result (x) := OpenPGP_Types.TOctet (BinaryString (x));
+      end loop;
+      return result;
+   end convert_binary_to_octet;
+
+
+   -------------------------------
+   --  convert_octet_to_binary  --
+   -------------------------------
+
+   function convert_octet_to_binary (OctetString : OpenPGP_Types.TOctet_Array)
+   return TBinaryString is
+      result : TBinaryString (0 .. OctetString'Last);
+   begin
+      for x in Natural range OctetString'Range loop
+         result (x) := MByte (OctetString (x));
+      end loop;
+      return result;
+   end convert_octet_to_binary;
 
 end RSA_Frontend;

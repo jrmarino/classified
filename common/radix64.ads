@@ -36,8 +36,7 @@
 --         16 Q            33 h            50 y
 
 
-with Key_4096; use Key_4096;
-with RSATypes; use RSATypes;
+with OpenPGP_Types; use OpenPGP_Types;
 
 package Radix64 is
 
@@ -47,33 +46,33 @@ package Radix64 is
    type TCRC24 is mod 16#1000000#;
 
 
-   function Encode_to_Radix64 (BinaryString : TBinaryString) return String;
+   function Encode_to_Radix64 (BinaryString : TOctet_Array) return String;
    --  Converts an array of bytes to 64-bit encoded ASCII text
    --  The output string is 33% longer than the input string
 
 
-   function Decode_Radix64 (Radix64String : String) return TBinaryString;
+   function Decode_Radix64 (Radix64String : String) return TOctet_Array;
    --  Converts the 64-bit encoded ASCII text back into an array of bytes.
    --  Error code is stored internally
    --  Encrypted message length is stored internally
 
 
-   function Get_Radix_Coding_Status return TCryptoError;
-   --  This passes back the value of Internal_Error_Code
+   function Get_Radix_Coding_Status return Natural;
+   --  This passes back the value of Internal_Error_Code (limited to 8)
 
 
-   function Decode_HexString (HexString : String) return TBinaryString;
+   function Decode_HexString (HexString : String) return TOctet_Array;
    --  Converts a string of hexadecimal characters to an array of bytes.
    --  The string must have an even number of digits, otherwise it returns
    --  zero.
 
 
-   function CRC (BinaryString : TBinaryString) return TCRC24;
+   function CRC (BinaryString : TOctet_Array) return TCRC24;
    --  This returns the Cyclic Redundancy Check (CRC) checksum on plain text.
    --  It is used for the armored messages of OpenPGP;
 
 
-   function CRC_Radix64 (BinaryString : TBinaryString) return CRCR64String;
+   function CRC_Radix64 (BinaryString : TOctet_Array) return CRCR64String;
    --  The returns the Cyclic Redundancy Check (CRC) checksum on plain text
    --  converted into Radix64, and preceded by an equal sign character as
    --  specified in openPGP.
@@ -86,11 +85,11 @@ package Radix64 is
 
 private
 
-   PAD : constant MByte := 16#3D#;  --  Character of "="
+   PAD : constant TOctet := 16#3D#;  --  Character of "="
    BIN2ASC : constant String (1 .. 64) := "ABCDEFGHIJKLMNOPQRSTUVWXYZ" &
                                           "abcdefghijklmnopqrstuvwxyz" &
                                           "0123456789+/";
-   ASC2BIN : constant array (TAscii) of MByte := (
+   ASC2BIN : constant array (TAscii) of TOctet := (
          16#80#, 16#80#, 16#80#, 16#80#, 16#80#, 16#80#, 16#80#, 16#80#,
          16#80#, 16#80#, 16#80#, 16#80#, 16#80#, 16#80#, 16#80#, 16#80#,
          16#80#, 16#80#, 16#80#, 16#80#, 16#80#, 16#80#, 16#80#, 16#80#,
@@ -113,31 +112,31 @@ private
    subtype TCount is Natural range 0 .. 2;
    subtype ShiftRange is Natural range 1 .. 7;
 
-   Internal_Error_Code : TCryptoError := 0;
+   Internal_Error_Code : Natural := 0;
 
-   function Octet2MByte (Octet : OctetString) return MByte;
-   --  Takes a 2-character hexidecimal string and returns an MByte
+   function Hexstring2Byte (Hex : OctetString) return TOctet;
+   --  Takes a 2-character hexidecimal string and returns an octet
 
 
-   function EncodeByte (c : MByte) return Character;
+   function EncodeByte (c : TOctet) return Character;
    --  Takes a byte, and returns the appropriate Radix64 character.
 
 
-   function Encode_Three_Bytes (BinaryString : TBinaryString;
+   function Encode_Three_Bytes (BinaryString : TOctet_Array;
                                 Index        : Natural;
                                 Count        : TCount)
    return FourSequence;
    --  Takes three bytes and returns four 7-bit ASCII characters
 
 
-   function Scroll_Left (original : MByte;
-                         bits     : ShiftRange) return MByte;
+   function Scroll_Left (original : TOctet;
+                         bits     : ShiftRange) return TOctet;
    --  Recieves a byte, and shifts it left by "bits" bits.
    --  Overflown bits just fall off.
 
 
-   function Scroll_Right (original : MByte;
-                          bits     : ShiftRange) return MByte;
+   function Scroll_Right (original : TOctet;
+                          bits     : ShiftRange) return TOctet;
    --  Recieves a byte, and shifts it right by "bits" bits, but doesn't
    --  wrap them around.  Overflown bits just fall off.
 

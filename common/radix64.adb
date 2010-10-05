@@ -20,10 +20,10 @@ package body Radix64 is
    --  Octet2MByte  --
    -------------------
 
-   function Octet2MByte (Octet : OctetString)
-   return MByte is
-      octs   : constant Character := Octet (1);
-      ones   : constant Character := Octet (2);
+   function Hexstring2Byte (Hex : OctetString)
+   return TOctet is
+      octs   : constant Character := Hex (1);
+      ones   : constant Character := Hex (2);
       result : Integer := 0;
    begin
       case octs is
@@ -39,9 +39,9 @@ package body Radix64 is
          when others     => null;
       end case;
 
-      return MByte (result);
+      return TOctet (result);
 
-   end Octet2MByte;
+   end Hexstring2Byte;
 
 
 
@@ -50,19 +50,19 @@ package body Radix64 is
    ------------------------
 
    function Decode_HexString (HexString : String)
-   return TBinaryString is
+   return TOctet_Array is
       OutputLen : constant Integer := (HexString'Length + 1) / 2;
-      result : TBinaryString (0 .. OutputLen - 1) := (others => 0);
+      result : TOctet_Array (0 .. OutputLen - 1) := (others => 0);
       index : Integer := 1;
-      octet : OctetString;
+      Hex : OctetString;
    begin
       if (HexString'Length rem 2) > 0 then
          return result;
       end if;
 
       for x in Integer range 1 .. OutputLen loop
-         octet := HexString (index .. index + 1);
-         result (x - 1) := Octet2MByte (octet);
+         Hex := HexString (index .. index + 1);
+         result (x - 1) := Hexstring2Byte (Hex);
          index := index + 2;
       end loop;
 
@@ -76,7 +76,7 @@ package body Radix64 is
    --  Encode  --
    --------------
 
-   function EncodeByte (c : MByte)
+   function EncodeByte (c : TOctet)
    return Character is
       index : constant Integer := Integer (c and 16#3F#) + 1;
    begin
@@ -89,7 +89,7 @@ package body Radix64 is
    --  Encode_to_Radix64  --
    -------------------------
 
-   function Encode_to_Radix64 (BinaryString : TBinaryString)
+   function Encode_to_Radix64 (BinaryString : TOctet_Array)
    return String is
       triples    : constant Integer := (BinaryString'Length + 2) / 3;
       Output_Len : constant Integer := triples * 4;
@@ -122,13 +122,13 @@ package body Radix64 is
    --  Encode_Three_Bytes  --
    --------------------------
 
-   function Encode_Three_Bytes (BinaryString : TBinaryString;
+   function Encode_Three_Bytes (BinaryString : TOctet_Array;
                                 Index        : Natural;
                                 Count        : TCount)
    return FourSequence is
-      P0 : constant MByte := BinaryString (Index);
-      P1 : MByte := 0;
-      P2 : MByte := 0;
+      P0 : constant TOctet := BinaryString (Index);
+      P1 : TOctet := 0;
+      P2 : TOctet := 0;
 
       result : FourSequence;
    begin
@@ -140,12 +140,12 @@ package body Radix64 is
       end if;
 
       declare
-         c1 : constant MByte :=  Scroll_Right (P0, 2);
-         c2 : constant MByte := (Scroll_Left  (P0, 4) and 8#60#) or
+         c1 : constant TOctet :=  Scroll_Right (P0, 2);
+         c2 : constant TOctet := (Scroll_Left  (P0, 4) and 8#60#) or
                                 (Scroll_Right (P1, 4) and 8#17#);
-         c3 : constant MByte := (Scroll_Left  (P1, 2) and 8#74#) or
+         c3 : constant TOctet := (Scroll_Left  (P1, 2) and 8#74#) or
                                 (Scroll_Right (P2, 6) and 8#3#);
-         c4 : constant MByte := P2 and 8#77#;
+         c4 : constant TOctet := P2 and 8#77#;
       begin
          result (1) := EncodeByte (c1);
          result (2) := EncodeByte (c2);
@@ -171,16 +171,16 @@ package body Radix64 is
    ----------------------
 
    function Decode_Radix64 (Radix64String : String)
-   return TBinaryString is
+   return TOctet_Array is
       triples    : constant Integer := (Radix64String'Length + 3) / 4;
       Max_Len    : constant Integer := triples * 3;
-      WorkString : TBinaryString (0 .. Max_Len - 1) := (others => 0);
-      c          : array (1 .. 4) of MByte := (others => 0);
-      enc        : array (1 .. 4) of MByte := (others => 0);
+      WorkString : TOctet_Array (0 .. Max_Len - 1) := (others => 0);
+      c          : array (1 .. 4) of TOctet := (others => 0);
+      enc        : array (1 .. 4) of TOctet := (others => 0);
       index3     : Natural := 0;
       index4     : Positive := 1;
       msg_length : Natural := 0;
-      error_msg  : constant TBinaryString (0 .. 2) := (5, 5, 5);
+      error_msg  : constant TOctet_Array (0 .. 2) := (5, 5, 5);
    begin
       msg_length          := 0;
       Internal_Error_Code := 0;
@@ -192,10 +192,10 @@ package body Radix64 is
          return error_msg;
       end if;
 
-      for x in Integer range 1 .. triples loop
-         for y in Integer range 0 .. 3 loop
-            c (1 + y) := MByte (Character'Pos (Radix64String (index4 + y)));
-            if c (1 + y) > MByte (TAscii'Last) then
+      for x in Positive range 1 .. triples loop
+         for y in Natural range 0 .. 3 loop
+            c (1 + y) := TOctet (Character'Pos (Radix64String (index4 + y)));
+            if c (1 + y) > TOctet (TAscii'Last) then
                Internal_Error_Code := 2;  -- 7th bit used
                return error_msg;
             end if;
@@ -260,12 +260,12 @@ package body Radix64 is
    --  Scroll_Left  --
    -------------------
 
-   function Scroll_Left (original : MByte;
+   function Scroll_Left (original : TOctet;
                          bits     : ShiftRange)
-   return MByte is
-      mask   : constant MByte := MByte (2 ** (8 - bits)) - 1;
-      factor : constant MByte := MByte (2 ** bits);
-      canvas : constant MByte := original and mask;
+   return TOctet is
+      mask   : constant TOctet := TOctet (2 ** (8 - bits)) - 1;
+      factor : constant TOctet := TOctet (2 ** bits);
+      canvas : constant TOctet := original and mask;
    begin
       return canvas * factor;
    end Scroll_Left;
@@ -275,10 +275,10 @@ package body Radix64 is
    --  Scroll_Right  --
    --------------------
 
-   function Scroll_Right (original : MByte;
+   function Scroll_Right (original : TOctet;
                           bits     : ShiftRange)
-   return MByte is
-      factor : constant MByte := MByte (2 ** bits);
+   return TOctet is
+      factor : constant TOctet := TOctet (2 ** bits);
    begin
       return original / factor;
    end Scroll_Right;
@@ -290,7 +290,7 @@ package body Radix64 is
    -------------------------------
 
    function Get_Radix_Coding_Status
-   return TCryptoError is
+   return Natural is
    begin
       return Internal_Error_Code;
    end Get_Radix_Coding_Status;
@@ -301,7 +301,7 @@ package body Radix64 is
    --  CRC  --
    -----------
 
-   function CRC (BinaryString : TBinaryString)
+   function CRC (BinaryString : TOctet_Array)
    return TCRC24 is
       type TCRC32 is mod 16#100000000#;
       CRC24_INIT : constant TCRC32 := 16#B704CE#;
@@ -330,17 +330,17 @@ package body Radix64 is
    --  CRC_Radix64  --
    -------------------
 
-   function CRC_Radix64 (BinaryString : TBinaryString)
+   function CRC_Radix64 (BinaryString : TOctet_Array)
    return CRCR64String is
       result   : CRCR64String := "=AAAA";
       checksum : constant TCRC24 := CRC (BinaryString);
       factor4  : constant TCRC24 := 2 ** 16;
       factor2  : constant TCRC24 := 2 ** 8;
-      scratch  : TBinaryString (0 .. 2);
+      scratch  : TOctet_Array (0 .. 2);
    begin
-      scratch (0) := MByte ((checksum and 16#FF0000#) / factor4);
-      scratch (1) := MByte ((checksum and 16#00FF00#) / factor2);
-      scratch (2) := MByte (checksum and 16#0000FF#);
+      scratch (0) := TOctet ((checksum and 16#FF0000#) / factor4);
+      scratch (1) := TOctet ((checksum and 16#00FF00#) / factor2);
+      scratch (2) := TOctet (checksum and 16#0000FF#);
       result (2 .. 5) := Encode_to_Radix64 (BinaryString => scratch);
 
       return result;
@@ -356,8 +356,8 @@ package body Radix64 is
    return TCRC24 is
       shift8  : constant TCRC24 := 2 ** 8;
       shift16 : constant TCRC24 := 2 ** 16;
-      BS      : constant TBinaryString :=
-                         Decode_Radix64 (Checksum (2 .. Checksum'Last));
+      scratch : constant String (1 .. 4) := Checksum (2 .. Checksum'Last);
+      BS      : constant TOctet_Array := Decode_Radix64 (scratch);
    begin
       return TCRC24 (BS (0)) +
              TCRC24 (BS (1)) * shift8 +
