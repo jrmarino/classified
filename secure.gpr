@@ -1,13 +1,12 @@
 project Secure is
 
    for Source_Dirs use (".\**", "ciphers\rsa\**");
+   for Object_Dir use "..\classified_build";
+   for Main use ("test6.adb", "test7.adb");
 
    package Compiler is
-      for Default_Switches ("ada") use ("-gnatw.e", "-gnatVa", "-gnat05", "-gnatf", "-gnatyM80aAbBcdefhIklnrstxOpiS");
+      for Default_Switches ("ada") use ("-gnatw.e", "-gnatVa", "-gnat05", "-gnatf", "-gnatyM80aAbBcdefhklnrstxOpiS");
    end Compiler;
-
-   for Object_Dir use "..\classified_build";
-   for Main use ("test6.adb");
 
    package Builder is
       for Default_Switches ("ada") use ("-s");
