@@ -14,10 +14,14 @@
 --  OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 
+with OpenPGP_Utilities; use OpenPGP_Utilities;
 with Ada.Strings.Fixed;
+with Ada.Characters.Latin_1;
+with GNAT.Regpat;
 
 package body ASCII_Armor is
 
+   package Regex renames GNAT.Regpat;
 
    -----------------------
    --  Fortify_Message  --
@@ -38,7 +42,7 @@ package body ASCII_Armor is
            & format_keypairs (Keypair_Set => Keypair_Set)
            & Format_Message_in_76_char_lines (Message => Message_R64)
            & CRC24_R64
-           & Character'Val (10)
+           & Ada.Characters.Latin_1.LF
            & Outer_Line (Line_Type  => armor_tail,
                          Armor_Type => Armor_Type,
                          Part_X     => Part_X,
@@ -97,7 +101,6 @@ package body ASCII_Armor is
                         Sum_Parts  : Positive)
    return String is
       Dashes : constant String := "-----";
-      CR     : constant String (1 .. 1) := (1 => Character'Val (10));
       function Title (Armor_Type2 : TArmor_Type;
                       X           : Positive;
                       Y           : Positive) return String;
@@ -138,7 +141,7 @@ package body ASCII_Armor is
              Prefix (Line_Type2 => Line_Type) &
              Title (Armor_Type2 => Armor_Type, X => Part_X, Y => Sum_Parts) &
              Dashes &
-             CR;
+             Ada.Characters.Latin_1.LF;
    end Outer_Line;
 
 
@@ -152,7 +155,7 @@ package body ASCII_Armor is
       maxWidth : constant Positive := 76;
       numCR    : constant Positive := 1 + ((Message'Length + 75) / 76);
       newLen   : constant Positive := Message'Length + numCR;
-      result   : String (1 .. newLen) := (others => Character'Val (10));
+      result   : String (1 .. newLen) := (others => Ada.Characters.Latin_1.LF);
       index    : Positive := 2;
       arrow    : Natural  := 0;
       segment  : Positive;
@@ -228,7 +231,7 @@ package body ASCII_Armor is
                labelSize : constant Natural := label'Length;
                line      : constant String := label
                                    & SU.To_String (Keypair_Set (x).Value)
-                                   & Character'Val (10);
+                                   & Ada.Characters.Latin_1.LF;
             begin
                if labelSize > 0 then
                   result (index .. index + line'Length - 1) := line;
@@ -240,5 +243,165 @@ package body ASCII_Armor is
       end;
 
    end format_keypairs;
+
+
+   ----------------------------
+   --  Scan_Armored_Message  --
+   ----------------------------
+
+   procedure Scan_Armored_Message (Armored_Message : in  SU.Unbounded_String;
+                                   Armor_Type      : out TArmor_Type;
+                                   Keypair_String  : out SU.Unbounded_String;
+                                   Checksum        : out Radix64.TCRC24;
+                                   Payload_String  : out SU.Unbounded_String;
+                                   Part_Number     : out Positive;
+                                   Total_Parts     : out Natural;
+                                   Scan_Error      : out TArmor_Scan_Error)
+   is
+      AARE : constant String := "(^|\n)-----BEGIN PGP (.+)-----\n" &
+                                 "([[:cntrl:][:graph:]]+\n|)" &
+                                 "\n" &
+                                 "([[:ascii:]]+\n)" &
+                                 "=([[:ascii:]]{4})\n" &
+                                 "-----END PGP (.+)-----\n";
+      Matcher : constant Regex.Pattern_Matcher := Regex.Compile (AARE);
+      Matches : Regex.Match_Array (0 .. Regex.Paren_Count (Matcher));
+      work    : constant String := SU.To_String (Armored_Message);
+   begin
+      Checksum       := 0;
+      Part_Number    := 1;
+      Total_Parts    := 1;
+      Armor_Type     := armor_message;
+      Keypair_String := SU.Null_Unbounded_String;
+      Payload_String := SU.Null_Unbounded_String;
+      Scan_Error     := no_error;
+      Regex.Match (Regex.Compile (AARE), work, Matches);
+      if Matches (0).Last = 0 and then Matches (0).First = 0 then
+         Scan_Error := message_corrupt;
+         return;
+      end if;
+
+      declare
+         headstr : constant String :=
+                            work (Matches (2).First .. Matches (2).Last);
+         tailstr : constant String :=
+                            work (Matches (6).First .. Matches (6).Last);
+         slash_position : Natural := 0;
+         rest_numbers   : Boolean := True;
+      begin
+         if headstr /= tailstr then
+            Scan_Error := message_corrupt;
+            return;
+         end if;
+         if headstr = "MESSAGE" then
+            Armor_Type := armor_message;
+         elsif headstr = "SIGNATURE" then
+            Armor_Type := armor_signature;
+         elsif headstr = "PUBLIC KEY BLOCK" then
+            Armor_Type := armor_public_key;
+         elsif headstr = "PRIVATE KEY BLOCK" then
+            Armor_Type := armor_private_key;
+         elsif headstr (1 .. 14) = "MESSAGE, PART " then
+            for x in Positive range 15 .. headstr'Last loop
+               if headstr (x) = '/' then
+                  slash_position := x;
+               elsif headstr (x) < '0' or else
+                     headstr (x) > '9' then
+                  rest_numbers := False;
+               end if;
+            end loop;
+            if not rest_numbers or else
+               slash_position = 15 or else
+               slash_position = headstr'Last then
+               Scan_Error := type_not_recognized;
+               return;
+            end if;
+            Part_Number := Integer'Value (headstr (15 .. slash_position - 1));
+            if slash_position > 0 then
+               Armor_Type  := armor_multipart_x_of_y;
+               Total_Parts := Integer'Value (
+                              headstr (slash_position + 1 .. headstr'Last));
+            else
+               Armor_Type  := armor_multipart_x;
+               Total_Parts := 0;
+            end if;
+         else
+            Scan_Error := type_not_recognized;
+            return;
+         end if;
+      end;
+
+
+      Keypair_String := SU.To_Unbounded_String (
+                              work (Matches (3).First .. Matches (3).Last));
+      declare
+         use Radix64;
+
+         tmppl   : constant SU.Unbounded_String := SU.To_Unbounded_String (
+                            work (Matches (4).First .. Matches (4).Last));
+         tmppl2  : constant String := condense_payload (tmppl);
+         tmppl3  : constant TOctet_Array := Decode_Radix64 (tmppl2);
+
+         msgcrc  : constant String := "=" &
+                            work (Matches (5).First .. Matches (5).Last);
+         xnewcrc : constant TCRC24 := CRC (BinaryString => tmppl3);
+         xmsgcrc : constant TCRC24 := convert_CRCR64_To_Integer (msgcrc);
+      begin
+         Payload_String := SU.To_Unbounded_String (tmppl2);
+
+         if xnewcrc /= xmsgcrc then
+            Scan_Error := checksum_failed;
+         end if;
+      end;
+
+   end Scan_Armored_Message;
+
+
+
+   -----------------------------
+   --  convert_R64_to_Binary  --
+   -----------------------------
+
+   function convert_R64_to_Binary (Payload : String)
+   return TOctet_Array is
+   begin
+      return convert_string_to_octet_array (Payload);
+   end convert_R64_to_Binary;
+
+
+
+   ------------------------
+   --  condense_payload  --
+   ------------------------
+
+   function condense_payload (provision : SU.Unbounded_String)
+   return String is
+      numCR : Natural := 0;
+   begin
+      for x in Positive range 1 .. SU.Length (provision) loop
+         if SU.Element (Source => provision, Index  => x) =
+            Ada.Characters.Latin_1.LF then
+            numCR := numCR + 1;
+         end if;
+      end loop;
+      if numCR >= SU.Length (provision) then
+         return "";
+      end if;
+      declare
+         LastIndex : constant Positive := SU.Length (provision) - numCR;
+         scratch   : String (1 .. LastIndex);
+         index     : Positive := 1;
+         paychar   : Character;
+      begin
+         for x in Positive range 1 .. SU.Length (provision) loop
+            paychar := SU.Element (Source => provision, Index  => x);
+            if paychar /= Ada.Characters.Latin_1.LF then
+               scratch (index) := paychar;
+               index := index + 1;
+            end if;
+         end loop;
+         return scratch;
+      end;
+   end condense_payload;
 
 end ASCII_Armor;

@@ -14,7 +14,9 @@
 --  OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 
+with OpenPGP_Types; use OpenPGP_Types;
 with Ada.Strings.Unbounded;
+with Radix64;
 
 package ASCII_Armor is
 
@@ -44,6 +46,13 @@ package ASCII_Armor is
    end record;
 
    type TArmor_Keypair_Set is array (Positive range <>) of TArmor_Keypair;
+   type TArmor_Scan_Error is (
+      no_error,
+      message_corrupt,
+      type_not_recognized,
+      checksum_failed
+   );
+
 
    function Fortify_Message (Armor_Type  : TArmor_Type;
                              Keypair_Set : TArmor_Keypair_Set;
@@ -72,6 +81,25 @@ package ASCII_Armor is
    --  Overloaded version for known single message
 
 
+   procedure Scan_Armored_Message (Armored_Message : in  SU.Unbounded_String;
+                                   Armor_Type      : out TArmor_Type;
+                                   Keypair_String  : out SU.Unbounded_String;
+                                   Checksum        : out Radix64.TCRC24;
+                                   Payload_String  : out SU.Unbounded_String;
+                                   Part_Number     : out Positive;
+                                   Total_Parts     : out Natural;
+                                   Scan_Error      : out TArmor_Scan_Error);
+   --  This procedure will accept an ASCII armored message and will return
+   --  all the information that it contains.  Messages without part numbers
+   --  will have part_number=1, total_parts=1.  Messages with only Part X will
+   --  have part_number=X, total_parts=0.
+
+
+   function convert_R64_to_Binary (Payload : String) return TOctet_Array;
+   --  This function takes the payload from the ASCII armored message, it
+   --  strips out the newline characters, and then converts the whole thing
+   --  to a string of octets.
+
 private
 
    type TOuterLayer is (armor_head, armor_tail);
@@ -91,10 +119,14 @@ private
    --  reached.
 
 
-
    function format_keypairs (Keypair_Set : TArmor_Keypair_Set) return String;
    --  This function formats all the provided message headers for the
    --  ASCII armor formatting.
+
+
+   function condense_payload (provision : SU.Unbounded_String) return String;
+   --  This internal function takes the 76-character limited-width block of
+   --  Radix64 encoding and converts it to a string without newline characters.
 
 
 end ASCII_Armor;

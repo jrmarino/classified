@@ -321,7 +321,10 @@ package body OpenPGP_Utilities is
       result : String (1 .. Block'Length);
       index  : Natural := 0;
    begin
-      for x in Natural range 0 .. Block'Length loop
+      if Block'Length = 0 then
+         return result;
+      end if;
+      for x in Natural range 0 .. Block'Last loop
          index := index + 1;
          result (index) := Character'Val (Block (x));
       end loop;

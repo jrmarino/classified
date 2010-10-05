@@ -16,9 +16,9 @@
 
 package body Radix64 is
 
-   -------------------
-   --  Octet2MByte  --
-   -------------------
+   ----------------------
+   --  Hexstring2Byte  --
+   ----------------------
 
    function Hexstring2Byte (Hex : OctetString)
    return TOctet is
@@ -304,14 +304,16 @@ package body Radix64 is
    function CRC (BinaryString : TOctet_Array)
    return TCRC24 is
       type TCRC32 is mod 16#100000000#;
-      CRC24_INIT : constant TCRC32 := 16#B704CE#;
-      CRC24_POLY : constant TCRC32 := 16#1864FB#;
-      factor     : constant TCRC32 := 2 ** 16;
-      checksum   : TCRC32 := CRC24_INIT;
-      result     : TCRC24;
+      CRC24_INIT   : constant TCRC32 := 16#B704CE#;
+      CRC24_POLY   : constant TCRC32 := 16#1864CFB#;
+      factor       : constant TCRC32 := 2 ** 16;
+      checksum     : TCRC32 := CRC24_INIT;
+      result       : TCRC24;
+      shifted_byte : TCRC32;
    begin
-      for x in Natural range 0 .. BinaryString'Length - 1 loop
-         checksum := checksum xor (TCRC32 (BinaryString (x)) * factor);
+      for x in Natural range 0 .. BinaryString'Last loop
+         shifted_byte := TCRC32 (BinaryString (x)) * factor;
+         checksum := checksum xor shifted_byte;
          for k in Positive range 1 .. 8 loop
             checksum := checksum * 2;  -- shift right 1 bit
             if (checksum and 16#1000000#) > 0 then
@@ -359,9 +361,9 @@ package body Radix64 is
       scratch : constant String (1 .. 4) := Checksum (2 .. Checksum'Last);
       BS      : constant TOctet_Array := Decode_Radix64 (scratch);
    begin
-      return TCRC24 (BS (0)) +
+      return TCRC24 (BS (0)) * shift16 +
              TCRC24 (BS (1)) * shift8 +
-             TCRC24 (BS (2)) * shift16;
+             TCRC24 (BS (2));
 
    end convert_CRCR64_To_Integer;
 
