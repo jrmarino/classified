@@ -333,6 +333,19 @@ package body OpenPGP_Utilities is
 
 
 
+   -----------------------------------------------
+   --  convert_octet_array_to_unbounded_string  --
+   -----------------------------------------------
+
+   function convert_octet_array_to_unbounded_string (Block : TOctet_Array)
+   return SU.Unbounded_String is
+      tmp : constant String := (convert_octet_array_to_string (Block => Block));
+   begin
+      return SU.To_Unbounded_String (tmp);
+   end convert_octet_array_to_unbounded_string;
+
+
+
    -------------------------------------
    --  convert_string_to_octet_array  --
    -------------------------------------
@@ -407,5 +420,86 @@ package body OpenPGP_Utilities is
          when others       => return 16#FF#;
       end case;
    end convert_compression_algorithm_to_octet;
+
+
+
+   ---------------------
+   --  mpi_byte_size  --
+   ---------------------
+
+   function mpi_byte_size (SU_MPI : TSU_MPI)
+   return Natural is
+      Len_SU_MPI   : constant Natural := SU.Length (SU_MPI);
+      bit_length   : Natural;
+      byte_length  : Natural;
+      ones         : Natural;
+      nxtv         : Natural;
+   begin
+      if Len_SU_MPI < 3 then
+         return 0;
+      end if;
+      declare
+         msb  : constant Character := SU.Element (Source => SU_MPI, Index => 1);
+         lsb  : constant Character := SU.Element (Source => SU_MPI, Index => 2);
+         next : constant Character := SU.Element (Source => SU_MPI, Index => 3);
+         msbv : constant Natural   := Natural (Character'Pos (msb));
+         lsbv : constant Natural   := Natural (Character'Pos (lsb));
+      begin
+         bit_length  := (msbv * 256) + lsbv;
+         byte_length := (bit_length + 7) / 8;
+         ones        := bit_length mod 8;
+         nxtv := Natural (Character'Pos (next));
+      end;
+      if ones > 0 and then nxtv >= 2 ** ones then
+         return 0;  -- more significant bits than specified present.
+      end if;
+      return byte_length;
+   end mpi_byte_size;
+
+
+
+   ----------------------------------
+   --  convert_mpi_to_octet_array  --
+   ----------------------------------
+
+   function convert_mpi_to_octet_array (SU_MPI        : TSU_MPI;
+                                        Number_Octets : Positive)
+   return TOctet_Array is
+      Len_SU_MPI  : constant Natural := SU.Length (SU_MPI);
+      result      : TOctet_Array (0 .. Number_Octets - 1) := (others => 0);
+      index       : Natural;
+      single_char : Character;
+   begin
+      index := Number_Octets + 2 - Len_SU_MPI;
+      for x in Positive range 3 .. Len_SU_MPI loop
+         single_char := SU.Element (Source => SU_MPI, Index => x);
+         result (index) := TOctet (Character'Pos (single_char));
+         index := index + 1;
+      end loop;
+      return result;
+   end convert_mpi_to_octet_array;
+
+
+
+   -------------------
+   --  extract_mpi  --
+   -------------------
+
+   function extract_mpi (start_index  : Natural;
+                         octet_array  : TOctet_Array)
+   return SU.Unbounded_String is
+      remaining  : constant Natural := octet_array'Length - start_index + 1;
+      size       : constant Natural := MPI_Byte_Size (
+                            Octet_1 => octet_array (start_index),
+                            Octet_2 => octet_array (start_index + 1));
+      last_index : constant Natural := start_index + size - 1;
+   begin
+      if size > remaining then
+         return SU.Null_Unbounded_String;
+      end if;
+      return convert_octet_array_to_unbounded_string (
+                  Block => octet_array (start_index .. last_index));
+   end extract_mpi;
+
 
 end OpenPGP_Utilities;

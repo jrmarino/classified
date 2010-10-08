@@ -15,8 +15,13 @@
 
 
 with OpenPGP_Types; use OpenPGP_Types;
+with Ada.Strings.Unbounded;
 
 package OpenPGP_Utilities is
+
+
+   package SU renames Ada.Strings.Unbounded;
+
 
    function MPI_Byte_Size (Octet_1 : TOctet;
                            Octet_2 : TOctet) return Natural;
@@ -96,6 +101,11 @@ package OpenPGP_Utilities is
    --  This function will convert an array of octets to a UTF-8 string.
 
 
+   function convert_octet_array_to_unbounded_string (Block : TOctet_Array)
+   return SU.Unbounded_String;
+   --  This function will convert an array of octets to an unbounded string.
+
+
    function convert_string_to_octet_array (data : String) return TOctet_Array;
    --  This function converts a string to an array of octets.
 
@@ -111,6 +121,31 @@ package OpenPGP_Utilities is
    return TOctet;
    --  This funciton takes a compression algorithm enumeration and returns the
    --  associated octet value.
+
+
+   function mpi_byte_size (SU_MPI : TSU_MPI) return Natural;
+   --  This function returns the number of bytes it would require to store the
+   --  multiple precision integer into an array of octets.  If a zero is
+   --  returned, that should be interpreted that the mpi is malformed because
+   --  less than 3 octets were used to represent, or the leading bits that
+   --  should have been zero weren't.
+
+
+   function convert_mpi_to_octet_array (SU_MPI        : TSU_MPI;
+                                        Number_Octets : Positive)
+   return TOctet_Array;
+   --  This function takes openPGP multi-precision integers which are stored
+   --  insided binary-safe unbounded strings and converts them into an array
+   --  of octets.  Both the input and output are big-endian formatted.
+
+
+   function extract_mpi (start_index  : Natural;
+                         octet_array  : TOctet_Array)
+   return SU.Unbounded_String;
+   --  This function is passed an octet array along with the index in which
+   --  to look for an MPI.  It will return that MPI within an unbounded string
+   --  sized appropriately.  If there isn't another data to accomplish list,
+   --  a null-sized string is returned.
 
 end OpenPGP_Utilities;
 

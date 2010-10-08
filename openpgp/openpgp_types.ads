@@ -14,6 +14,8 @@
 --  OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 
+with Ada.Strings.Unbounded;
+
 package OpenPGP_Types is
 
    type TOctet is mod 16#100#;
@@ -154,5 +156,6 @@ package OpenPGP_Types is
       Length : Natural := 1;
    end record;
 
+   subtype TSU_MPI is Ada.Strings.Unbounded.Unbounded_String;
 
 end OpenPGP_Types;
