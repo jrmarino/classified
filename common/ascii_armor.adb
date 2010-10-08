@@ -210,6 +210,7 @@ package body ASCII_Armor is
          declare
             label     : constant String := Key (Keypair_Set (x).Header);
             labelSize : constant Natural := label'Length;
+            use SU;
          begin
             if labelSize > 0 then
                Selection_Size := Selection_Size + labelSize +

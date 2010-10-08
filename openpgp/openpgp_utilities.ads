@@ -15,12 +15,8 @@
 
 
 with OpenPGP_Types; use OpenPGP_Types;
-with Ada.Strings.Unbounded;
 
 package OpenPGP_Utilities is
-
-
-   package SU renames Ada.Strings.Unbounded;
 
 
    function MPI_Byte_Size (Octet_1 : TOctet;
@@ -104,6 +100,11 @@ package OpenPGP_Utilities is
    function convert_octet_array_to_unbounded_string (Block : TOctet_Array)
    return SU.Unbounded_String;
    --  This function will convert an array of octets to an unbounded string.
+
+
+   function convert_unbounded_string_to_octet_array (data : SU.Unbounded_String)
+   return TOctet_Array;
+   --  Converts an unbounded string into an octet array.
 
 
    function convert_string_to_octet_array (data : String) return TOctet_Array;

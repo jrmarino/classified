@@ -15,12 +15,9 @@
 
 
 with OpenPGP_Types; use OpenPGP_Types;
-with Ada.Strings.Unbounded;
 with Radix64;
 
 package ASCII_Armor is
-
-   package SU renames Ada.Strings.Unbounded;
 
    type TArmor_Type is (
          armor_message,

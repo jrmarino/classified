@@ -39,7 +39,8 @@ package body Packet_Type_11 is
          index      : Natural;
          ndxf       : Natural;
          safety     : constant TOctet_Array :=
-                               convert_unbounded_to_array (input_data.Filename);
+                               convert_unbounded_string_to_octet_array (
+                                    data => input_data.Filename);
       begin
 
          Result (0) := Convert_Packet_Tag_To_Octet (Literal_Data);
@@ -59,7 +60,8 @@ package body Packet_Type_11 is
 
          index := ndxf + 1;
          Result (index .. Result'Last) :=
-            convert_unbounded_to_array (input_data.Literal_Data);
+            convert_unbounded_string_to_octet_array (input_data.Literal_Data);
+
 
          return Result;
       end;
@@ -129,35 +131,5 @@ package body Packet_Type_11 is
       end case;
    end convert_data_format_to_octet;
 
-
-
-   ----------------------------------
-   --  convert_unbounded_to_array  --
-   ----------------------------------
-
-   function convert_unbounded_to_array (data : SU.Unbounded_String)
-   return TOctet_Array is
-      work   : constant String := SU.To_String (Source => data);
-      result : TOctet_Array (0 .. work'Length - 1);
-      index  : Natural := 0;
-   begin
-      for x in work'Range loop
-         result (index) := TOctet (Character'Pos (work (x)));
-         index := index + 1;
-      end loop;
-      return result;
-   end convert_unbounded_to_array;
-
-
-   -----------------------------------------------
-   --  convert_octet_array_to_unbounded_string  --
-   -----------------------------------------------
-
-   function convert_octet_array_to_unbounded_string (Block : TOctet_Array)
-   return SU.Unbounded_String is
-      scratch : constant String := convert_octet_array_to_string (Block);
-   begin
-      return SU.To_Unbounded_String (scratch);
-   end convert_octet_array_to_unbounded_string;
 
 end Packet_Type_11;

@@ -63,13 +63,4 @@ package Packet_Type_11 is
    --  Converts data format enumeration to the corresponding octet value.
 
 
-   function convert_unbounded_to_array (data : SU.Unbounded_String)
-   return TOctet_Array;
-   --  Converts an unbounded string into an octet array.
-
-
-   function convert_octet_array_to_unbounded_string (Block : TOctet_Array)
-   return SU.Unbounded_String;
-   --  Converts an octet array to an unbounded string.
-
 end Packet_Type_11;

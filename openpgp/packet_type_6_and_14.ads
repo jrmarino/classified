@@ -15,11 +15,8 @@
 
 
 with OpenPGP_Types; use OpenPGP_Types;
-with Ada.Strings.Unbounded;
 
 package Packet_Type_6_and_14 is
-
-   package SU renames Ada.Strings.Unbounded;
 
    type TP614_Error is (
       no_error,

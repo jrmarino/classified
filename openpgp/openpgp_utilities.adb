@@ -346,6 +346,25 @@ package body OpenPGP_Utilities is
 
 
 
+   -----------------------------------------------
+   --  convert_unbounded_string_to_octet_array  --
+   -----------------------------------------------
+
+   function convert_unbounded_string_to_octet_array (data : SU.Unbounded_String)
+   return TOctet_Array is
+      work   : constant String := SU.To_String (Source => data);
+      result : TOctet_Array (0 .. work'Length - 1);
+      index  : Natural := 0;
+   begin
+      for x in work'Range loop
+         result (index) := TOctet (Character'Pos (work (x)));
+         index := index + 1;
+      end loop;
+      return result;
+   end convert_unbounded_string_to_octet_array;
+
+
+
    -------------------------------------
    --  convert_string_to_octet_array  --
    -------------------------------------

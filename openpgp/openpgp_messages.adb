@@ -24,71 +24,177 @@ package body OpenPGP_Messages is
    --------------------------
 
    function Scan_Packet_Header (Packet : TOctet_Array)
-   return TPacket_Header is
-      blank   : TPacket_Header;
-      work    : TPacket_Header;
+   return TPacket_Header_Set is
+      subtype TLenFormat is Natural range 0 .. 3;
+      function old_style_length (ndx : Natural) return TBody_Length;
+      function new_style_length (ndx : Natural) return TBody_Length;
+      function old_style_start  (ndx : Natural) return Natural;
+      function new_style_start  (ndx : Natural) return Natural;
+      function tag_type (packet_tag : TOctet)   return TPacket_Tag;
+
+
+      Nothing      : TPacket_Header_Set (1 .. 0);
+      index        : Natural := 0;
+      format_octet : TOctet;
+      starts       : Natural;
+      pack_length  : TBody_Length;
+      num_packets  : Natural := 0;
+
+
+      function old_style_length (ndx : Natural)
+      return TBody_Length is
+         B2         : constant Natural := 2 ** 8;
+         B3         : constant Natural := 2 ** 16;
+         B4         : constant Natural := 2 ** 24;
+         result     : TBody_Length;
+         len_format : TLenFormat;
+      begin
+         len_format := Natural (Packet (ndx) and 3);
+         case len_format is
+            when 0 => result := TBody_Length (Natural (Packet (ndx + 1)));
+            when 1 => result := TBody_Length (
+                                    Natural (Packet (ndx + 1)) * B2 +
+                                    Natural (Packet (ndx + 2)));
+            when 2 => result := TBody_Length (
+                                    Natural (Packet (ndx + 1)) * B4 +
+                                    Natural (Packet (ndx + 2)) * B3 +
+                                    Natural (Packet (ndx + 3)) * B2 +
+                                    Natural (Packet (ndx + 4)));
+            when 3 => result := TBody_Length (Packet'Length - 1);
+         end case;
+         return result;
+      end old_style_length;
+
+
+      function new_style_length (ndx : Natural)
+      return TBody_Length is
+         result : TBody_Length;
+      begin
+         case Packet (ndx + 1) is
+            when   0 .. 191 => result := TBody_Length (Packet (ndx + 1));
+            when 192 .. 223 => result := Two_Octet_Length (
+                                             Octet_1 => Packet (ndx + 1),
+                                             Octet_2 => Packet (ndx + 2));
+            when        255 => result := Four_Octet_Length (
+                                             Octet_1 => Packet (ndx + 2),
+                                             Octet_2 => Packet (ndx + 3),
+                                             Octet_3 => Packet (ndx + 4),
+                                             Octet_4 => Packet (ndx + 5));
+            when 224 .. 254 =>  --  Indeterminate length
+               declare
+                  power : constant Natural :=
+                                   Natural (Packet (ndx + 1) and 16#1F#);
+               begin
+                  result := TBody_Length (2 ** power);
+               end;
+         end case;
+         return result;
+      end new_style_length;
+
+
+      function old_style_start (ndx : Natural)
+      return Natural is
+         result     : Natural;
+         len_format : TLenFormat;
+      begin
+         len_format := Natural (Packet (ndx) and 3);
+         case len_format is
+            when 0 => result := ndx + 2;
+            when 1 => result := ndx + 3;
+            when 2 => result := ndx + 5;
+            when 3 => result := ndx + 2;
+         end case;
+         return result;
+      end old_style_start;
+
+
+      function new_style_start (ndx : Natural) return Natural is
+         result : Natural;
+      begin
+         case Packet (ndx + 1) is
+            when   0 .. 191 => result := ndx + 2;
+            when 192 .. 223 => result := ndx + 3;
+            when        255 => result := ndx + 5;
+            when 224 .. 254 => result := ndx + 2;
+         end case;
+         return result;
+      end new_style_start;
+
+      function tag_type (packet_tag : TOctet) return TPacket_Tag is
+      begin
+         case packet_tag is
+            when  1 => return Public_Key_Encrypted_Session;
+            when  2 => return Signature;
+            when  3 => return Symmetic_Key_Encrypted_Session;
+            when  4 => return One_Pass_Signature_Packet;
+            when  5 => return Secret_Key;
+            when  6 => return Public_key;
+            when  7 => return Secret_Subkey;
+            when  8 => return Compressed_Data;
+            when  9 => return Symmetrically_Encrypted_Data;
+            when 10 => return Marker;
+            when 11 => return Literal_Data;
+            when 12 => return Trust;
+            when 13 => return User_ID;
+            when 14 => return Public_Subkey;
+            when 17 => return User_Attribute;
+            when 18 => return Sym_Encrypted_Integrity_Protected_Data;
+            when 19 => return Modification_Detection_Code;
+            when 60 => return Private_60;
+            when 61 => return Private_61;
+            when 62 => return Private_62;
+            when 63 => return Private_63;
+            when others => return Undefined;
+         end case;
+      end tag_type;
+
    begin
       if Packet'Length < 2 then
-         return blank;
+         return Nothing;
       end if;
 
-      case Packet (0) is
-         when  1 => work.Packet_Tag := Public_Key_Encrypted_Session;
-         when  2 => work.Packet_Tag := Signature;
-         when  3 => work.Packet_Tag := Symmetic_Key_Encrypted_Session;
-         when  4 => work.Packet_Tag := One_Pass_Signature_Packet;
-         when  5 => work.Packet_Tag := Secret_Key;
-         when  6 => work.Packet_Tag := Public_key;
-         when  7 => work.Packet_Tag := Secret_Subkey;
-         when  8 => work.Packet_Tag := Compressed_Data;
-         when  9 => work.Packet_Tag := Symmetrically_Encrypted_Data;
-         when 10 => work.Packet_Tag := Marker;
-         when 11 => work.Packet_Tag := Literal_Data;
-         when 12 => work.Packet_Tag := Trust;
-         when 13 => work.Packet_Tag := User_ID;
-         when 14 => work.Packet_Tag := Public_Subkey;
-         when 17 => work.Packet_Tag := User_Attribute;
-         when 18 => work.Packet_Tag := Sym_Encrypted_Integrity_Protected_Data;
-         when 19 => work.Packet_Tag := Modification_Detection_Code;
-         when 60 => work.Packet_Tag := Private_60;
-         when 61 => work.Packet_Tag := Private_61;
-         when 62 => work.Packet_Tag := Private_62;
-         when 63 => work.Packet_Tag := Private_63;
-         when others => null;
-      end case;
+      while index < Packet'Length loop
+         format_octet := Packet (index);
+         if (format_octet and 64) > 0 then  --  new format
+            pack_length := new_style_length (index);
+            starts      := new_style_start (index);
+         else
+            pack_length := old_style_length (index);
+            starts      := old_style_start (index);
+         end if;
+         if index + Natural (pack_length) < Packet'Length then
+            num_packets := num_packets + 1;
+         end if;
+         index := starts + Natural (pack_length);
+      end loop;
 
-      if Packet (1) < 192 then
-         work.Body_Length := TBody_Length (Packet (1));
-         work.Body_Starts := 2;
-      elsif Packet (1) < 223 then
-         if Packet'Length < 3 then
-            return blank;
-         end if;
-         work.Body_Length := Two_Octet_Length (Packet (1), Packet (2));
-         work.Body_Starts := 3;
-      elsif Packet (1) = 255 then
-         if Packet'Length < 6 then
-            return blank;
-         end if;
-         work.Body_Length := Four_Octet_Length (Octet_1 => Packet (2),
-                                                Octet_2 => Packet (3),
-                                                Octet_3 => Packet (4),
-                                                Octet_4 => Packet (5));
-         work.Body_Starts := 6;
-      else
-         --  Indeterminate length
-         declare
-            power : constant Natural := Natural (Packet (1) and 16#1F#);
-         begin
-            work.Body_Length := TBody_Length (2 ** power);
-            work.Body_Starts := 2;
-         end;
-         if Packet'Length < work.Body_Length + 2 then
-            return blank;
-         end if;
-      end if;
-
-      return work;
+      declare
+         result    : TPacket_Header_Set (1 .. num_packets);
+         tag_value : TOctet;
+         pkindex   : Natural := 0;
+      begin
+         index := 0;
+         while index < Packet'Length loop
+            format_octet := Packet (index);
+            if (format_octet and 64) > 0 then  --  new format
+               tag_value := format_octet and 63;
+               pack_length := new_style_length (index);
+               starts      := new_style_start (index);
+            else
+               tag_value := (format_octet and 63) / 4;
+               pack_length := old_style_length (index);
+               starts      := old_style_start (index);
+            end if;
+            if index + Natural (pack_length) < Packet'Length then
+               pkindex := pkindex + 1;
+               result (pkindex).Packet_Tag  := tag_type (tag_value);
+               result (pkindex).Body_Length := pack_length;
+               result (pkindex).Body_Starts := starts;
+            end if;
+            index := starts + Natural (pack_length);
+         end loop;
+         return result;
+      end;
 
    end Scan_Packet_Header;
 

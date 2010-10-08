@@ -18,9 +18,11 @@ with OpenPGP_Types; use OpenPGP_Types;
 
 package OpenPGP_Messages is
 
-   function Scan_Packet_Header (Packet : TOctet_Array) return TPacket_Header;
+   function Scan_Packet_Header (Packet : TOctet_Array)
+   return TPacket_Header_Set;
    --  This function accepts the entire OpenPGP packet, but it only inspects the
    --  header, and returns a record of information of the data it yields.
-   --  It recognizes the "new" header format only.
+   --  It recognizes the "new" header format only.  Actually, it returns an
+   --  array of all packets inside the transmission.
 
 end OpenPGP_Messages;

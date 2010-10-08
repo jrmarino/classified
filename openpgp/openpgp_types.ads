@@ -18,6 +18,8 @@ with Ada.Strings.Unbounded;
 
 package OpenPGP_Types is
 
+   package SU renames Ada.Strings.Unbounded;
+
    type TOctet is mod 16#100#;
    type TOctet_Array is array (Natural range <>) of TOctet;
    type TBody_Length is range 0 .. 16#FFFFFFFF#;
@@ -51,6 +53,8 @@ package OpenPGP_Types is
       Body_Length : TBody_Length := 0;
       Body_Starts : Natural      := 2;
    end record;
+
+   type TPacket_Header_Set is array (Positive range <>) of TPacket_Header;
 
    type TPubKey_Algorithm is (
       Undefined,
@@ -156,6 +160,6 @@ package OpenPGP_Types is
       Length : Natural := 1;
    end record;
 
-   subtype TSU_MPI is Ada.Strings.Unbounded.Unbounded_String;
+   subtype TSU_MPI is SU.Unbounded_String;
 
 end OpenPGP_Types;
