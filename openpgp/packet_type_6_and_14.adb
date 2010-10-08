@@ -40,7 +40,11 @@ package body Packet_Type_6_and_14 is
          when      4 => Version := four;
          when others => null;
       end case;
-      Algorithm := Convert_Octet_To_PK_Algorithm (Packet (index + 1));
+      if Version = two_and_three then
+         Algorithm := Convert_Octet_To_PK_Algorithm (Packet (index + 7));
+      else
+         Algorithm := Convert_Octet_To_PK_Algorithm (Packet (index + 5));
+      end if;
    end Metadata;
 
 
