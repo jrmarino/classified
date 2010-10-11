@@ -1,0 +1,1056 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified">
+	<xs:element name="convoy">
+		<xs:annotation>
+			<xs:documentation>Convoy message format</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:choice>
+				<xs:element ref="transport_public_key"/>
+				<xs:element ref="transport_secret_key"/>
+				<xs:element ref="transport_encrypted_message"/>
+				<xs:element ref="transport_clear_message"/>
+			</xs:choice>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="public_key">
+		<xs:complexType>
+			<xs:choice>
+				<xs:annotation>
+					<xs:documentation>Algorithm-specific</xs:documentation>
+				</xs:annotation>
+				<xs:sequence>
+					<xs:annotation>
+						<xs:documentation>RSA</xs:documentation>
+					</xs:annotation>
+					<xs:element name="public_modulus">
+						<xs:simpleType>
+							<xs:restriction base="xs:hexBinary">
+								<xs:minLength value="256"/>
+							</xs:restriction>
+						</xs:simpleType>
+					</xs:element>
+					<xs:element name="public_exponent">
+						<xs:simpleType>
+							<xs:restriction base="xs:hexBinary">
+								<xs:minLength value="256"/>
+							</xs:restriction>
+						</xs:simpleType>
+					</xs:element>
+				</xs:sequence>
+				<xs:sequence>
+					<xs:annotation>
+						<xs:documentation>DSA</xs:documentation>
+					</xs:annotation>
+					<xs:element name="public_p">
+						<xs:simpleType>
+							<xs:restriction base="xs:hexBinary">
+								<xs:minLength value="40"/>
+							</xs:restriction>
+						</xs:simpleType>
+					</xs:element>
+					<xs:element name="public_q">
+						<xs:simpleType>
+							<xs:restriction base="xs:hexBinary">
+								<xs:minLength value="128"/>
+							</xs:restriction>
+						</xs:simpleType>
+					</xs:element>
+					<xs:element name="public_g">
+						<xs:simpleType>
+							<xs:restriction base="xs:hexBinary">
+								<xs:minLength value="128"/>
+							</xs:restriction>
+						</xs:simpleType>
+					</xs:element>
+					<xs:element name="public_y">
+						<xs:simpleType>
+							<xs:restriction base="xs:hexBinary">
+								<xs:minLength value="128"/>
+							</xs:restriction>
+						</xs:simpleType>
+					</xs:element>
+				</xs:sequence>
+				<xs:sequence>
+					<xs:annotation>
+						<xs:documentation>ElGamal</xs:documentation>
+					</xs:annotation>
+					<xs:element name="public_p">
+						<xs:simpleType>
+							<xs:restriction base="xs:hexBinary">
+								<xs:minLength value="256"/>
+							</xs:restriction>
+						</xs:simpleType>
+					</xs:element>
+					<xs:element name="public_g">
+						<xs:simpleType>
+							<xs:restriction base="xs:hexBinary">
+								<xs:minLength value="256"/>
+							</xs:restriction>
+						</xs:simpleType>
+					</xs:element>
+					<xs:element name="public_y">
+						<xs:simpleType>
+							<xs:restriction base="xs:hexBinary">
+								<xs:minLength value="256"/>
+							</xs:restriction>
+						</xs:simpleType>
+					</xs:element>
+				</xs:sequence>
+				<xs:sequence>
+					<xs:annotation>
+						<xs:documentation>ECG DSA</xs:documentation>
+					</xs:annotation>
+					<xs:element name="public_x">
+						<xs:simpleType>
+							<xs:restriction base="xs:hexBinary">
+								<xs:minLength value="40"/>
+							</xs:restriction>
+						</xs:simpleType>
+					</xs:element>
+					<xs:element name="public_y">
+						<xs:simpleType>
+							<xs:restriction base="xs:hexBinary">
+								<xs:minLength value="40"/>
+							</xs:restriction>
+						</xs:simpleType>
+					</xs:element>
+				</xs:sequence>
+			</xs:choice>
+			<xs:attribute name="version" use="required">
+				<xs:simpleType>
+					<xs:restriction base="xs:positiveInteger">
+						<xs:minInclusive value="1"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:attribute>
+			<xs:attribute name="algorithm" use="required">
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:enumeration value="rsa"/>
+						<xs:enumeration value="dsa"/>
+						<xs:enumeration value="elgamal"/>
+						<xs:enumeration value="ecgdsa"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:attribute>
+			<xs:attribute name="created" type="xs:dateTime" use="required"/>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="secret_key">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:choice>
+					<xs:annotation>
+						<xs:documentation>Algorithm-specific</xs:documentation>
+					</xs:annotation>
+					<xs:sequence>
+						<xs:annotation>
+							<xs:documentation>RSA</xs:documentation>
+						</xs:annotation>
+						<xs:element name="public_modulus">
+							<xs:simpleType>
+								<xs:restriction base="xs:hexBinary">
+									<xs:minLength value="256"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+						<xs:element name="public_exponent">
+							<xs:simpleType>
+								<xs:restriction base="xs:hexBinary">
+									<xs:minLength value="256"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+						<xs:element name="secret_exponent">
+							<xs:simpleType>
+								<xs:restriction base="xs:hexBinary">
+									<xs:minLength value="256"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+						<xs:element name="secret_prime_p">
+							<xs:simpleType>
+								<xs:restriction base="xs:hexBinary">
+									<xs:minLength value="128"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+						<xs:element name="secret_prime_q">
+							<xs:simpleType>
+								<xs:restriction base="xs:hexBinary">
+									<xs:minLength value="128"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+						<xs:element name="secret_crt_p">
+							<xs:simpleType>
+								<xs:restriction base="xs:hexBinary">
+									<xs:minLength value="128"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+						<xs:element name="secret_crt_q">
+							<xs:simpleType>
+								<xs:restriction base="xs:hexBinary">
+									<xs:minLength value="128"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+						<xs:element name="secret_crt_coefficient">
+							<xs:simpleType>
+								<xs:restriction base="xs:hexBinary">
+									<xs:minLength value="128"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+					</xs:sequence>
+					<xs:sequence>
+						<xs:annotation>
+							<xs:documentation>DSA</xs:documentation>
+						</xs:annotation>
+						<xs:element name="public_p">
+							<xs:simpleType>
+								<xs:restriction base="xs:hexBinary">
+									<xs:minLength value="40"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+						<xs:element name="public_q">
+							<xs:simpleType>
+								<xs:restriction base="xs:hexBinary">
+									<xs:minLength value="128"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+						<xs:element name="public_g">
+							<xs:simpleType>
+								<xs:restriction base="xs:hexBinary">
+									<xs:minLength value="128"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+						<xs:element name="public_y">
+							<xs:simpleType>
+								<xs:restriction base="xs:hexBinary">
+									<xs:minLength value="128"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+						<xs:element name="secret_x">
+							<xs:simpleType>
+								<xs:restriction base="xs:hexBinary">
+									<xs:minLength value="40"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+					</xs:sequence>
+					<xs:sequence>
+						<xs:annotation>
+							<xs:documentation>ElGamal</xs:documentation>
+						</xs:annotation>
+						<xs:element name="public_p">
+							<xs:simpleType>
+								<xs:restriction base="xs:hexBinary">
+									<xs:minLength value="256"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+						<xs:element name="public_g">
+							<xs:simpleType>
+								<xs:restriction base="xs:hexBinary">
+									<xs:minLength value="256"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+						<xs:element name="public_y">
+							<xs:simpleType>
+								<xs:restriction base="xs:hexBinary">
+									<xs:minLength value="256"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+						<xs:element name="secret_x">
+							<xs:simpleType>
+								<xs:restriction base="xs:hexBinary">
+									<xs:minLength value="256"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+					</xs:sequence>
+					<xs:sequence>
+						<xs:annotation>
+							<xs:documentation>ECG DSA</xs:documentation>
+						</xs:annotation>
+						<xs:element name="public_x">
+							<xs:simpleType>
+								<xs:restriction base="xs:hexBinary">
+									<xs:minLength value="40"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+						<xs:element name="public_y">
+							<xs:simpleType>
+								<xs:restriction base="xs:hexBinary">
+									<xs:minLength value="40"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+						<xs:element name="secret_d">
+							<xs:simpleType>
+								<xs:restriction base="xs:hexBinary">
+									<xs:minLength value="40"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+					</xs:sequence>
+				</xs:choice>
+				<xs:choice>
+					<xs:annotation>
+						<xs:documentation>String to Key</xs:documentation>
+					</xs:annotation>
+					<xs:sequence>
+						<xs:annotation>
+							<xs:documentation>Transmitted in clear</xs:documentation>
+						</xs:annotation>
+						<xs:element name="checksum">
+							<xs:simpleType>
+								<xs:restriction base="xs:hexBinary">
+									<xs:minLength value="4"/>
+									<xs:maxLength value="4"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+					</xs:sequence>
+					<xs:sequence>
+						<xs:annotation>
+							<xs:documentation>Protected with checksum</xs:documentation>
+						</xs:annotation>
+						<xs:element ref="symmetric_algorithm"/>
+						<xs:element ref="s2k_specifier"/>
+						<xs:element name="checksum">
+							<xs:simpleType>
+								<xs:restriction base="xs:hexBinary">
+									<xs:minLength value="4"/>
+									<xs:maxLength value="4"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+					</xs:sequence>
+					<xs:sequence>
+						<xs:annotation>
+							<xs:documentation>Protected with hash</xs:documentation>
+						</xs:annotation>
+						<xs:element ref="symmetric_algorithm"/>
+						<xs:element ref="s2k_specifier"/>
+						<xs:element name="sha256_hash">
+							<xs:simpleType>
+								<xs:restriction base="xs:hexBinary">
+									<xs:minLength value="64"/>
+									<xs:maxLength value="64"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+					</xs:sequence>
+				</xs:choice>
+			</xs:sequence>
+			<xs:attribute name="version" use="required">
+				<xs:simpleType>
+					<xs:restriction base="xs:positiveInteger">
+						<xs:minInclusive value="1"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:attribute>
+			<xs:attribute name="created" type="xs:dateTime" use="required"/>
+			<xs:attribute name="algorithm" use="required">
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:enumeration value="rsa"/>
+						<xs:enumeration value="dsa"/>
+						<xs:enumeration value="elgamal"/>
+						<xs:enumeration value="ecgdsa"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:attribute>
+			<xs:attribute name="string_to_key_usage" use="required">
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:enumeration value="unprotected"/>
+						<xs:enumeration value="protected-with-checksum"/>
+						<xs:enumeration value="protected-with-hash"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:attribute>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="symmetric_algorithm" default="aes_256">
+		<xs:simpleType>
+			<xs:restriction base="xs:string">
+				<xs:enumeration value="aes-128"/>
+				<xs:enumeration value="aes-192"/>
+				<xs:enumeration value="aes-256"/>
+				<xs:enumeration value="cast-128"/>
+				<xs:enumeration value="idea"/>
+				<xs:enumeration value="blowfish-128"/>
+			</xs:restriction>
+		</xs:simpleType>
+	</xs:element>
+	<xs:element name="s2k_specifier">
+		<xs:complexType>
+			<xs:choice>
+				<xs:sequence>
+					<xs:annotation>
+						<xs:documentation>Simple S2K</xs:documentation>
+					</xs:annotation>
+					<xs:element ref="hash_algorithm"/>
+				</xs:sequence>
+				<xs:sequence>
+					<xs:annotation>
+						<xs:documentation>Salted S2K</xs:documentation>
+					</xs:annotation>
+					<xs:element ref="hash_algorithm"/>
+					<xs:element name="salt">
+						<xs:simpleType>
+							<xs:restriction base="xs:hexBinary">
+								<xs:minLength value="16"/>
+								<xs:maxLength value="16"/>
+							</xs:restriction>
+						</xs:simpleType>
+					</xs:element>
+				</xs:sequence>
+				<xs:sequence>
+					<xs:annotation>
+						<xs:documentation>Iterated and Salted S2K</xs:documentation>
+					</xs:annotation>
+					<xs:element ref="hash_algorithm"/>
+					<xs:element name="salt">
+						<xs:simpleType>
+							<xs:restriction base="xs:hexBinary">
+								<xs:minLength value="16"/>
+								<xs:maxLength value="16"/>
+							</xs:restriction>
+						</xs:simpleType>
+					</xs:element>
+					<xs:element name="iterations">
+						<xs:simpleType>
+							<xs:restriction base="xs:positiveInteger">
+								<xs:minInclusive value="2"/>
+								<xs:maxInclusive value="200"/>
+							</xs:restriction>
+						</xs:simpleType>
+					</xs:element>
+				</xs:sequence>
+			</xs:choice>
+			<xs:attribute name="type" use="required">
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:enumeration value="simple"/>
+						<xs:enumeration value="salted"/>
+						<xs:enumeration value="iterated-and-salted"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:attribute>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="hash_algorithm" default="sha_256">
+		<xs:simpleType>
+			<xs:restriction base="xs:string">
+				<xs:enumeration value="sha-256"/>
+				<xs:enumeration value="sha-384"/>
+				<xs:enumeration value="sha-512"/>
+				<xs:enumeration value="ripe-md160"/>
+			</xs:restriction>
+		</xs:simpleType>
+	</xs:element>
+	<xs:element name="signature">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="hash_algorithm"/>
+				<xs:element name="hashed_data">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element ref="field" maxOccurs="unbounded"/>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="clear_data">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element ref="field" maxOccurs="unbounded"/>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:choice>
+					<xs:annotation>
+						<xs:documentation>Algorithm-specific</xs:documentation>
+					</xs:annotation>
+					<xs:sequence>
+						<xs:annotation>
+							<xs:documentation>RSA</xs:documentation>
+						</xs:annotation>
+						<xs:element name="rsa_value">
+							<xs:simpleType>
+								<xs:restriction base="xs:hexBinary">
+									<xs:minLength value="256"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+					</xs:sequence>
+					<xs:sequence>
+						<xs:annotation>
+							<xs:documentation>DSA</xs:documentation>
+						</xs:annotation>
+						<xs:element name="dsa_r">
+							<xs:simpleType>
+								<xs:restriction base="xs:hexBinary">
+									<xs:minLength value="32"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+						<xs:element name="dsa_s">
+							<xs:simpleType>
+								<xs:restriction base="xs:hexBinary">
+									<xs:minLength value="32"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+					</xs:sequence>
+					<xs:sequence>
+						<xs:annotation>
+							<xs:documentation>ECGDSA</xs:documentation>
+						</xs:annotation>
+						<xs:element name="ecgdsa_r">
+							<xs:simpleType>
+								<xs:restriction base="xs:hexBinary">
+									<xs:minLength value="32"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+						<xs:element name="ecgdsa_s">
+							<xs:simpleType>
+								<xs:restriction base="xs:hexBinary">
+									<xs:minLength value="32"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+					</xs:sequence>
+				</xs:choice>
+			</xs:sequence>
+			<xs:attribute name="version" use="required">
+				<xs:simpleType>
+					<xs:restriction base="xs:positiveInteger">
+						<xs:minInclusive value="1"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:attribute>
+			<xs:attribute name="type" use="required">
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:enumeration value="binary-document"/>
+						<xs:enumeration value="canonical-text-document"/>
+						<xs:enumeration value="standalone"/>
+						<xs:enumeration value="generic-certification"/>
+						<xs:enumeration value="persona-certification"/>
+						<xs:enumeration value="positive-certification"/>
+						<xs:enumeration value="subkey-binding"/>
+						<xs:enumeration value="primary-key-binding"/>
+						<xs:enumeration value="key-directly"/>
+						<xs:enumeration value="key-revocation"/>
+						<xs:enumeration value="subkey-revocation"/>
+						<xs:enumeration value="certification-revocation"/>
+						<xs:enumeration value="timestamp"/>
+						<xs:enumeration value="third-party-confirmation"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:attribute>
+			<xs:attribute name="algorithm" use="required">
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:enumeration value="rsa"/>
+						<xs:enumeration value="dsa"/>
+						<xs:enumeration value="ecgdsa"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:attribute>
+			<xs:attribute name="left16" use="required">
+				<xs:simpleType>
+					<xs:restriction base="xs:hexBinary">
+						<xs:minLength value="4"/>
+						<xs:maxLength value="4"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:attribute>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="field">
+		<xs:annotation>
+			<xs:documentation>signature subpacket field</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:choice>
+				<xs:element name="timestamp">
+					<xs:annotation>
+						<xs:documentation>signature creation / signature expiration / key expiration</xs:documentation>
+					</xs:annotation>
+				</xs:element>
+				<xs:element name="key_id">
+					<xs:annotation>
+						<xs:documentation>issuer</xs:documentation>
+					</xs:annotation>
+					<xs:simpleType>
+						<xs:restriction base="xs:hexBinary">
+							<xs:minLength value="20"/>
+							<xs:maxLength value="20"/>
+						</xs:restriction>
+					</xs:simpleType>
+				</xs:element>
+				<xs:sequence maxOccurs="5">
+					<xs:annotation>
+						<xs:documentation>Compression algorithm preferences</xs:documentation>
+					</xs:annotation>
+					<xs:element name="compression">
+						<xs:simpleType>
+							<xs:restriction base="xs:string">
+								<xs:enumeration value="no_compression"/>
+								<xs:enumeration value="zip"/>
+								<xs:enumeration value="zlib"/>
+								<xs:enumeration value="bzip2"/>
+							</xs:restriction>
+						</xs:simpleType>
+					</xs:element>
+				</xs:sequence>
+				<xs:sequence maxOccurs="5">
+					<xs:annotation>
+						<xs:documentation>symmetric algoritm preferences</xs:documentation>
+					</xs:annotation>
+					<xs:element ref="symmetric_algorithm"/>
+				</xs:sequence>
+				<xs:sequence maxOccurs="5">
+					<xs:annotation>
+						<xs:documentation>Hash algoritm preferences</xs:documentation>
+					</xs:annotation>
+					<xs:element ref="hash_algorithm"/>
+				</xs:sequence>
+				<xs:element name="asserted" type="xs:boolean">
+					<xs:annotation>
+						<xs:documentation>exportable certification / revocable / primary user id (True / False)</xs:documentation>
+					</xs:annotation>
+				</xs:element>
+				<xs:element name="revocation_key">
+					<xs:annotation>
+						<xs:documentation>revocation key</xs:documentation>
+					</xs:annotation>
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="fingerprint">
+								<xs:simpleType>
+									<xs:restriction base="xs:hexBinary">
+										<xs:minLength value="64"/>
+										<xs:maxLength value="64"/>
+									</xs:restriction>
+								</xs:simpleType>
+							</xs:element>
+						</xs:sequence>
+						<xs:attribute name="sensitive" type="xs:boolean" use="required"/>
+						<xs:attribute name="public_key_algorithm" use="required">
+							<xs:simpleType>
+								<xs:restriction base="xs:string">
+									<xs:enumeration value="rsa"/>
+									<xs:enumeration value="dsa"/>
+									<xs:enumeration value="elgamal"/>
+									<xs:enumeration value="ecgdsa"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:attribute>
+					</xs:complexType>
+				</xs:element>
+				<xs:sequence>
+					<xs:annotation>
+						<xs:documentation>key flags</xs:documentation>
+					</xs:annotation>
+					<xs:element name="can_certify_other_keys" type="xs:boolean" default="False"/>
+					<xs:element name="can_sign_data" type="xs:boolean" default="False"/>
+					<xs:element name="can_encrypt_communications" type="xs:boolean" default="False"/>
+					<xs:element name="can_encrypt_storage" type="xs:boolean" default="False"/>
+					<xs:element name="can_authenticate" type="xs:boolean" default="False"/>
+					<xs:element name="is_split_key" type="xs:boolean" default="False"/>
+					<xs:element name="is_group_key" type="xs:boolean" default="False"/>
+				</xs:sequence>
+				<xs:element name="notation">
+					<xs:annotation>
+						<xs:documentation>Notation data</xs:documentation>
+					</xs:annotation>
+					<xs:complexType>
+						<xs:attribute name="human_readable" type="xs:boolean" use="required"/>
+						<xs:attribute name="name" use="required">
+							<xs:simpleType>
+								<xs:restriction base="xs:string">
+									<xs:minLength value="1"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:attribute>
+						<xs:attribute name="value" use="required">
+							<xs:simpleType>
+								<xs:restriction base="xs:string">
+									<xs:minLength value="1"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:attribute>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="long_answer">
+					<xs:annotation>
+						<xs:documentation>Role of signer</xs:documentation>
+					</xs:annotation>
+					<xs:simpleType>
+						<xs:restriction base="xs:string">
+							<xs:minLength value="1"/>
+						</xs:restriction>
+					</xs:simpleType>
+				</xs:element>
+				<xs:element name="reason" default="no_reason">
+					<xs:annotation>
+						<xs:documentation>Reason for revocation</xs:documentation>
+					</xs:annotation>
+					<xs:simpleType>
+						<xs:restriction base="xs:string">
+							<xs:enumeration value="no_reason"/>
+							<xs:enumeration value="key_is_superceded"/>
+							<xs:enumeration value="key_is_compromised"/>
+							<xs:enumeration value="key_is_retired"/>
+							<xs:enumeration value="user_id_invalid"/>
+						</xs:restriction>
+					</xs:simpleType>
+				</xs:element>
+				<xs:element name="embedded_data">
+					<xs:annotation>
+						<xs:documentation>Embedded signature</xs:documentation>
+					</xs:annotation>
+					<xs:simpleType>
+						<xs:restriction base="xs:base64Binary">
+							<xs:minLength value="32"/>
+						</xs:restriction>
+					</xs:simpleType>
+				</xs:element>
+				<xs:element name="target">
+					<xs:annotation>
+						<xs:documentation>Signature target</xs:documentation>
+					</xs:annotation>
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element ref="hash_algorithm"/>
+							<xs:element name="sha256_hash">
+								<xs:simpleType>
+									<xs:restriction base="xs:hexBinary">
+										<xs:minLength value="64"/>
+										<xs:maxLength value="64"/>
+									</xs:restriction>
+								</xs:simpleType>
+							</xs:element>
+						</xs:sequence>
+						<xs:attribute name="algorithm" use="required">
+							<xs:simpleType>
+								<xs:restriction base="xs:string">
+									<xs:enumeration value="rsa"/>
+									<xs:enumeration value="dsa"/>
+									<xs:enumeration value="elgamal"/>
+									<xs:enumeration value="ecgdsa"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:attribute>
+					</xs:complexType>
+				</xs:element>
+			</xs:choice>
+			<xs:attribute name="type" use="required">
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:enumeration value="signature-creation-time"/>
+						<xs:enumeration value="signature-expiration-time"/>
+						<xs:enumeration value="key-expiration-time"/>
+						<xs:enumeration value="issuer"/>
+						<xs:enumeration value="preferred-symmetrics"/>
+						<xs:enumeration value="preferred-hashes"/>
+						<xs:enumeration value="preferred-compressions"/>
+						<xs:enumeration value="exportable-certification"/>
+						<xs:enumeration value="revocable"/>
+						<xs:enumeration value="primary-user-id"/>
+						<xs:enumeration value="revocation-key"/>
+						<xs:enumeration value="key-flags"/>
+						<xs:enumeration value="notation-data"/>
+						<xs:enumeration value="role-of-signer"/>
+						<xs:enumeration value="reason-for-revocation"/>
+						<xs:enumeration value="signature-target"/>
+						<xs:enumeration value="embedded-signature"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:attribute>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="transport_public_key">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="master_key">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element ref="public_key"/>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="signature_subkey" minOccurs="0">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element ref="public_key"/>
+							<xs:element ref="signature"/>
+							<xs:element ref="signature"/>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="encryption_subkey" minOccurs="0">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element ref="public_key"/>
+							<xs:element ref="signature"/>
+							<xs:element ref="signature"/>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+			</xs:sequence>
+			<xs:attribute name="user_id" type="xs:string" use="required"/>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="encrypted_session_key">
+		<xs:complexType>
+			<xs:choice>
+				<xs:annotation>
+					<xs:documentation>Algorithm-specific</xs:documentation>
+				</xs:annotation>
+				<xs:sequence>
+					<xs:annotation>
+						<xs:documentation>RSA</xs:documentation>
+					</xs:annotation>
+					<xs:element name="rsa_value_men">
+						<xs:annotation>
+							<xs:documentation>m^e mod n</xs:documentation>
+						</xs:annotation>
+						<xs:simpleType>
+							<xs:restriction base="xs:hexBinary">
+								<xs:minLength value="256"/>
+							</xs:restriction>
+						</xs:simpleType>
+					</xs:element>
+				</xs:sequence>
+				<xs:sequence>
+					<xs:annotation>
+						<xs:documentation>Elgamal</xs:documentation>
+					</xs:annotation>
+					<xs:element name="elg_value_gkp">
+						<xs:annotation>
+							<xs:documentation>g^k mod p</xs:documentation>
+						</xs:annotation>
+						<xs:simpleType>
+							<xs:restriction base="xs:hexBinary">
+								<xs:minLength value="256"/>
+							</xs:restriction>
+						</xs:simpleType>
+					</xs:element>
+					<xs:element name="elg_value_mykp">
+						<xs:annotation>
+							<xs:documentation>my^k mod p</xs:documentation>
+						</xs:annotation>
+						<xs:simpleType>
+							<xs:restriction base="xs:hexBinary">
+								<xs:minLength value="256"/>
+							</xs:restriction>
+						</xs:simpleType>
+					</xs:element>
+				</xs:sequence>
+			</xs:choice>
+			<xs:attribute name="version" type="xs:positiveInteger" use="required"/>
+			<xs:attribute name="key_id" use="required">
+				<xs:simpleType>
+					<xs:restriction base="xs:hexBinary">
+						<xs:minLength value="20"/>
+						<xs:maxLength value="20"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:attribute>
+			<xs:attribute name="algorithm" use="required">
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:enumeration value="rsa"/>
+						<xs:enumeration value="elgamal"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:attribute>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="symmetrically_encrypted">
+		<xs:annotation>
+			<xs:documentation>Encryption algorithm determined by preceding ESK packet</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="encrypted_message">
+					<xs:annotation>
+						<xs:documentation>Encrypted Message Packet, encoded as Radix64</xs:documentation>
+					</xs:annotation>
+					<xs:simpleType>
+						<xs:restriction base="xs:base64Binary">
+							<xs:minLength value="4"/>
+						</xs:restriction>
+					</xs:simpleType>
+				</xs:element>
+			</xs:sequence>
+			<xs:attribute name="data_length" type="xs:positiveInteger" use="required"/>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="attached_file">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="compressed">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="file_contents">
+								<xs:annotation>
+									<xs:documentation>Radix64 encoded</xs:documentation>
+								</xs:annotation>
+								<xs:simpleType>
+									<xs:restriction base="xs:base64Binary">
+										<xs:minLength value="4"/>
+									</xs:restriction>
+								</xs:simpleType>
+							</xs:element>
+						</xs:sequence>
+						<xs:attribute name="algorithm" use="required">
+							<xs:simpleType>
+								<xs:restriction base="xs:string">
+									<xs:enumeration value="no_compression"/>
+									<xs:enumeration value="zip"/>
+									<xs:enumeration value="zlib"/>
+									<xs:enumeration value="bzip2"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:attribute>
+						<xs:attribute name="encoded_size" type="xs:positiveInteger" use="required"/>
+						<xs:attribute name="compressed_bytes" type="xs:positiveInteger" use="required"/>
+					</xs:complexType>
+				</xs:element>
+			</xs:sequence>
+			<xs:attribute name="hash_sha256" use="required">
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:minLength value="64"/>
+						<xs:maxLength value="64"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:attribute>
+			<xs:attribute name="filename" use="required">
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:minLength value="0"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:attribute>
+			<xs:attribute name="binary" type="xs:boolean" use="required"/>
+			<xs:attribute name="file_size_in_bytes" type="xs:positiveInteger" use="required"/>
+			<xs:attribute name="modification_time" type="xs:dateTime" use="optional"/>
+			<xs:attribute name="mime_type" type="xs:string" use="optional"/>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="transport_encrypted_message">
+		<xs:annotation>
+			<xs:documentation>Hash is SHA-256, and it's performed on Message Packet</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="encrypted_session_key"/>
+				<xs:element ref="symmetrically_encrypted"/>
+				<xs:element ref="signature"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="transport_secret_key">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="master_key">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element ref="secret_key"/>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="signature_subkey" minOccurs="0">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element ref="secret_key"/>
+							<xs:element ref="signature"/>
+							<xs:element ref="signature"/>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="encryption_subkey" minOccurs="0">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element ref="secret_key"/>
+							<xs:element ref="signature"/>
+							<xs:element ref="signature"/>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="transport_clear_message">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="compressed">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="body" nillable="false">
+								<xs:annotation>
+									<xs:documentation>Radix64 encoded</xs:documentation>
+								</xs:annotation>
+								<xs:complexType>
+									<xs:simpleContent>
+										<xs:extension base="xs:base64Binary"/>
+									</xs:simpleContent>
+								</xs:complexType>
+							</xs:element>
+						</xs:sequence>
+						<xs:attribute name="algorithm" use="required">
+							<xs:simpleType>
+								<xs:restriction base="xs:string">
+									<xs:enumeration value="no_compression"/>
+									<xs:enumeration value="zip"/>
+									<xs:enumeration value="zlib"/>
+									<xs:enumeration value="bzip2"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:attribute>
+						<xs:attribute name="encoded_size" type="xs:positiveInteger" use="required"/>
+						<xs:attribute name="compressed_bytes" type="xs:positiveInteger" use="required"/>
+					</xs:complexType>
+				</xs:element>
+				<xs:sequence minOccurs="0" maxOccurs="unbounded">
+					<xs:element ref="attached_file"/>
+				</xs:sequence>
+			</xs:sequence>
+			<xs:attribute name="attachments" use="required">
+				<xs:simpleType>
+					<xs:restriction base="xs:nonPositiveInteger">
+						<xs:minInclusive value="0"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:attribute>
+			<xs:attribute name="subject" use="required">
+				<xs:simpleType>
+					<xs:restriction base="xs:base64Binary">
+						<xs:maxLength value="340"/>
+						<xs:minLength value="4"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:attribute>
+			<xs:attribute name="body_byte_length" type="xs:positiveInteger" use="required"/>
+		</xs:complexType>
+	</xs:element>
+</xs:schema>
