@@ -15,14 +15,24 @@
 
 
 with Nodes;
+with expat;
 with Ada.Finalization;
 with Ada.Unchecked_Deallocation;
 with Ada.Strings.Unbounded;
+with Generic_Stack;
+
 
 package XML_Reader is
 
    package SU renames Ada.Strings.Unbounded;
-   type TDOM is tagged limited private;
+
+   type TNodeSet is array (Positive range <>) of aliased Nodes.TNode;
+   type TNodeSet_Access is access TNodeSet;
+   type TDOM is new Ada.Finalization.Limited_Controlled with
+      record
+         DocLength : Natural := 0;
+         Document  : TNodeSet_Access := null;
+      end record;
 
    procedure load_xml_from_file (DOM       : in out TDOM;
                                  file_name : in     String);
@@ -36,8 +46,8 @@ package XML_Reader is
                                    input_string : in     SU.Unbounded_String);
    --  This procedure interfaces with the expat library to build and populate
    --  the DOM object represented by the provided string input.  A DOM object
-   --  is allocated.  The string is not checked for well-formedness or validity,
-   --  it's just expected to be correct.
+   --  is allocated.  The string is not checked for well-formedness or
+   --  validity, it's just expected to be correct.
 
 
    function child_node (DOM     : TDOM;
@@ -49,18 +59,40 @@ package XML_Reader is
    --  input is too high, the function returns the value of
    --  CHILD_RANGE_EXCEEDED.
 
+
+   pragma Warnings (Off);
+   procedure call_tag_start (
+         userData : in out expat.Access_Void;
+         name     : in     expat.Access_XML_Char;
+         atts     : in     expat.Access_XML_Char_Array);
+   pragma Convention (C, call_tag_start);
+   pragma Warnings (On);
+   --  This is a callback function passed to the expat library.  It is
+   --  triggered when the parser reaches the start of a new element.
+
+
+   procedure call_tag_end (
+         userData : in out expat.Access_Void;
+         name     : in     expat.Access_XML_Char);
+   pragma Convention (C, call_tag_end);
+   --  This is a callback function passed to the expat library.  It is
+   --  triggered when the parser reaches the end of a new element.
+
 private
 
+   package Parent_Stack is new Generic_Stack (
+            TItem                => Nodes.TNodeIndex,
+            DEPLETED_STACK_ERROR => Nodes.POPPED_EMPTY_STACK);
 
-   type TNodeSet is array (Positive range <>) of Nodes.TNode;
-   type TNodeSet_Access is access TNodeSet;
+   type Rec_Global is record
+      scanning     : Boolean;
+      total_nodes  : Natural;
+      depth        : Natural;
+      Access_DOM   : access TDOM;
+      heritage     : Parent_Stack.TStack;
+   end record;
 
-
-   type TDOM is new Ada.Finalization.Limited_Controlled with
-      record
-         Document : TNodeSet_Access := null;
-      end record;
-
+   Background : Rec_Global;
 
    overriding
    procedure Finalize (DOM : in out TDOM);

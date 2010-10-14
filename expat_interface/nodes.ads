@@ -25,8 +25,9 @@ package Nodes is
    NO_OFFSPRING         : constant Integer := -4;
    CHILD_RANGE_EXCEEDED : constant Integer := -5;
    NODE_RANGE_EXCEEDED  : constant Integer := -6;
+   POPPED_EMPTY_STACK   : constant Integer := -7;  -- always last
 
-   subtype TNodeIndex is Integer range NODE_RANGE_EXCEEDED .. Integer'Last;
+   subtype TNodeIndex is Integer range POPPED_EMPTY_STACK .. Integer'Last;
    type TNode is tagged limited private;
 
    function has_attributes        (Node : TNode) return Boolean;
@@ -46,14 +47,13 @@ package Nodes is
    --  If no child node exists, the result is negative (-4).
 
 
-
    function parent_node           (Node : TNode) return TNodeIndex;
    --  Returns the index of the parent node (1 or higher)
    --  If requested on the root node, the result will be negative (-1).
 
 
    function next_sibling_node     (Node : TNode) return TNodeIndex;
-   --  Returns the index of the next node that shares same parent. (1 or higher)
+   --  Returns the index of the next node that shares same parent. (1+)
    --  If no later sibling exists, the index will be negative (-3 to be exact)
 
 
@@ -66,12 +66,21 @@ package Nodes is
    --  Returns the index of the node (1 or higher)
 
 
+   function end_of_scope          (Node : TNode) return TNodeIndex;
+   --  Returns the end of the range the comprise the descendent nodes.  The
+   --  begining of the range is the node index.
+
+
    function child_node_count      (Node : TNode) return Natural;
    --  Returns the number of child nodes belonging to the node (0 or more).
 
 
    function id (Node : TNode) return SU.Unbounded_String;
    --  This function returns the "id" string of the node.
+
+
+   function node_value (Node : TNode) return SU.Unbounded_String;
+   --  This function returns the value (contents) of the node.
 
 
    function attribute_count       (Node : TNode) return Natural;
@@ -92,8 +101,14 @@ package Nodes is
 
 
    function attribute_value (Node  : TNode;
-                   index : Positive) return SU.Unbounded_String;
+                             index : Positive) return SU.Unbounded_String;
    --  Returns the attribute value given a valid index (range starts with 1).
+   --  An invalid index causes a null-string to be returned.
+
+
+   function attribute_key (Node  : TNode;
+                           index : Positive) return SU.Unbounded_String;
+   --  Returns the attribute key given a valid index (range starts with 1).
    --  An invalid index causes a null-string to be returned.
 
 
@@ -115,7 +130,7 @@ package Nodes is
                              Identifier : in     SU.Unbounded_String);
    --  This procedure is run once to establish basic node data.  The number of
    --  child nodes will be set to 0, the scope will be set to Self_ID, and the
-   --  remaining relations will be set to the defaults.  Attributes are cleared.
+   --  remaining relations will be set to defaults.  Attributes are cleared.
 
 
    procedure signal_parent (Node     : in out TNode;
@@ -124,14 +139,14 @@ package Nodes is
    --  the "Num_Children" setting.
 
 
-   procedure signal_older_brother (Node       : in out TNode;
-                                   Brother_ID : in     TNodeIndex);
+   procedure signal_next_brother (Node       : in out TNode;
+                                  Brother_ID : in     TNodeIndex);
    --  Running this procedure will affect the "Next_Sibling_ID" of the
    --  previous sibling node.
 
 
-   procedure signal_younger_brother (Node       : in out TNode;
-                                     Brother_ID : in     TNodeIndex);
+   procedure signal_prev_brother (Node       : in out TNode;
+                                  Brother_ID : in     TNodeIndex);
    --  Running this procedure will affect the "Prev_Sibling_ID" of the
    --  next sibling node.
 
@@ -150,12 +165,10 @@ private
       Next_Sibling_ID : TNodeIndex := NO_FOLLOWING_BROTHER;
       Prev_Sibling_ID : TNodeIndex := NO_PREVIOUS_BROTHER;
       First_Child_ID  : TNodeIndex := NO_OFFSPRING;
-      Value           : SU.Unbounded_String :=
-                        SU.Null_Unbounded_String;
-      Identifier      : SU.Unbounded_String :=
-                        SU.Null_Unbounded_String;
-      Num_Children    : Natural  := 0;
-      Scope           : Positive := 1;
+      Scope           : TNodeIndex := NO_INDEX_DEFINED;
+      Num_Children    : Natural    := 0;
+      Value           : SU.Unbounded_String := SU.Null_Unbounded_String;
+      Identifier      : SU.Unbounded_String := SU.Null_Unbounded_String;
       Attributes      : aliased TAttributes;
    end record;
 

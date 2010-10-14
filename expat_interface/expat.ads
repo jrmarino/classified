@@ -15,33 +15,21 @@
 
 
 with System;
-with Interfaces.C;
 with Interfaces.C.Strings;
 
-package expat_h is
-
-   --  unsupported macro: Expat_INCLUDED 1
-   --  unsupported macro: XML_TRUE ((XML_Bool) 1)
-   --  unsupported macro: XML_FALSE ((XML_Bool) 0)
-   --  arg-macro: function XML_GetUserData (parser)
-   --    return *(void **)(parser);
-   --  unsupported macro: XML_GetErrorLineNumber XML_GetCurrentLineNumber
-   --  unsupported macro: XML_GetErrorColumnNumber XML_GetCurrentColumnNumber
-   --  unsupported macro: XML_GetErrorByteIndex XML_GetCurrentByteIndex
-   --  unsupported macro: XML_MAJOR_VERSION 2
-   --  unsupported macro: XML_MINOR_VERSION 0
-   --  unsupported macro: XML_MICRO_VERSION 1
-
-
-   type XML_Parser is new System.Address;  --  expat.h:25
-
+package expat is
 
    subtype XML_Bool  is Interfaces.C.unsigned_char;
    subtype XML_Char  is Interfaces.C.char;
    subtype XML_LChar is Interfaces.C.char;
    subtype XML_Index is Interfaces.C.long;
    subtype XML_Size  is Interfaces.C.unsigned_long;
-   subtype size_t    is Interfaces.C.unsigned;   --  <iso/stdlib_iso.h>
+   subtype size_t    is Interfaces.C.size_t;   --  <iso/stdlib_iso.h>
+
+   subtype Access_Void is System.Address;
+   subtype Access_XML_Char is Interfaces.C.Strings.chars_ptr;
+   subtype Access_XML_Char_Array is Interfaces.C.Strings.chars_ptr_array;
+   subtype XML_Parser is Access_Void;  --  expat.h:25
 
    --   The XML_Status enum gives the possible return values for several
    --   API functions.  The preprocessor #defines are included so this
@@ -142,7 +130,7 @@ package expat_h is
    type XML_cp is record
       c_type      : aliased XML_Content_Type;          --  expat.h:138
       quant       : aliased XML_Content_Quant;         --  expat.h:139
-      name        : access  XML_Char;                  --  expat.h:140
+      name        : Access_XML_Char;                  --  expat.h:140
       numchildren : aliased Interfaces.C.unsigned;     --  expat.h:141
       children    : access  XML_cp;                    --  expat.h:142
    end record;
@@ -159,19 +147,15 @@ package expat_h is
 
    type XML_ElementDeclHandler is
       access procedure (
-         userData : System.Address;
-         name     : access XML_Char;
+         userData : Access_Void;
+         name     : Access_XML_Char;
          model    : access XML_Content);  --  expat.h:152
+   pragma Convention (C, XML_ElementDeclHandler);
 
 
    procedure XML_SetElementDeclHandler (
       parser : XML_Parser;
-      eldecl : access procedure (
-                  userData : System.Address;
-                  name     : access XML_Char;
-                  model    : access XML_Content
-               )
-   );  --  expat.h:155
+      eldecl : XML_ElementDeclHandler);  --  expat.h:155
    pragma Import (C, XML_SetElementDeclHandler, "XML_SetElementDeclHandler");
 
 
@@ -186,25 +170,18 @@ package expat_h is
 
    type XML_AttlistDeclHandler is
       access procedure (
-         userData   : System.Address;
-         elname     : access XML_Char;
-         attname    : access XML_Char;
-         att_type   : access XML_Char;
-         dflt       : access XML_Char;
+         userData   : Access_Void;
+         elname     : Access_XML_Char;
+         attname    : Access_XML_Char;
+         att_type   : Access_XML_Char;
+         dflt       : Access_XML_Char;
          isrequired : Interfaces.C.int);  --  expat.h:172
+   pragma Convention (C, XML_AttlistDeclHandler);
 
 
    procedure XML_SetAttlistDeclHandler (
       parser  : XML_Parser;
-      attdecl : access procedure (
-                  userData   : System.Address;
-                  elname     : access XML_Char;
-                  attname    : access XML_Char;
-                  att_type   : access XML_Char;
-                  dflt       : access XML_Char;
-                  isrequired : Interfaces.C.int
-               )
-   );  --  expat.h:175
+      attdecl : XML_AttlistDeclHandler);  --  expat.h:175
    pragma Import (C, XML_SetAttlistDeclHandler, "XML_SetAttlistDeclHandler");
 
 
@@ -219,141 +196,144 @@ package expat_h is
 
    type XML_XmlDeclHandler is
       access procedure (
-         userData   : System.Address;
-         version    : access XML_Char;
-         encoding   : access XML_Char;
+         userData   : Access_Void;
+         version    : Access_XML_Char;
+         encoding   : Access_XML_Char;
          standalone : Interfaces.C.int);  --  expat.h:189
+   pragma Convention (C, XML_XmlDeclHandler);
+
 
    procedure XML_SetXmlDeclHandler (
       parser  : XML_Parser;
-      xmldecl : access procedure (
-                  userData   : System.Address;
-                  version    : access XML_Char;
-                  encoding   : access XML_Char;
-                  standalone : Interfaces.C.int
-               )
-      );  --  expat.h:192
+      xmldecl : XML_XmlDeclHandler);  --  expat.h:192
    pragma Import (C, XML_SetXmlDeclHandler, "XML_SetXmlDeclHandler");
 
 
    type XML_Memory_Handling_Suite is record
       malloc_fcn  : access function (
                       size : size_t
-                    ) return System.Address;  --  expat.h:197
+                    ) return Access_Void;  --  expat.h:197
       realloc_fcn : access function (
-                      ptr  : System.Address;
+                      ptr  : Access_Void;
                       size : size_t
-                    ) return System.Address;  --  expat.h:198
+                    ) return Access_Void;  --  expat.h:198
       free_fcn    : access procedure (
-                       ptr : System.Address
+                       ptr : Access_Void
                     );  --  expat.h:199
    end record;
    pragma Convention (C_Pass_By_Copy, XML_Memory_Handling_Suite);
 
 
-  --  Constructs a new parser; encoding is the encoding specified by the
-  --  external protocol or NULL if there is none specified.
+   --  Constructs a new parser; encoding is the encoding specified by the
+   --  external protocol or NULL if there is none specified.
 
 
-   function XML_ParserCreate (encoding : access XML_Char) return XML_Parser;
+   function XML_ParserCreate (encoding : Access_XML_Char) return XML_Parser;
    pragma Import (C, XML_ParserCreate, "XML_ParserCreate");
 
-  --  Constructs a new parser and namespace processor.  Element type
-  --  names and attribute names that belong to a namespace will be
-  --  expanded; unprefixed attribute names are never expanded; unprefixed
-  --  element type names are expanded only if there is a default
-  --  namespace. The expanded name is the concatenation of the namespace
-  --  URI, the namespace separator character, and the local part of the
-  --  name.  If the namespace separator is '\0' then the namespace URI
-  --  and the local part will be concatenated without any separator.
-  --  It is a programming error to use the separator '\0' with namespace
-  --  triplets (see XML_SetReturnNSTriplet).
+   --  Constructs a new parser and namespace processor.  Element type
+   --  names and attribute names that belong to a namespace will be
+   --  expanded; unprefixed attribute names are never expanded; unprefixed
+   --  element type names are expanded only if there is a default
+   --  namespace. The expanded name is the concatenation of the namespace
+   --  URI, the namespace separator character, and the local part of the
+   --  name.  If the namespace separator is '\0' then the namespace URI
+   --  and the local part will be concatenated without any separator.
+   --  It is a programming error to use the separator '\0' with namespace
+   --  triplets (see XML_SetReturnNSTriplet).
 
 
-   function XML_ParserCreateNS (encoding           : access XML_Char;
+   function XML_ParserCreateNS (encoding           : Access_XML_Char;
                                 namespaceSeparator : XML_Char)
    return XML_Parser;
    pragma Import (C, XML_ParserCreateNS, "XML_ParserCreateNS");
 
 
-  --  Constructs a new parser using the memory management suite referred to
-  --  by memsuite. If memsuite is NULL, then use the standard library memory
-  --  suite. If namespaceSeparator is non-NULL it creates a parser with
-  --  namespace processing as described above. The character pointed at
-  --  will serve as the namespace separator.
-  --  All further memory operations used for the created parser will come from
-  --  the given suite.
+   --  Constructs a new parser using the memory management suite referred to
+   --  by memsuite. If memsuite is NULL, then use the standard library memory
+   --  suite. If namespaceSeparator is non-NULL it creates a parser with
+   --  namespace processing as described above. The character pointed at
+   --  will serve as the namespace separator.
+   --  All further memory operations used for the created parser will come from
+   --  the given suite.
 
 
    function XML_ParserCreate_MM (
-      encoding           : access XML_Char;
+      encoding           : Access_XML_Char;
       memsuite           : access constant XML_Memory_Handling_Suite;
-      namespaceSeparator : access XML_Char)
+      namespaceSeparator : Access_XML_Char)
    return XML_Parser;  --  expat.h:233
    pragma Import (C, XML_ParserCreate_MM, "XML_ParserCreate_MM");
 
 
-  --  Prepare a parser object to be re-used.  This is particularly
-  --  valuable when memory allocation overhead is disproportionatly high,
-  --  such as when a large number of small documnents need to be parsed.
-  --  All handlers are cleared from the parser, except for the
-  --  unknownEncodingHandler. The parser's external state is re-initialized
-  --  except for the values of ns and ns_triplets.
-  --  Added in Expat 1.95.3.
+   --  Prepare a parser object to be re-used.  This is particularly
+   --  valuable when memory allocation overhead is disproportionatly high,
+   --  such as when a large number of small documnents need to be parsed.
+   --  All handlers are cleared from the parser, except for the
+   --  unknownEncodingHandler. The parser's external state is re-initialized
+   --  except for the values of ns and ns_triplets.
+   --  Added in Expat 1.95.3.
 
 
    function XML_ParserReset (parser   : XML_Parser;
-                             encoding : access XML_Char) return XML_Bool;
+                             encoding : Access_XML_Char) return XML_Bool;
    pragma Import (C, XML_ParserReset, "XML_ParserReset");
 
-  --  atts is array of name/value pairs, terminated by 0;
-  --  names and values are 0 terminated.
+   --  atts is array of name/value pairs, terminated by 0;
+   --  names and values are 0 terminated.
 
 
    type XML_StartElementHandler is
       access procedure (
-         userData : System.Address;
-         name     : access XML_Char;
-         atts     : System.Address);  --  expat.h:254
+         userData : in out Access_Void;
+         name     : in     Access_XML_Char;
+         atts     : in     Access_XML_Char_Array);  --  expat.h:254
+   pragma Convention (C, XML_StartElementHandler);
 
 
    type XML_EndElementHandler is
       access procedure (
-         userData : System.Address;
-         name     : access XML_Char);
+         userData : in out Access_Void;
+         name     : in     Access_XML_Char);
+   pragma Convention (C, XML_EndElementHandler);
 
 
    --  s is not 0 terminated.
    type XML_CharacterDataHandler is
       access procedure (
-         userData : System.Address;
-         s        : access XML_Char;
+         userData : Access_Void;
+         s        : Access_XML_Char;
          len      : Interfaces.C.int);  --  expat.h:263
+   pragma Convention (C, XML_CharacterDataHandler);
 
 
-  --  target and data are 0 terminated
+   --  target and data are 0 terminated
    type XML_ProcessingInstructionHandler is
       access procedure (
-         userData : System.Address;
-         target   : access XML_Char;
-         data     : access XML_Char);  --  expat.h:269
+         userData : Access_Void;
+         target   : Access_XML_Char;
+         data     : Access_XML_Char);  --  expat.h:269
+   pragma Convention (C, XML_ProcessingInstructionHandler);
 
 
-  --  data is 0 terminated
+   --  data is 0 terminated
    type XML_CommentHandler is
       access procedure (
-         userData : System.Address;
-         data     : access XML_Char);
+         userData : Access_Void;
+         data     : Access_XML_Char);
+   pragma Convention (C, XML_CommentHandler);
 
 
    type XML_StartCdataSectionHandler is
       access procedure (
-         userData : System.Address);  --  expat.h:275
+         userData : Access_Void);  --  expat.h:275
+   pragma Convention (C, XML_StartCdataSectionHandler);
+
 
    type XML_EndCdataSectionHandler is
       access procedure (
-         userData : System.Address);  --  expat.h:276
-
+         userData : Access_Void);  --  expat.h:276
+   pragma Convention (C, XML_EndCdataSectionHandler);
 
    --  This is called for any characters in the XML document for which
    --  there is no applicable handler.  This includes both characters that
@@ -371,9 +351,10 @@ package expat_h is
 
    type XML_DefaultHandler is
       access procedure (
-         userData : System.Address;
-         s        : access XML_Char;
+         userData : Access_Void;
+         s        : Access_XML_Char;
          len      : Interfaces.C.int);  --  expat.h:293
+   pragma Convention (C, XML_DefaultHandler);
 
 
    --  This is called for the start of the DOCTYPE declaration, before
@@ -382,63 +363,56 @@ package expat_h is
 
    type XML_StartDoctypeDeclHandler is
       access procedure (
-         userData            : System.Address;
-         doctypeName         : access XML_Char;
-         sysid               : access XML_Char;
-         pubid               : access XML_Char;
+         userData            : Access_Void;
+         doctypeName         : Access_XML_Char;
+         sysid               : Access_XML_Char;
+         pubid               : Access_XML_Char;
          has_internal_subset : Interfaces.C.int);  --  expat.h:303
+   pragma Convention (C, XML_StartDoctypeDeclHandler);
 
 
-  --  This is called for the start of the DOCTYPE declaration when the
-  --  closing > is encountered, but after processing any external subset.
+   --  This is called for the start of the DOCTYPE declaration when the
+   --  closing > is encountered, but after processing any external subset.
 
 
    type XML_EndDoctypeDeclHandler is
-      access procedure (userData : System.Address);
+      access procedure (userData : Access_Void);
+   pragma Convention (C, XML_EndDoctypeDeclHandler);
 
-  --  This is called for entity declarations. The is_parameter_entity
-  --  argument will be non-zero if the entity is a parameter entity, zero
-  --  otherwise.
-  --  For internal entities (<!ENTITY foo "bar">), value will
-  --  be non-NULL and systemId, publicID, and notationName will be NULL.
-  --  The value string is NOT nul-terminated; the length is provided in
-  --  the value_length argument. Since it is legal to have zero-length
-  --  values, do not use this argument to test for internal entities.
-  --  For external entities, value will be NULL and systemId will be
-  --  non-NULL. The publicId argument will be NULL unless a public
-  --  identifier was provided. The notationName argument will have a
-  --  non-NULL value only for unparsed entity declarations.
-  --  Note that is_parameter_entity can't be changed to XML_Bool, since
-  --  that would break binary compatibility.
+
+   --  This is called for entity declarations. The is_parameter_entity
+   --  argument will be non-zero if the entity is a parameter entity, zero
+   --  otherwise.
+   --  For internal entities (<!ENTITY foo "bar">), value will
+   --  be non-NULL and systemId, publicID, and notationName will be NULL.
+   --  The value string is NOT nul-terminated; the length is provided in
+   --  the value_length argument. Since it is legal to have zero-length
+   --  values, do not use this argument to test for internal entities.
+   --  For external entities, value will be NULL and systemId will be
+   --  non-NULL. The publicId argument will be NULL unless a public
+   --  identifier was provided. The notationName argument will have a
+   --  non-NULL value only for unparsed entity declarations.
+   --  Note that is_parameter_entity can't be changed to XML_Bool, since
+   --  that would break binary compatibility.
 
 
    type XML_EntityDeclHandler is
       access procedure (
-         userData            : System.Address;
-         entityName          : access XML_Char;
+         userData            : Access_Void;
+         entityName          : Access_XML_Char;
          is_parameter_entity : Interfaces.C.int;
-         value               : access XML_Char;
+         value               : Access_XML_Char;
          value_length        : Interfaces.C.int;
-         base                : access XML_Char;
-         systemId            : access XML_Char;
-         publicId            : access XML_Char;
-         notationName        : access XML_Char);  --  expat.h:338
+         base                : Access_XML_Char;
+         systemId            : Access_XML_Char;
+         publicId            : Access_XML_Char;
+         notationName        : Access_XML_Char);  --  expat.h:338
+   pragma Convention (C, XML_EntityDeclHandler);
 
 
    procedure XML_SetEntityDeclHandler (
       parser  : XML_Parser;
-      handler : access procedure (
-                  userData            : System.Address;
-                  entityName          : access XML_Char;
-                  is_parameter_entity : Interfaces.C.int;
-                  value               : access XML_Char;
-                  value_length        : Interfaces.C.int;
-                  base                : access XML_Char;
-                  systemId            : access XML_Char;
-                  publicId            : access XML_Char;
-                  notationName        : access XML_Char
-               )
-   );  --  expat.h:341
+      handler : XML_EntityDeclHandler);  --  expat.h:341
    pragma Import (C, XML_SetEntityDeclHandler, "XML_SetEntityDeclHandler");
 
 
@@ -449,11 +423,24 @@ package expat_h is
 
    type XML_NotationDeclHandler is
       access procedure (
-         userData     : System.Address;
-         notationName : access XML_Char;
-         base         : access XML_Char;
-         systemId     : access XML_Char;
-         publicId     : access XML_Char);  --  expat.h:370
+         userData     : Access_Void;
+         notationName : Access_XML_Char;
+         base         : Access_XML_Char;
+         systemId     : Access_XML_Char;
+         publicId     : Access_XML_Char);  --  expat.h:370
+   pragma Convention (C, XML_NotationDeclHandler);
+
+
+   type XML_UnparsedEntityDeclHandler is
+      access procedure (
+         userData     : Access_Void;
+         entityName   : Access_XML_Char;
+         base         : Access_XML_Char;
+         systemId     : Access_XML_Char;
+         publicId     : Access_XML_Char;
+         notationName : Access_XML_Char);
+   pragma Convention (C, XML_UnparsedEntityDeclHandler);
+
 
    --  When namespace processing is enabled, these are called once for
    --  each namespace declaration. The call to the start and end element
@@ -464,15 +451,17 @@ package expat_h is
 
    type XML_StartNamespaceDeclHandler is
       access procedure (
-         userData : System.Address;
-         prefix   : access XML_Char;
-         uri      : access XML_Char);  --  expat.h:381
+         userData : Access_Void;
+         prefix   : Access_XML_Char;
+         uri      : Access_XML_Char);  --  expat.h:381
+   pragma Convention (C, XML_StartNamespaceDeclHandler);
 
 
    type XML_EndNamespaceDeclHandler is
          access procedure (
-            userData : System.Address;
-            prefix   : access XML_Char);  --  expat.h:385
+            userData : Access_Void;
+            prefix   : Access_XML_Char);  --  expat.h:385
+   pragma Convention (C, XML_EndNamespaceDeclHandler);
 
 
    --  This is called if the document is not standalone, that is, it has an
@@ -486,9 +475,10 @@ package expat_h is
 
 
    type XML_NotStandaloneHandler is
-      access function (
-         userData : System.Address)
-   return Interfaces.C.int;  --  expat.h:396
+      access function (userData : Access_Void)
+      return Interfaces.C.int;  --  expat.h:396
+   pragma Convention (C, XML_NotStandaloneHandler);
+
 
    --  This is called for a reference to an external parsed general
    --  entity.  The referenced entity is not automatically parsed.  The
@@ -522,10 +512,11 @@ package expat_h is
    type XML_ExternalEntityRefHandler is
       access function (
          parser   : XML_Parser;
-         context  : access XML_Char;
-         base     : access XML_Char;
-         systemId : access XML_Char;
-         publicId : access XML_Char) return Interfaces.C.int;  --  expat.h:437
+         context  : Access_XML_Char;
+         base     : Access_XML_Char;
+         systemId : Access_XML_Char;
+         publicId : Access_XML_Char) return Interfaces.C.int;  --  expat.h:437
+   pragma Convention (C, XML_ExternalEntityRefHandler);
 
 
    --  This is called in two situations:
@@ -541,9 +532,10 @@ package expat_h is
 
    type XML_SkippedEntityHandler is
       access procedure (
-         userData            : System.Address;
-         entityName          : access XML_Char;
+         userData            : Access_Void;
+         entityName          : Access_XML_Char;
          is_parameter_entity : Interfaces.C.int);  --  expat.h:452
+   pragma Convention (C, XML_SkippedEntityHandler);
 
 
    --  This structure is filled in by the XML_UnknownEncodingHandler to
@@ -588,12 +580,12 @@ package expat_h is
    type XML_Encoding_map_array is array (0 .. 255) of aliased Interfaces.C.int;
    type XML_Encoding is record
       map     : aliased XML_Encoding_map_array;  --  expat.h:507
-      data    : System.Address;
+      data    : Access_Void;
       convert : access function (
-                   data : System.Address;
+                   data : Access_Void;
                    s    : Interfaces.C.Strings.chars_ptr)
                 return Interfaces.C.int;
-      release : access procedure (data : System.Address);
+      release : access procedure (data : Access_Void);
    end record;
    pragma Convention (C_Pass_By_Copy, XML_Encoding);  --  expat.h:511
 
@@ -612,84 +604,68 @@ package expat_h is
 
    type XML_UnknownEncodingHandler is
       access function (
-         encodingHandlerData : System.Address;
-         name                : access XML_Char;
+         encodingHandlerData : Access_Void;
+         name                : Access_XML_Char;
          info                : access XML_Encoding) return Interfaces.C.int;
+   pragma Convention (C, XML_UnknownEncodingHandler);
 
 
    procedure XML_SetElementHandler
      (parser : XML_Parser;
-      start  : access procedure (
-                  encodingHandlerData : System.Address;
-                  name                : access XML_Char;
-                  info                : System.Address);
-      c_end  : access procedure (
-                  userData : System.Address;
-                  name     : access XML_Char));  --  expat.h:534
+      start  : XML_StartElementHandler;
+      c_end  : XML_EndElementHandler);  --  expat.h:534
    pragma Import (C, XML_SetElementHandler, "XML_SetElementHandler");
 
 
    procedure XML_SetStartElementHandler (
       parser  : XML_Parser;
-      handler : access procedure (
-                   userData : System.Address;
-                   name     : access XML_Char;
-                   atts     : System.Address));  --  expat.h:539
+      handler : XML_StartElementHandler);  --  expat.h:539
    pragma Import (C, XML_SetStartElementHandler, "XML_SetStartElementHandler");
 
 
    procedure XML_SetEndElementHandler (
-      parser : XML_Parser;
-      handler : access procedure (
-                   userData : System.Address;
-                   name     : access XML_Char));
+      parser  : XML_Parser;
+      handler : XML_EndElementHandler);
    pragma Import (C, XML_SetEndElementHandler, "XML_SetEndElementHandler");
 
 
    procedure XML_SetCharacterDataHandler (
-      parser : XML_Parser;
-      handler : access procedure (
-                   userData : System.Address;
-                   s        : access XML_Char;
-                   len      : Interfaces.C.int));  --  expat.h:547
+      parser  : XML_Parser;
+      handler : XML_CharacterDataHandler);  --  expat.h:547
    pragma Import (C, XML_SetCharacterDataHandler,
-                     "XML_SetCharacterDataHandler");
+                    "XML_SetCharacterDataHandler");
 
 
    procedure XML_SetProcessingInstructionHandler (
       parser  : XML_Parser;
-      handler : access procedure (
-                   userData : System.Address;
-                   target   : access XML_Char;
-                   data     : access XML_Char));  --  expat.h:551
+      handler : XML_ProcessingInstructionHandler);  --  expat.h:551
    pragma Import (C, XML_SetProcessingInstructionHandler,
                     "XML_SetProcessingInstructionHandler");
 
 
    procedure XML_SetCommentHandler (
       parser  : XML_Parser;
-      handler : access procedure (
-                   userData : System.Address;
-                   data     : access XML_Char));
+      handler : XML_CommentHandler);
    pragma Import (C, XML_SetCommentHandler, "XML_SetCommentHandler");
 
 
    procedure XML_SetCdataSectionHandler
      (parser : XML_Parser;
-      start  : access procedure (userData : System.Address);
-      c_end  : access procedure (userData : System.Address));  --  expat.h:558
+      start  : XML_StartCdataSectionHandler;
+      c_end  : XML_EndCdataSectionHandler);  --  expat.h:558
    pragma Import (C, XML_SetCdataSectionHandler, "XML_SetCdataSectionHandler");
 
 
    procedure XML_SetStartCdataSectionHandler (
       parser : XML_Parser;
-      start  : access procedure (userData : System.Address));
+      start  : XML_StartCdataSectionHandler);
    pragma Import (C, XML_SetStartCdataSectionHandler,
                     "XML_SetStartCdataSectionHandler");
 
+
    procedure XML_SetEndCdataSectionHandler (
       parser : XML_Parser;
-      c_end  : access procedure (userData : System.Address));
+      c_end  : XML_EndCdataSectionHandler);
    pragma Import (C, XML_SetEndCdataSectionHandler,
                     "XML_SetEndCdataSectionHandler");
 
@@ -701,10 +677,7 @@ package expat_h is
 
    procedure XML_SetDefaultHandler (
       parser  : XML_Parser;
-      handler : access procedure (
-                   userData : System.Address;
-                   s        : access XML_Char;
-                   len      : Interfaces.C.int));  --  expat.h:575
+      handler : XML_DefaultHandler);  --  expat.h:575
    pragma Import (C, XML_SetDefaultHandler, "XML_SetDefaultHandler");
 
 
@@ -714,116 +687,77 @@ package expat_h is
 
 
    procedure XML_SetDefaultHandlerExpand (
-      parser : XML_Parser;
-      handler : access procedure (
-                   userData : System.Address;
-                   s        : access XML_Char;
-                   len      : Interfaces.C.int));  --  expat.h:583
+      parser  : XML_Parser;
+      handler : XML_DefaultHandler);  --  expat.h:583
    pragma Import (C, XML_SetDefaultHandlerExpand,
                     "XML_SetDefaultHandlerExpand");
 
 
    procedure XML_SetDoctypeDeclHandler (
       parser : XML_Parser;
-      start  : access procedure (
-                  userData            : System.Address;
-                  docTypeName         : access XML_Char;
-                  sysid               : access XML_Char;
-                  pubid               : access XML_Char;
-                  has_internal_subset : Interfaces.C.int);
-      c_end  : access procedure (userData : System.Address));  --  expat.h:587
+      start  : XML_StartDoctypeDeclHandler);  --  expat.h:587
    pragma Import (C, XML_SetDoctypeDeclHandler, "XML_SetDoctypeDeclHandler");
 
 
    procedure XML_SetStartDoctypeDeclHandler (
       parser : XML_Parser;
-      start  : access procedure (
-                  userData            : System.Address;
-                  docTypeName         : access XML_Char;
-                  sysid               : access XML_Char;
-                  pubid               : access XML_Char;
-                  has_internal_subset : Interfaces.C.int));  --  expat.h:592
+      start  : XML_StartDoctypeDeclHandler);  --  expat.h:592
    pragma Import (C, XML_SetStartDoctypeDeclHandler,
                     "XML_SetStartDoctypeDeclHandler");
 
 
    procedure XML_SetEndDoctypeDeclHandler (
       parser : XML_Parser;
-      c_end  : access procedure (userData : System.Address));
+      c_end  : XML_EndDoctypeDeclHandler);
    pragma Import (C, XML_SetEndDoctypeDeclHandler,
                     "XML_SetEndDoctypeDeclHandler");
 
 
    procedure XML_SetUnparsedEntityDeclHandler (
       parser  : XML_Parser;
-      handler : access procedure (
-                   userData     : System.Address;
-                   entityName   : access XML_Char;
-                   base         : access XML_Char;
-                   systemId     : access XML_Char;
-                   publicId     : access XML_Char;
-                   notationName : access XML_Char));  --  expat.h:600
+      handler : XML_UnparsedEntityDeclHandler);  --  expat.h:600
    pragma Import (C, XML_SetUnparsedEntityDeclHandler,
                     "XML_SetUnparsedEntityDeclHandler");
 
 
    procedure XML_SetNotationDeclHandler (
       parser  : XML_Parser;
-      handler : access procedure (
-                   userData     : System.Address;
-                   notationName : access XML_Char;
-                   base         : access XML_Char;
-                   systemId     : access XML_Char;
-                   publicId     : access XML_Char));  --  expat.h:604
+      handler : XML_NotationDeclHandler);  --  expat.h:604
    pragma Import (C, XML_SetNotationDeclHandler, "XML_SetNotationDeclHandler");
 
 
    procedure XML_SetNamespaceDeclHandler (
       parser : XML_Parser;
-      start : access procedure (
-                 arg1 : System.Address;
-                 arg2 : access XML_Char;
-                 arg3 : access XML_Char);
-      c_end : access procedure (arg1 : System.Address; arg2 : access XML_Char));
+      start  : XML_StartNamespaceDeclHandler;
+      c_end  : XML_EndNamespaceDeclHandler);
    pragma Import (C, XML_SetNamespaceDeclHandler,
                     "XML_SetNamespaceDeclHandler");
 
+
    procedure XML_SetStartNamespaceDeclHandler (
       parser : XML_Parser;
-      start  : access procedure (
-                  userData : System.Address;
-                  prefix   : access XML_Char;
-                  uri      : access XML_Char));  --  expat.h:613
+      start  : XML_StartNamespaceDeclHandler);  --  expat.h:613
    pragma Import (C, XML_SetStartNamespaceDeclHandler,
                     "XML_SetStartNamespaceDeclHandler");
 
 
    procedure XML_SetEndNamespaceDeclHandler (
       parser : XML_Parser;
-      c_end  : access procedure (
-                  userData : System.Address;
-                  prefix   : access XML_Char));
+      c_end  : XML_EndNamespaceDeclHandler);
    pragma Import (C, XML_SetEndNamespaceDeclHandler,
                     "XML_SetEndNamespaceDeclHandler");
 
 
    procedure XML_SetNotStandaloneHandler (
       parser  : XML_Parser;
-      handler : access function (userData : System.Address)
-                return Interfaces.C.int);
+      handler : XML_NotStandaloneHandler);
    pragma Import (C, XML_SetNotStandaloneHandler,
                     "XML_SetNotStandaloneHandler");
 
 
    procedure XML_SetExternalEntityRefHandler (
       parser  : XML_Parser;
-      handler : access function (
-                   parserx  : XML_Parser;
-                   context  : access XML_Char;
-                   base     : access XML_Char;
-                   systemId : access XML_Char;
-                   publicId : access XML_Char)
-                return Interfaces.C.int);  --  expat.h:625
+      handler : XML_ExternalEntityRefHandler);  --  expat.h:625
    pragma Import (C, XML_SetExternalEntityRefHandler,
                     "XML_SetExternalEntityRefHandler");
 
@@ -835,29 +769,22 @@ package expat_h is
 
    procedure XML_SetExternalEntityRefHandlerArg (
       parser : XML_Parser;
-      arg    : System.Address);
+      arg    : Access_Void);
    pragma Import (C, XML_SetExternalEntityRefHandlerArg,
                     "XML_SetExternalEntityRefHandlerArg");
 
 
    procedure XML_SetSkippedEntityHandler (
       parser  : XML_Parser;
-      handler : access procedure (
-                   userData            : System.Address;
-                   entityName          : access XML_Char;
-                   is_parameter_entity : Interfaces.C.int));  --  expat.h:637
+      handler : XML_SkippedEntityHandler);  --  expat.h:637
    pragma Import (C, XML_SetSkippedEntityHandler,
                     "XML_SetSkippedEntityHandler");
 
 
    procedure XML_SetUnknownEncodingHandler (
-      parser  : XML_Parser;
-      handler : access function (
-                   encodingHandlerData : System.Address;
-                   name                : access XML_Char;
-                   info                : access XML_Encoding)
-                return Interfaces.C.int;
-      encodingHandlerData : System.Address);  --  expat.h:641
+      parser              : XML_Parser;
+      handler             : XML_UnknownEncodingHandler;
+      encodingHandlerData : Access_Void);  --  expat.h:641
    pragma Import (C, XML_SetUnknownEncodingHandler,
                     "XML_SetUnknownEncodingHandler");
 
@@ -887,7 +814,8 @@ package expat_h is
 
 
    --  This value is passed as the userData argument to callbacks.
-   procedure XML_SetUserData (parser : XML_Parser; userData : System.Address);
+   procedure XML_SetUserData (parser   : XML_Parser;
+                              userData : Access_Void);
    pragma Import (C, XML_SetUserData, "XML_SetUserData");
 
 
@@ -900,7 +828,7 @@ package expat_h is
 
 
    function XML_SetEncoding (parser   : XML_Parser;
-                             encoding : access XML_Char) return XML_Status;
+                             encoding : Access_XML_Char) return XML_Status;
    pragma Import (C, XML_SetEncoding, "XML_SetEncoding");
 
 
@@ -947,10 +875,10 @@ package expat_h is
 
 
    function XML_SetBase (parser : XML_Parser;
-                         base   : access XML_Char) return XML_Status;
+                         base   : Access_XML_Char) return XML_Status;
    pragma Import (C, XML_SetBase, "XML_SetBase");
 
-   function XML_GetBase (parser : XML_Parser) return access XML_Char;
+   function XML_GetBase (parser : XML_Parser) return Access_XML_Char;
    pragma Import (C, XML_GetBase, "XML_GetBase");
 
 
@@ -996,7 +924,7 @@ package expat_h is
 
 
    function XML_GetBuffer (parser : XML_Parser; len : Interfaces.C.int)
-   return System.Address;  --  expat.h:758
+   return Access_Void;  --  expat.h:758
    pragma Import (C, XML_GetBuffer, "XML_GetBuffer");
 
 
@@ -1024,7 +952,7 @@ package expat_h is
    --  - XML_ERROR_SUSPEND_PE: when suspending while parsing an external PE.
    --  When resumable != 0 (true) then parsing is suspended, that is,
    --  XML_Parse() and XML_ParseBuffer() return XML_STATUS_SUSPENDED.
-   --  Otherwise, parsing is aborted, that is, XML_Parse() and XML_ParseBuffer()
+   --  Otherwise parsing is aborted, that is, XML_Parse() and XML_ParseBuffer()
    --  return XML_STATUS_ERROR with error code XML_ERROR_ABORTED.
    --  *Note*:
    --  This will be applied to the current parser instance only, that is, if
@@ -1103,8 +1031,8 @@ package expat_h is
 
    function XML_ExternalEntityParserCreate (
       parser   : XML_Parser;
-      context  : access XML_Char;
-      encoding : access XML_Char) return XML_Parser;  --  expat.h:849
+      context  : Access_XML_Char;
+      encoding : Access_XML_Char) return XML_Parser;  --  expat.h:849
    pragma Import (C, XML_ExternalEntityParserCreate,
                     "XML_ExternalEntityParserCreate");
 
@@ -1215,52 +1143,24 @@ package expat_h is
 
    --  Exposing the memory handling functions used in Expat
    function XML_MemMalloc (parser : XML_Parser; size : size_t)
-   return System.Address;  --  expat.h:944
+   return Access_Void;  --  expat.h:944
    pragma Import (C, XML_MemMalloc, "XML_MemMalloc");
 
 
    function XML_MemRealloc
      (parser : XML_Parser;
-      ptr    : System.Address;
-      size   : size_t) return System.Address;  --  expat.h:947
+      ptr    : Access_Void;
+      size   : size_t) return Access_Void;  --  expat.h:947
    pragma Import (C, XML_MemRealloc, "XML_MemRealloc");
 
 
-   procedure XML_MemFree (parser : XML_Parser; ptr : System.Address);
+   procedure XML_MemFree (parser : XML_Parser; ptr : Access_Void);
    pragma Import (C, XML_MemFree, "XML_MemFree");
 
 
    --  Frees memory used by the parser.
    procedure XML_ParserFree (parser : XML_Parser);  --  expat.h:954
    pragma Import (C, XML_ParserFree, "XML_ParserFree");
-
-
-   --  Returns a string describing the error.
-   function XML_ErrorString (code : XML_Error) return access XML_LChar;
-   pragma Import (C, XML_ErrorString, "XML_ErrorString");
-
-
-   --  Return a string containing the version number of this expat
-   function XML_ExpatVersion return access XML_LChar;  --  expat.h:962
-   pragma Import (C, XML_ExpatVersion, "XML_ExpatVersion");
-
-
-   --  skipped anonymous struct anon_47
-
-   type XML_Expat_Version is record
-      major : aliased Interfaces.C.int;  --  expat.h:965
-      minor : aliased Interfaces.C.int;  --  expat.h:966
-      micro : aliased Interfaces.C.int;  --  expat.h:967
-   end record;
-   pragma Convention (C_Pass_By_Copy, XML_Expat_Version);  --  expat.h:968
-
-
-   --  Return an XML_Expat_Version structure containing numeric version
-   --  number information for this version of expat.
-
-
-   function XML_ExpatVersionInfo return XML_Expat_Version;  --  expat.h:974
-   pragma Import (C, XML_ExpatVersionInfo, "XML_ExpatVersionInfo");
 
 
    type XML_FeatureEnum is
@@ -1278,9 +1178,9 @@ package expat_h is
 
    --  Additional features must be added to the end of this enum.
    type XML_Feature is record
-      feature : aliased XML_FeatureEnum;  --  expat.h:992
-      name : access XML_LChar;  --  expat.h:993
-      value : aliased Interfaces.C.long;  --  expat.h:994
+      feature : aliased XML_FeatureEnum;   --  expat.h:992
+      name    : Access_XML_Char;            --  expat.h:993
+      value   : aliased Interfaces.C.long;  --  expat.h:994
    end record;
    pragma Convention (C_Pass_By_Copy, XML_Feature);  --  expat.h:995
 
@@ -1295,4 +1195,49 @@ package expat_h is
    --  change to major or minor version.
 
 
-end expat_h;
+   function XML_ExpatVersion return String;
+   --  Return a string containing the version number of this expat
+
+
+   function XML_ErrorString (parser : XML_Parser) return String;
+     --  Returns a string describing the error.
+
+
+   type XML_Expat_Version is record
+      major : Integer;
+      minor : Integer;
+      micro : Integer;
+   end record;
+
+
+   function XML_ExpatVersionInfo return XML_Expat_Version;
+   --  Return an XML_Expat_Version structure containing numeric version
+   --  number information for this version of expat.   [expat.h:974]
+
+private
+
+   type Thin_XML_Expat_Version is record
+      major : aliased Interfaces.C.int;  --  expat.h:965
+      minor : aliased Interfaces.C.int;  --  expat.h:966
+      micro : aliased Interfaces.C.int;  --  expat.h:967
+   end record;
+   pragma Convention (C_Pass_By_Copy, Thin_XML_Expat_Version);  --  expat.h:968
+
+
+   function Thin_XML_ExpatVersion return Access_XML_Char;  --  expat.h:962
+   pragma Import (C, Thin_XML_ExpatVersion, "XML_ExpatVersion");
+   --  Return a string containing the version number of this expat
+
+
+   function Thin_XML_ErrorString (code : XML_Error) return Access_XML_Char;
+   pragma Import (C, Thin_XML_ErrorString, "XML_ErrorString");
+   --  Returns a string describing the error.
+
+
+   function Thin_XML_ExpatVersionInfo return Thin_XML_Expat_Version;
+   pragma Import (C, Thin_XML_ExpatVersionInfo, "XML_ExpatVersionInfo");
+   --  Return an XML_Expat_Version structure containing numeric version
+   --  number information for this version of expat.   [expat.h:974]
+
+
+end expat;

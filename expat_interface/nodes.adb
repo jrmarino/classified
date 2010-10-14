@@ -18,6 +18,18 @@ package body Nodes is
 
 
    --------------------
+   --  end_of_scope  --
+   --------------------
+
+   function end_of_scope (Node : TNode)
+   return TNodeIndex is
+   begin
+      return Node.Scope;
+   end end_of_scope;
+
+
+
+   --------------------
    --  expand_scope  --
    --------------------
 
@@ -41,7 +53,7 @@ package body Nodes is
                              Identifier : in     SU.Unbounded_String)
    --  This procedure is run once to establish basic node data.  The number of
    --  child nodes will be set to 0, the scope will be set to Self_ID, and the
-   --  remaining relations will be set to the defaults.  Attributes are cleared.
+   --  remaining relations will be set to defaults.  Attributes are cleared.
    is
    begin
       Node.ID                := Self_ID;
@@ -75,28 +87,28 @@ package body Nodes is
 
 
    ----------------------------
-   --  signal_older_brother  --
+   --  signal_prev_brother  --
    ----------------------------
 
-   procedure signal_older_brother (Node       : in out TNode;
-                                   Brother_ID : in     TNodeIndex)
+   procedure signal_prev_brother (Node       : in out TNode;
+                                  Brother_ID : in     TNodeIndex)
    is
    begin
       Node.Prev_Sibling_ID := Brother_ID;
-   end signal_older_brother;
+   end signal_prev_brother;
 
 
 
    ------------------------------
-   --  signal_younger_brother  --
+   --  signal_next_brother  --
    ------------------------------
 
-   procedure signal_younger_brother (Node       : in out TNode;
-                                     Brother_ID : in     TNodeIndex)
+   procedure signal_next_brother (Node       : in out TNode;
+                                  Brother_ID : in     TNodeIndex)
    is
    begin
       Node.Next_Sibling_ID := Brother_ID;
-   end signal_younger_brother;
+   end signal_next_brother;
 
 
 
@@ -124,9 +136,9 @@ package body Nodes is
 
 
 
-   -------------------------
-   --  value (version 1)  --
-   -------------------------
+   -----------------------------------
+   --  attribute_value (version 1)  --
+   -----------------------------------
 
    function attribute_value (Node : TNode; index : Positive)
    return SU.Unbounded_String is
@@ -161,6 +173,18 @@ package body Nodes is
 
 
 
+   ---------------------
+   --  attribute_key  --
+   ---------------------
+
+   function attribute_key (Node  : TNode;
+                           index : Positive)
+   return SU.Unbounded_String is
+   begin
+      return Node.Attributes.key (index => index);
+   end attribute_key;
+
+
    ----------
    --  id  --
    ----------
@@ -169,6 +193,17 @@ package body Nodes is
    begin
       return Node.Identifier;
    end id;
+
+
+
+   ----------------
+   --  contents  --
+   ----------------
+
+   function node_value (Node : TNode) return SU.Unbounded_String is
+   begin
+      return Node.Value;
+   end node_value;
 
 
 
@@ -241,6 +276,8 @@ package body Nodes is
    begin
       return Node.Prev_Sibling_ID;
    end previous_sibling_node;
+
+
 
    -------------------
    --  parent_node  --

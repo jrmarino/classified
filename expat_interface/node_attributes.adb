@@ -65,6 +65,32 @@ package body Node_Attributes is
 
 
 
+   -----------
+   --  key  --
+   -----------
+
+   function key (Attributes : TAttributes;
+                 index      : Positive)
+   return SU.Unbounded_String is
+      arrow       : Acc_RecAttribute := Attributes.LIFO;
+      arrow_index : Natural := 0;
+      result      : SU.Unbounded_String := SU.Null_Unbounded_String;
+
+      use SU;
+   begin
+      while result = SU.Null_Unbounded_String
+            and then arrow /= null loop
+         arrow_index := arrow_index + 1;
+         if arrow_index = index then
+            result := arrow.key;
+         end if;
+         arrow := arrow.next;
+      end loop;
+      return result;
+   end key;
+
+
+
    --------------------------
    --  value  (version 1)  --
    --------------------------

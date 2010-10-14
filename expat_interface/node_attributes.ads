@@ -45,6 +45,12 @@ package Node_Attributes is
    --  If the index is out of range, a blank string is returned.
 
 
+   function key (Attributes : TAttributes;
+                 index      : Positive) return SU.Unbounded_String;
+   --  Returns the attribute key given its index.  The index starts at 1
+   --  If the index is out of range, a blank string is returned.
+
+
    function value (Attributes : TAttributes;
                    key        : SU.Unbounded_String)
    return SU.Unbounded_String;
