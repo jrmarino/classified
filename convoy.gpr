@@ -1,0 +1,22 @@
+project Convoy is
+
+   for Source_Dirs use (".\**", "ciphers\rsa\**");
+   for Object_Dir use "..\convoy_build";
+   for Main use ("test_xml.adb");
+   for Library_Interface use ();
+   for Library_Kind use "dynamic";
+
+   package Compiler is
+      for Default_Switches ("ada") use ("-gnatwa.h.i.o.st.u.w", "-gnatVa", "-gnat05", "-gnatf", "-gnatyaAbBcdefhklnrstxOpiSm", "-gnato", "-gnata");
+   end Compiler;
+
+   package Builder is
+      for Default_Switches ("ada") use ("-s");
+   end Builder;
+
+   package Linker is
+      for Linker_Options use ("expat_interface/libexpat-1.dll");
+   end Linker;
+
+end Convoy;
+
