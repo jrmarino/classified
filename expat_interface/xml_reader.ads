@@ -28,7 +28,7 @@ package XML_Reader is
 
    type TNodeSet is array (Positive range <>) of aliased Nodes.TNode;
    type TNodeSet_Access is access TNodeSet;
-   type TChildren is array (Positive range <>) of access Nodes.TNode;
+   type TNodeGroup is array (Positive range <>) of access Nodes.TNode;
    type TDOM is new Ada.Finalization.Limited_Controlled with
       record
          DocLength : Natural := 0;
@@ -90,8 +90,29 @@ package XML_Reader is
 
 
    function children (DOM  : TDOM;
-                      Node : Nodes.TNode) return TChildren;
+                      Node : Nodes.TNode) return TNodeGroup;
    --  Returns an array of nodes which are the children of the given node.
+
+
+   function get_element_by_id (DOM : TDOM;
+                               ID  : String) return access Nodes.TNode;
+   --  Returns access to the node with the given ID.
+   --  Returns null if the ID isn't found.
+
+
+   function get_elements_by_tag_name (DOM      : TDOM;
+                                      tag_name : String) return TNodeGroup;
+   --  Returns all elements with the same tag name for the entire document
+   --  as a group.  It is equivalent to get_child_elements_by_tag_name
+   --  performed on the root element.
+
+
+   function get_child_elements_by_tag_name (
+                  DOM      : TDOM;
+                  Node     : Nodes.TNode;
+                  tag_name : String) return TNodeGroup;
+   --  Returns all elements with the same tag name for all the descendents of
+   --  a given element.
 
 
    pragma Warnings (Off);

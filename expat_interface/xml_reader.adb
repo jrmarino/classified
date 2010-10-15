@@ -25,6 +25,92 @@ package body XML_Reader is
    package ICS renames Interfaces.C.Strings;
 
 
+   --------------------------------
+   --  get_elements_by_tag_name  --
+   --------------------------------
+
+   function get_elements_by_tag_name (DOM      : TDOM;
+                                      tag_name : String)
+   return TNodeGroup is
+   begin
+      return DOM.get_child_elements_by_tag_name (
+                  Node     => DOM.Document (1),
+                  tag_name => tag_name);
+   end get_elements_by_tag_name;
+
+
+
+   --------------------------------------
+   --  get_child_elements_by_tag_name  --
+   --------------------------------------
+
+   function get_child_elements_by_tag_name (DOM      : TDOM;
+                                            Node     : Nodes.TNode;
+                                            tag_name : String)
+   return TNodeGroup is
+      tag_count  : Natural := 0;
+      start_tag  : constant Nodes.TNodeIndex := Node.first_child_index;
+      end_tag    : constant Nodes.TNodeIndex := Node.end_of_scope;
+      tagname_us : constant SU.Unbounded_String :=
+                            SU.To_Unbounded_String (tag_name);
+      use SU;
+   begin
+      for x in Nodes.TNodeIndex range start_tag .. end_tag loop
+         if DOM.Document (x).tag_name = tagname_us then
+            tag_count := tag_count + 1;
+         end if;
+      end loop;
+      declare
+         result : TNodeGroup (1 .. tag_count);
+         kindex : Natural := 0;
+      begin
+         if tag_count > 0 then
+            for x in Nodes.TNodeIndex range start_tag .. end_tag loop
+               if DOM.Document (x).tag_name = tagname_us then
+                  kindex := kindex + 1;
+                  result (kindex) := DOM.Document (x)'Access;
+               end if;
+            end loop;
+         end if;
+
+         return result;
+      end;
+
+   end get_child_elements_by_tag_name;
+
+
+
+   -------------------------
+   --  get_element_by_id  --
+   -------------------------
+
+   function get_element_by_id (DOM : TDOM;
+                               ID  : String)
+   return access Nodes.TNode is
+      index      : Natural := 0;
+      node_count : constant Natural := DOM.Document'Length;
+      found      : Boolean := False;
+      id_us      : constant SU.Unbounded_String := SU.To_Unbounded_String (ID);
+
+      use SU;
+   begin
+      while not found and then index < node_count loop
+         index := index + 1;
+         if DOM.Document (index).id = id_us then
+            found := True;
+         end if;
+      end loop;
+
+      if found then
+         return DOM.Document (index)'Access;
+      else
+         return null;
+      end if;
+
+   end get_element_by_id;
+
+
+
    -------------------
    --  parent_node  --
    -------------------
@@ -116,9 +202,9 @@ package body XML_Reader is
 
    function children (DOM  : TDOM;
                       Node : Nodes.TNode)
-   return TChildren is
+   return TNodeGroup is
       kids   : constant Natural := Node.child_node_count;
-      result : TChildren (1 .. kids);
+      result : TNodeGroup (1 .. kids);
    begin
       if kids = 0 then
          return result;
