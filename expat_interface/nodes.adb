@@ -17,6 +17,24 @@
 package body Nodes is
 
 
+   ---------------------------
+   --  set_element_content  --
+   ---------------------------
+
+   procedure set_element_content (Node    : in out TNode;
+                                  content : SU.Unbounded_String)
+   is
+      use SU;
+   begin
+      if Node.Contents = SU.Null_Unbounded_String then
+         Node.Contents := content;
+      else
+         Node.Contents := Node.Contents & content;
+      end if;
+   end set_element_content;
+
+
+
    ------------------------
    --  attr_insert_word  --
    ------------------------
@@ -108,8 +126,21 @@ package body Nodes is
                            Node_ID : in     TNodeIndex)
    is
    begin
-      Node.Scope := Node_ID;
+      Node.Scope    := Node_ID;
+      Node.Tag_Open := False;
    end expand_scope;
+
+
+
+   -------------------
+   --  tag_is_open  --
+   -------------------
+
+   function tag_is_open (Node : in TNode)
+   return Boolean is
+   begin
+      return Node.Tag_Open;
+   end tag_is_open;
 
 
 
@@ -136,6 +167,8 @@ package body Nodes is
       Node.Identifier        := Identifier;
       Node.Num_Children      := 0;
       Node.Scope             := Self_ID;
+      Node.Tag_Open          := True;
+      Node.Contents          := SU.Null_Unbounded_String;
       Node.Attributes.clear;
    end set_basic_data;
 

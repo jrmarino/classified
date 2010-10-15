@@ -133,6 +133,16 @@ package XML_Reader is
    --  This is a callback function passed to the expat library.  It is
    --  triggered when the parser reaches the end of a new element.
 
+
+   procedure call_character_data (
+         userData : in out expat.Access_Void;
+         s        : in     expat.Access_XML_Char;
+         len      : in     expat.size_t);
+   pragma Convention (C, call_character_data);
+   --  This is the callback function triggered when expat comes across
+   --  character data between the brackets.
+
+
 private
 
    package Parent_Stack is new Generic_Stack (
@@ -156,5 +166,9 @@ private
    procedure Free is
       new Ada.Unchecked_Deallocation (TNodeSet, TNodeSet_Access);
 
+
+   function pure_whitespace (text : String) return Boolean;
+   --  If the "text" input consists only of whitespace, the result will
+   --  be True;
 
 end XML_Reader;

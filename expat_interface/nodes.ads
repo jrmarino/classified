@@ -160,7 +160,19 @@ package Nodes is
    procedure expand_scope (Node    : in out TNode;
                            Node_ID : in     TNodeIndex);
    --  This procedure needs to be executed on parents, grandparents, etc, all
-   --  the way back to the root node.
+   --  the way back to the root node.  It also sets the tag_open parameter
+   --  to false.
+
+
+   procedure set_element_content (Node    : in out TNode;
+                                  content : SU.Unbounded_String);
+   --  This procedure will update the node's "Contents" data with the value of
+   --  "content" when called.
+
+
+   function tag_is_open (Node : in TNode) return Boolean;
+   --  Returns True if the indicated Node has been completely processed (in
+   --  other words, the closing bracket has been reached already.
 
 
    procedure tags_insert_word (word : in SU.Unbounded_String);
@@ -189,7 +201,9 @@ private
       Scope           : TNodeIndex := NO_INDEX_DEFINED;
       Num_Children    : Natural    := 0;
       TagName         : Positive   := 1;
+      Tag_Open        : Boolean    := False;
       Identifier      : SU.Unbounded_String := SU.Null_Unbounded_String;
+      Contents        : SU.Unbounded_String := SU.Null_Unbounded_String;
       Attributes      : aliased TAttributes;
    end record;
 

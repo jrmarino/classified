@@ -16,6 +16,9 @@
 
 with System;
 with File_Handling;
+with Ada.Strings.Maps;
+with Ada.Strings.Fixed;
+with Ada.Characters.Latin_1;
 with Interfaces.C.Strings;
 with Ada.Text_IO; use Ada.Text_IO;
 
@@ -23,7 +26,21 @@ package body XML_Reader is
 
    package IC renames Interfaces.C;
    package ICS renames Interfaces.C.Strings;
+   package Latin renames Ada.Characters.Latin_1;
 
+
+   function pure_whitespace (text : String)
+   return Boolean is
+      whitespace : constant Ada.Strings.Maps.Character_Set :=
+                   Ada.Strings.Maps.To_Set (Latin.CR & Latin.LF & ' ');
+      trimmed    : constant String := Ada.Strings.Fixed.Trim (
+                              Source => text,
+                              Left   => whitespace,
+                              Right  => Ada.Strings.Maps.Null_Set);
+      remaining  : constant Integer := trimmed'Length;
+   begin
+      return (remaining = 0);
+   end pure_whitespace;
 
    --------------------------------
    --  get_elements_by_tag_name  --
@@ -394,6 +411,46 @@ package body XML_Reader is
 
 
 
+   ---------------------------
+   --  call_character_data  --
+   ---------------------------
+
+   procedure call_character_data (
+         userData : in out expat.Access_Void;
+         s        : in     expat.Access_XML_Char;
+         len      : in     expat.size_t)
+   is
+      use System;
+      self_id    : constant Natural := Background.total_nodes;
+   begin
+      if not Background.Access_DOM.Document (self_id).tag_is_open then
+         return;
+      end if;
+
+      declare
+         content    : constant String := ICS.Value (Item => s, Length => len);
+         whitespace : constant Boolean := pure_whitespace (text => content);
+      begin
+         if whitespace then
+            return;
+         end if;
+
+         declare
+            content_us : constant SU.Unbounded_String :=
+                                  SU.To_Unbounded_String (content);
+         begin
+            Background.Access_DOM.Document (self_id).set_element_content
+                                                 (content => content_us);
+         end;
+      end;
+
+      if userData = Null_Address then
+         null;  --  to silence compiler
+      end if;
+   end call_character_data;
+
+
+
    ----------------------------
    --  load_xml_from_string  --
    ----------------------------
@@ -461,6 +518,9 @@ package body XML_Reader is
                XML_SetEndElementHandler (
                      parser   => parser,
                      handler  => call_tag_end'Access);
+               XML_SetCharacterDataHandler (
+                     parser   => parser,
+                     handler  => call_character_data'Access);
 
                status := XML_Parse (parser   => parser,
                                     s        => buffer,

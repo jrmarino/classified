@@ -301,9 +301,9 @@ package expat is
    --  s is not 0 terminated.
    type XML_CharacterDataHandler is
       access procedure (
-         userData : Access_Void;
-         s        : Access_XML_Char;
-         len      : Interfaces.C.int);  --  expat.h:263
+         userData : in out Access_Void;
+         s        : in     Access_XML_Char;
+         len      : in     size_t);  --  expat.h:263
    pragma Convention (C, XML_CharacterDataHandler);
 
 
