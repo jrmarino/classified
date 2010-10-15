@@ -17,6 +17,77 @@
 package body Nodes is
 
 
+   ------------------------
+   --  attr_insert_word  --
+   ------------------------
+
+   procedure attr_insert_word (word : in SU.Unbounded_String)
+   is
+   begin
+      Node_Attributes.attr_insert_word (word => word);
+   end attr_insert_word;
+
+
+
+   -----------------------------
+   --  attr_set_active_state  --
+   -----------------------------
+
+   procedure attr_set_active_state
+   is
+   begin
+      Node_Attributes.attr_set_active_state;
+   end attr_set_active_state;
+
+
+
+   -----------------
+   --  attr_dump  --
+   -----------------
+
+   procedure attr_dump
+   is
+   begin
+      Node_Attributes.attr_dump;
+   end attr_dump;
+
+
+   ------------------------
+   --  tags_insert_word  --
+   ------------------------
+
+   procedure tags_insert_word (word : in SU.Unbounded_String)
+   is
+   begin
+      Node_Shared.tags.insert_word (word => word);
+   end tags_insert_word;
+
+
+
+   -----------------------------
+   --  tags_set_active_state  --
+   -----------------------------
+
+   procedure tags_set_active_state
+   is
+   begin
+      Node_Shared.tags.set_active_state;
+   end tags_set_active_state;
+
+
+
+   -----------------
+   --  tags_dump  --
+   -----------------
+
+   procedure tags_dump
+   is
+   begin
+      Node_Shared.tags.dump;
+   end tags_dump;
+
+
+
    --------------------
    --  end_of_scope  --
    --------------------
@@ -49,7 +120,7 @@ package body Nodes is
    procedure set_basic_data (Node       : in out TNode;
                              Self_ID    : in     TNodeIndex;
                              Parent_ID  : in     TNodeIndex;
-                             Value      : in     SU.Unbounded_String;
+                             TagName    : in     SU.Unbounded_String;
                              Identifier : in     SU.Unbounded_String)
    --  This procedure is run once to establish basic node data.  The number of
    --  child nodes will be set to 0, the scope will be set to Self_ID, and the
@@ -61,7 +132,7 @@ package body Nodes is
       Node.Next_Sibling_ID   := NO_FOLLOWING_BROTHER;
       Node.Prev_Sibling_ID   := NO_PREVIOUS_BROTHER;
       Node.First_Child_ID    := NO_OFFSPRING;
-      Node.Value             := Value;
+      Node.TagName           := Node_Shared.tags.get_index (word => TagName);
       Node.Identifier        := Identifier;
       Node.Num_Children      := 0;
       Node.Scope             := Self_ID;
@@ -123,6 +194,17 @@ package body Nodes is
 
 
 
+   -------------------------
+   --  clear_shared_data  --
+   -------------------------
+
+   procedure clear_shared_data is
+   begin
+      Node_Shared.tags.clear;
+      Node_Attributes.clear_shared_attributes;
+   end clear_shared_data;
+
+
    ---------------------
    --  attribute_add  --
    ---------------------
@@ -152,7 +234,7 @@ package body Nodes is
    --  attribute_value (version 2) --
    ----------------------------------
 
-   function attribute_value (Node : TNode; key : SU.Unbounded_String)
+   function attribute_value (Node : TNode; key : String)
    return SU.Unbounded_String is
    begin
       return Node.Attributes.value (key => key);
@@ -165,7 +247,7 @@ package body Nodes is
    ------------------------
 
    function attribute_index (Node : TNode;
-                             key  : SU.Unbounded_String)
+                             key  : String)
    return Natural is
    begin
       return Node.Attributes.index (key => key);
@@ -197,13 +279,13 @@ package body Nodes is
 
 
    ----------------
-   --  contents  --
+   --  tag_name  --
    ----------------
 
-   function node_value (Node : TNode) return SU.Unbounded_String is
+   function tag_name (Node : TNode) return SU.Unbounded_String is
    begin
-      return Node.Value;
-   end node_value;
+      return Node_Shared.tags.get_text (index => Node.TagName);
+   end tag_name;
 
 
 
@@ -243,51 +325,51 @@ package body Nodes is
 
 
 
-   -------------------
-   --  first_child  --
-   -------------------
+   -------------------------
+   --  first_child_index  --
+   -------------------------
 
-   function first_child (Node : TNode)
+   function first_child_index (Node : TNode)
    return TNodeIndex is
    begin
       return Node.First_Child_ID;
-   end first_child;
+   end first_child_index;
 
 
 
-   -------------------------
-   --  next_sibling_node  --
-   -------------------------
+   -------------------------------
+   --  next_sibling_node_index  --
+   -------------------------------
 
-   function next_sibling_node (Node : TNode)
+   function next_sibling_node_index (Node : TNode)
    return TNodeIndex is
    begin
       return Node.Next_Sibling_ID;
-   end next_sibling_node;
+   end next_sibling_node_index;
 
 
 
-   -----------------------------
-   --  previous_sibling_node  --
-   -----------------------------
+   -----------------------------------
+   --  previous_sibling_node_index  --
+   -----------------------------------
 
-   function previous_sibling_node (Node : TNode)
+   function previous_sibling_node_index (Node : TNode)
    return TNodeIndex is
    begin
       return Node.Prev_Sibling_ID;
-   end previous_sibling_node;
+   end previous_sibling_node_index;
 
 
 
-   -------------------
-   --  parent_node  --
-   -------------------
+   -------------------------
+   --  parent_node_index  --
+   -------------------------
 
-   function parent_node (Node : TNode)
+   function parent_node_index (Node : TNode)
    return TNodeIndex is
    begin
       return Node.Parent_ID;
-   end parent_node;
+   end parent_node_index;
 
 
 

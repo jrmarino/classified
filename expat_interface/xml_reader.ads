@@ -28,6 +28,7 @@ package XML_Reader is
 
    type TNodeSet is array (Positive range <>) of aliased Nodes.TNode;
    type TNodeSet_Access is access TNodeSet;
+   type TChildren is array (Positive range <>) of access Nodes.TNode;
    type TDOM is new Ada.Finalization.Limited_Controlled with
       record
          DocLength : Natural := 0;
@@ -50,14 +51,47 @@ package XML_Reader is
    --  validity, it's just expected to be correct.
 
 
-   function child_node (DOM     : TDOM;
-                        Node_ID : Nodes.TNodeIndex;
-                        Child   : Positive) return Nodes.TNodeIndex;
+   function child_node_index (DOM     : TDOM;
+                              Node_ID : Nodes.TNodeIndex;
+                              Child   : Positive) return Nodes.TNodeIndex;
    --  This function returns a specific child node given a node with the index
    --  of Node_ID.  The "Child" must be at least one.  If the node doesn't have
    --  any child nodes, the function returns NO_OFFSPRING and if the "Child"
    --  input is too high, the function returns the value of
    --  CHILD_RANGE_EXCEEDED.
+
+
+   function child_node (DOM   : TDOM;
+                        Node  : Nodes.TNode;
+                        Child : Positive) return access Nodes.TNode;
+   --  Returns access to the child node
+
+
+   function parent_node (DOM  : TDOM;
+                         Node : Nodes.TNode) return access Nodes.TNode;
+   --  Returns access to the parent node
+
+
+   function first_child (DOM  : TDOM;
+                         Node : Nodes.TNode) return access Nodes.TNode;
+   --  Returns access to the first child
+
+
+   function previous_sibling_node (DOM  : TDOM;
+                                   Node : Nodes.TNode)
+   return access Nodes.TNode;
+   --  Returns access to the previous sibling
+
+
+   function next_sibling_node (DOM  : TDOM;
+                               Node : Nodes.TNode)
+   return access Nodes.TNode;
+   --  Returns access to the next sibling
+
+
+   function children (DOM  : TDOM;
+                      Node : Nodes.TNode) return TChildren;
+   --  Returns an array of nodes which are the children of the given node.
 
 
    pragma Warnings (Off);

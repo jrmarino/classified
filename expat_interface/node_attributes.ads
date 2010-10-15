@@ -14,6 +14,7 @@
 --  OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 
+with Condensed_Text;
 with Ada.Finalization;
 with Ada.Strings.Unbounded;
 with Ada.Unchecked_Deallocation;
@@ -52,14 +53,14 @@ package Node_Attributes is
 
 
    function value (Attributes : TAttributes;
-                   key        : SU.Unbounded_String)
+                   key        : String)
    return SU.Unbounded_String;
    --  Returns the attribute value given its key string.   If the key doesn't
    --  exist, a blank string is returned.
 
 
    function index (Attributes : TAttributes;
-                   key        : SU.Unbounded_String) return Natural;
+                   key        : String) return Natural;
    --  Returns the index of an attribute given a key string.  If the key wasn't
    --  previously defined, a zero is returned.
 
@@ -68,12 +69,28 @@ package Node_Attributes is
    --  Returns the number of attributes currently defined within the set.
 
 
+   procedure attr_insert_word (word : in SU.Unbounded_String);
+   --  Wrapper for condensed_text::insert_word
+
+
+   procedure attr_set_active_state;
+   --  Wrapper for condensed_text::set_active_state
+
+
+   procedure attr_dump;
+   --  Wrapper for condensed_text::dump
+
+
+   procedure clear_shared_attributes;
+   --  Wrapper for condensed_text::clear
+
+
 private
    type RecAttribute;
    type Acc_RecAttribute is access all RecAttribute;
 
    type RecAttribute is record
-      key   : SU.Unbounded_String := SU.Null_Unbounded_String;
+      key   : Positive;
       value : SU.Unbounded_String := SU.Null_Unbounded_String;
       next  : Acc_RecAttribute;
    end record;
@@ -88,5 +105,11 @@ private
 
    procedure Free is
       new Ada.Unchecked_Deallocation (RecAttribute, Acc_RecAttribute);
+
+   type TAttributes_Shared is record
+      attributes : Condensed_Text.TTextPacker;
+   end record;
+
+   Attributes_Shared : TAttributes_Shared;
 
 end Node_Attributes;

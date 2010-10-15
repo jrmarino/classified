@@ -25,6 +25,113 @@ package body XML_Reader is
    package ICS renames Interfaces.C.Strings;
 
 
+   -------------------
+   --  parent_node  --
+   -------------------
+
+   function parent_node (DOM  : TDOM;
+                         Node : Nodes.TNode)
+   return access Nodes.TNode is
+      parent_id : constant Nodes.TNodeIndex := Node.parent_node_index;
+   begin
+      pragma Assert (Check => parent_id > Nodes.NO_INDEX_DEFINED);
+
+      return DOM.Document (parent_id)'Access;
+   end parent_node;
+
+
+
+   -------------------
+   --  first_child  --
+   -------------------
+
+   function first_child (DOM  : TDOM;
+                         Node : Nodes.TNode)
+   return access Nodes.TNode is
+      first_child_id : constant Nodes.TNodeIndex := Node.first_child_index;
+   begin
+      pragma Assert (Check => first_child_id > Nodes.NO_INDEX_DEFINED);
+
+      return DOM.Document (first_child_id)'Access;
+   end first_child;
+
+
+
+   -----------------------------
+   --  previous_sibling_node  --
+   -----------------------------
+
+   function previous_sibling_node (DOM  : TDOM;
+                                   Node : Nodes.TNode)
+   return access Nodes.TNode is
+      sibling_id : constant Nodes.TNodeIndex :=
+                            Node.previous_sibling_node_index;
+   begin
+      pragma Assert (Check => sibling_id > Nodes.NO_INDEX_DEFINED);
+
+      return DOM.Document (sibling_id)'Access;
+   end previous_sibling_node;
+
+
+
+   -------------------------
+   --  next_sibling_node  --
+   -------------------------
+
+   function next_sibling_node (DOM  : TDOM;
+                               Node : Nodes.TNode)
+   return access Nodes.TNode is
+      sibling_id : constant Nodes.TNodeIndex :=
+                            Node.next_sibling_node_index;
+   begin
+      pragma Assert (Check => sibling_id > Nodes.NO_INDEX_DEFINED);
+
+      return DOM.Document (sibling_id)'Access;
+   end next_sibling_node;
+
+
+
+   ------------------
+   --  child_node  --
+   ------------------
+
+   function child_node (DOM   : TDOM;
+                        Node  : Nodes.TNode;
+                        Child : Positive)
+   return access Nodes.TNode is
+      child_id : constant Nodes.TNodeIndex := DOM.child_node_index (
+                          Node_ID => Node.index,
+                          Child   => Child);
+   begin
+      pragma Assert (Check => child_id > Nodes.NO_INDEX_DEFINED);
+
+      return DOM.Document (child_id)'Access;
+   end child_node;
+
+
+
+   ----------------
+   --  children  --
+   ----------------
+
+   function children (DOM  : TDOM;
+                      Node : Nodes.TNode)
+   return TChildren is
+      kids   : constant Natural := Node.child_node_count;
+      result : TChildren (1 .. kids);
+   begin
+      if kids = 0 then
+         return result;
+      end if;
+
+      result (1) := DOM.first_child (Node);
+      for x in Positive range 1 .. kids - 1 loop
+         result (x + 1) := DOM.next_sibling_node (result (x).all);
+      end loop;
+      return result;
+   end children;
+
+
 
    ----------------
    --  Finalize  --
@@ -85,8 +192,11 @@ package body XML_Reader is
          jenny :
             loop
                exit jenny when atts (index) = Null_Ptr;
+               Nodes.attr_insert_word (
+                  word => SU.To_Unbounded_String (Value (atts (index))));
                index := index + 2;
             end loop jenny;
+         Nodes.tags_insert_word (word => SU.To_Unbounded_String (name_string));
       else
          Background.total_nodes := Background.total_nodes + 1;
          declare
@@ -120,13 +230,13 @@ package body XML_Reader is
             SF.set_basic_data (
                   Self_ID    => Self_ID,
                   Parent_ID  => Parent_ID,
-                  Value      => SU.To_Unbounded_String (name_string),
+                  TagName    => SU.To_Unbounded_String (name_string),
                   Identifier => Identity);
 
             if Self_ID > 1 then
                NP := Background.Access_DOM.Document (Parent_ID)'Access;
                if NP.has_child_nodes then
-                  FC := Background.Access_DOM.Document (NP.first_child)'Access;
+                  FC := Background.Access_DOM.first_child (NP.all);
                   if NP.child_node_count = 1 then
                      SF.signal_prev_brother (Brother_ID => FC.index);
                      FC.signal_next_brother (Brother_ID => Self_ID);
@@ -134,7 +244,7 @@ package body XML_Reader is
                      LB := FC;
                      for x in Positive range 2 .. NP.child_node_count loop
                         LB := Background.Access_DOM.Document (
-                              LB.next_sibling_node)'Access;
+                              LB.next_sibling_node_index)'Access;
                      end loop;
                      SF.signal_prev_brother (Brother_ID => LB.index);
                      LB.signal_next_brother (Brother_ID => Self_ID);
@@ -237,6 +347,10 @@ package body XML_Reader is
                            s        => buffer,
                            len      => buflen,
                            isFinal  => 1);
+
+      Nodes.tags_set_active_state;
+      Nodes.attr_set_active_state;
+
       if status = XML_STATUS_ERROR then
          Put_Line (expat.XML_ErrorString (parser => parser));
       else
@@ -282,9 +396,9 @@ package body XML_Reader is
    --  child_node  --
    ------------------
 
-   function child_node (DOM     : TDOM;
-                        Node_ID : Nodes.TNodeIndex;
-                        Child   : Positive)
+   function child_node_index (DOM     : TDOM;
+                              Node_ID : Nodes.TNodeIndex;
+                              Child   : Positive)
    return Nodes.TNodeIndex is
       numNodes : constant Natural := DOM.Document'Length;
       result   : Nodes.TNodeIndex;
@@ -298,16 +412,16 @@ package body XML_Reader is
       if Child > DOM.Document (Node_ID).child_node_count then
          return Nodes.CHILD_RANGE_EXCEEDED;
       end if;
-      result := DOM.Document (Node_ID).first_child;
+      result := DOM.Document (Node_ID).first_child_index;
       if Child = 1 then
          return result;
       end if;
 
       for x in Positive range 2 .. Child loop
-         result := DOM.Document (result).next_sibling_node;
+         result := DOM.Document (result).next_sibling_node_index;
       end loop;
       return result;
 
-   end child_node;
+   end child_node_index;
 
 end XML_Reader;

@@ -14,6 +14,7 @@
 --  OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 
+with Condensed_Text;
 with Node_Attributes; use Node_Attributes;
 
 package Nodes is
@@ -30,34 +31,34 @@ package Nodes is
    subtype TNodeIndex is Integer range POPPED_EMPTY_STACK .. Integer'Last;
    type TNode is tagged limited private;
 
-   function has_attributes        (Node : TNode) return Boolean;
+   function has_attributes (Node : TNode) return Boolean;
    --  Returns True if node has defined attributes.
 
 
-   function has_child_nodes       (Node : TNode) return Boolean;
+   function has_child_nodes (Node : TNode) return Boolean;
    --  Returns True if node has any children.
 
 
-   function has_sibling_nodes     (Node : TNode) return Boolean;
+   function has_sibling_nodes (Node : TNode) return Boolean;
    --  Returns True if any other nodes have the same parent node.
 
 
-   function first_child           (Node : TNode) return TNodeIndex;
+   function first_child_index (Node : TNode) return TNodeIndex;
    --  Returns the index of the first child node (1 or higher)
    --  If no child node exists, the result is negative (-4).
 
 
-   function parent_node           (Node : TNode) return TNodeIndex;
+   function parent_node_index (Node : TNode) return TNodeIndex;
    --  Returns the index of the parent node (1 or higher)
    --  If requested on the root node, the result will be negative (-1).
 
 
-   function next_sibling_node     (Node : TNode) return TNodeIndex;
+   function next_sibling_node_index (Node : TNode) return TNodeIndex;
    --  Returns the index of the next node that shares same parent. (1+)
    --  If no later sibling exists, the index will be negative (-3 to be exact)
 
 
-   function previous_sibling_node (Node : TNode) return TNodeIndex;
+   function previous_sibling_node_index (Node : TNode) return TNodeIndex;
    --  Returns the index of the previous node that shares same parent. (1+)
    --  If no later sibling exists, the index will be negative (-2 to be exact)
 
@@ -79,8 +80,8 @@ package Nodes is
    --  This function returns the "id" string of the node.
 
 
-   function node_value (Node : TNode) return SU.Unbounded_String;
-   --  This function returns the value (contents) of the node.
+   function tag_name (Node : TNode) return SU.Unbounded_String;
+   --  This function returns the tag name of the node.
 
 
    function attribute_count       (Node : TNode) return Natural;
@@ -88,13 +89,13 @@ package Nodes is
 
 
    function attribute_index (Node : TNode;
-                             key  : SU.Unbounded_String) return Natural;
+                             key  : String) return Natural;
    --  Returns the index of an attribute when given its key string.  A zero
    --  is returned if the key doesn't exist.
 
 
    function attribute_value (Node : TNode;
-                             key  : SU.Unbounded_String)
+                             key  : String)
    return SU.Unbounded_String;
    --  Returns the attribute value given a valid key string.  An invalid key
    --  will yield a null-string result.
@@ -120,13 +121,18 @@ package Nodes is
 
    procedure attribute_clear_all (Node : in out TNode);
    --  This procedure wipes out all attributes from the node.  This is not
-   --  need for read-only functionality.
+   --  needed for read-only functionality.
+
+
+   procedure clear_shared_data;
+   --  This procedure clears out the attribute and tag name data shared by
+   --  all nodes.  This isn't needed for read-only functionality.
 
 
    procedure set_basic_data (Node       : in out TNode;
                              Self_ID    : in     TNodeIndex;
                              Parent_ID  : in     TNodeIndex;
-                             Value      : in     SU.Unbounded_String;
+                             TagName    : in     SU.Unbounded_String;
                              Identifier : in     SU.Unbounded_String);
    --  This procedure is run once to establish basic node data.  The number of
    --  child nodes will be set to 0, the scope will be set to Self_ID, and the
@@ -157,6 +163,21 @@ package Nodes is
    --  the way back to the root node.
 
 
+   procedure tags_insert_word (word : in SU.Unbounded_String);
+   procedure attr_insert_word (word : in SU.Unbounded_String);
+   --  Wrappers for condensed_text::insert_word
+
+
+   procedure tags_set_active_state;
+   procedure attr_set_active_state;
+   --  Wrappers for condensed_text::set_active_state
+
+
+   procedure tags_dump;
+   procedure attr_dump;
+   --  Wrappers for condensed_text::dump
+
+
 private
 
    type TNode is tagged limited record
@@ -167,9 +188,15 @@ private
       First_Child_ID  : TNodeIndex := NO_OFFSPRING;
       Scope           : TNodeIndex := NO_INDEX_DEFINED;
       Num_Children    : Natural    := 0;
-      Value           : SU.Unbounded_String := SU.Null_Unbounded_String;
+      TagName         : Positive   := 1;
       Identifier      : SU.Unbounded_String := SU.Null_Unbounded_String;
       Attributes      : aliased TAttributes;
    end record;
+
+   type TNode_Shared is record
+      tags       : Condensed_Text.TTextPacker;
+   end record;
+
+   Node_Shared : TNode_Shared;
 
 end Nodes;

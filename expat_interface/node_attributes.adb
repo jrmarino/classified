@@ -16,6 +16,55 @@
 
 package body Node_Attributes is
 
+
+   ------------------------
+   --  attr_insert_word  --
+   ------------------------
+
+   procedure attr_insert_word (word : in SU.Unbounded_String)
+   is
+   begin
+      Attributes_Shared.attributes.insert_word (word => word);
+   end attr_insert_word;
+
+
+
+   -----------------------------
+   --  attr_set_active_state  --
+   -----------------------------
+
+   procedure attr_set_active_state
+   is
+   begin
+      Attributes_Shared.attributes.set_active_state;
+   end attr_set_active_state;
+
+
+
+   -----------------
+   --  attr_dump  --
+   -----------------
+
+   procedure attr_dump
+   is
+   begin
+      Attributes_Shared.attributes.dump;
+   end attr_dump;
+
+
+
+   -------------------------------
+   --  clear_shared_attributes  --
+   -------------------------------
+
+   procedure clear_shared_attributes
+   is
+   begin
+      Attributes_Shared.attributes.clear;
+   end clear_shared_attributes;
+
+
+
    -------------
    --  clear  --
    -------------
@@ -82,7 +131,7 @@ package body Node_Attributes is
             and then arrow /= null loop
          arrow_index := arrow_index + 1;
          if arrow_index = index then
-            result := arrow.key;
+            result := Attributes_Shared.attributes.get_text (arrow.key);
          end if;
          arrow := arrow.next;
       end loop;
@@ -122,16 +171,18 @@ package body Node_Attributes is
    --------------------------
 
    function value (Attributes : TAttributes;
-                   key        : SU.Unbounded_String)
+                   key        : String)
    return SU.Unbounded_String is
       arrow  : Acc_RecAttribute    := Attributes.LIFO;
       result : SU.Unbounded_String := SU.Null_Unbounded_String;
-
+      key_us : constant SU.Unbounded_String := SU.To_Unbounded_String (key);
+      key_id : constant Natural :=
+               Attributes_Shared.attributes.get_index (word => key_us);
       use SU;
    begin
       while result = SU.Null_Unbounded_String
             and then arrow /= null loop
-         if arrow.key = key then
+         if arrow.key = key_id then
             result := arrow.value;
          end if;
          arrow := arrow.next;
@@ -146,17 +197,20 @@ package body Node_Attributes is
    -------------
 
    function index (Attributes : TAttributes;
-                   key        : SU.Unbounded_String)
+                   key        : String)
    return Natural is
       arrow       : Acc_RecAttribute := Attributes.LIFO;
       arrow_index : Natural := 0;
       result      : Natural := 0;
-
+      key_us      : constant SU.Unbounded_String :=
+                    SU.To_Unbounded_String (key);
+      key_id      : constant Natural :=
+                    Attributes_Shared.attributes.get_index (word => key_us);
       use SU;
    begin
       while result = 0 and then arrow /= null loop
          arrow_index := arrow_index + 1;
-         if arrow.key = key then
+         if arrow.key = key_id then
             result := arrow_index;
          end if;
          arrow := arrow.next;
@@ -173,9 +227,16 @@ package body Node_Attributes is
                             key        : in     SU.Unbounded_String;
                             value      : in     SU.Unbounded_String)
    is
+      key_id : constant Natural :=
+               Attributes_Shared.attributes.get_index (word => key);
    begin
+      pragma Assert (
+            Check   => key_id > 0,
+            Message => "node_attributes::add_attribute key `"
+                       & SU.To_String (key) & "` not found"
+      );
       Attributes.LIFO := new RecAttribute'(
-                              key   => key,
+                              key   => key_id,
                               value => value,
                               next  => Attributes.LIFO);
    end add_attribute;
