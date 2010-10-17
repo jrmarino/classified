@@ -24,15 +24,23 @@ with Ada.Text_IO; use Ada.Text_IO;
 
 package body XML_Reader is
 
+
    package IC renames Interfaces.C;
    package ICS renames Interfaces.C.Strings;
    package Latin renames Ada.Characters.Latin_1;
 
 
+   -----------------------
+   --  pure_whitespace  --
+   -----------------------
+
    function pure_whitespace (text : String)
    return Boolean is
       whitespace : constant Ada.Strings.Maps.Character_Set :=
-                   Ada.Strings.Maps.To_Set (Latin.CR & Latin.LF & ' ');
+                   Ada.Strings.Maps.To_Set (Latin.CR &
+                                            Latin.LF &
+                                            Latin.HT &
+                                            Latin.Space);
       trimmed    : constant String := Ada.Strings.Fixed.Trim (
                               Source => text,
                               Left   => whitespace,
@@ -41,6 +49,8 @@ package body XML_Reader is
    begin
       return (remaining = 0);
    end pure_whitespace;
+
+
 
    --------------------------------
    --  get_elements_by_tag_name  --

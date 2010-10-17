@@ -170,6 +170,10 @@ package Nodes is
    --  "content" when called.
 
 
+   function get_element_content (Node : TNode) return SU.Unbounded_String;
+   --  Retrieves the node's content.  Often returns a null string.
+
+
    function tag_is_open (Node : in TNode) return Boolean;
    --  Returns True if the indicated Node has been completely processed (in
    --  other words, the closing bracket has been reached already.

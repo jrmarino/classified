@@ -18,6 +18,19 @@ package body Nodes is
 
 
    ---------------------------
+   --  get_element_content  --
+   ---------------------------
+
+   function get_element_content (Node : TNode)
+   return SU.Unbounded_String is
+   begin
+
+      return Node.Contents;
+
+   end get_element_content;
+
+
+   ---------------------------
    --  set_element_content  --
    ---------------------------
 
@@ -26,11 +39,9 @@ package body Nodes is
    is
       use SU;
    begin
-      if Node.Contents = SU.Null_Unbounded_String then
-         Node.Contents := content;
-      else
-         Node.Contents := Node.Contents & content;
-      end if;
+
+      Node.Contents := Node.Contents & content;
+
    end set_element_content;
 
 

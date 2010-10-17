@@ -27,7 +27,7 @@ package body Generic_Stack is
    function peek  (stack : TStack)
    return TItem is
    begin
-      if stack.is_empty then
+      if stack.LIFO = null then
          return DEPLETED_STACK_ERROR;
       end if;
       return stack.LIFO.value;
