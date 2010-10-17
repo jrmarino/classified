@@ -20,13 +20,6 @@ with Ada.Unchecked_Deallocation;
 with Ada.Strings.Unbounded;
 with Generic_Stack;
 
---  The XML writer has a major limitation.  Even though you can physically
---  define nodes in any order, the close tags will not work right if this is
---  done.  The problem goes back to code reused from the reading module which
---  reads all the nodes sequentially by descendents and thus defines a "scope"
---  where the end of the scope is where the closing tag would be.  If the
---  scope isn't build contingously, then the scheme collapses.
-
 package xml_writer is
 
    package SU renames Ada.Strings.Unbounded;
@@ -97,7 +90,7 @@ private
 
    type Rec_Global is record
       kid_leaf     : Kid_Stack.TStack;
-      pending      : Kid_Stack.TStack;
+      open_tag     : Kid_Stack.TStack;
       depth        : Natural := 0;
       total_nodes  : Natural := 0;
       Access_DOM   : access TDOM;

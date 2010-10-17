@@ -107,7 +107,7 @@ package body xml_writer is
                                   output_text   : in out SU.Unbounded_String)
    is
       parent     : Acc_RecData;
-      copydepth  : Natural := GR.depth;
+--     copydepth  : Natural := GR.depth;
    begin
       next_node := Nodes.NO_INDEX_DEFINED;
       if node_in_focus.child_node_count > GR.kid_leaf.peek then
@@ -133,29 +133,22 @@ package body xml_writer is
       else
          --  We've checked out all the children (or the node just doesn't
          --  have any) so we can move back up one level.
+         declare
+            enode_id : constant Nodes.TNodeIndex := GR.open_tag.peek;
+             node_ref : constant Acc_RecData :=
+                                         DOM.node_reference (enode_id);
+         begin
+            GR.open_tag.pop;
+            if node_ref.Node.end_of_scope /= node_ref.Node.index then
+               SU.Append (Source   => output_text,
+                          New_Item => close_tag (Node  => node_ref.Node,
+                                                 depth => GR.depth));
+            end if;
+         end;
+
           if GR.depth > 0 then
             GR.kid_leaf.pop;
             GR.depth := GR.depth - 1;
-
-            --  close all tags that show an end of scope of tag in focus.
-            while GR.pending.peek /= Nodes.POPPED_EMPTY_STACK and then
-                  DOM.node_reference (GR.pending.peek).Node.end_of_scope =
-                  node_in_focus.end_of_scope loop
-               declare
-                  enode_id : constant Nodes.TNodeIndex := GR.pending.peek;
-                  node_ref : constant Acc_RecData :=
-                                         DOM.node_reference (enode_id);
-               begin
-                  if node_ref.Node.end_of_scope = node_in_focus.index then
-                     GR.pending.pop;
-                     copydepth := copydepth - 1;
-                     SU.Append (Source   => output_text,
-                                New_Item => close_tag (
-                                            Node  => node_ref.Node,
-                                            depth => copydepth));
-                  end if;
-               end;
-            end loop;
 
             parent := DOM.node_reference (node_in_focus.parent_node_index);
             DOM.recursive_next_node (node_in_focus => parent.Node,
@@ -194,13 +187,15 @@ package body xml_writer is
 
          exit when Node_ID <= Nodes.NO_INDEX_DEFINED;
 
+         GR.open_tag.push (Node_ID);
          FNode := DOM.node_reference (Node_ID => Node_ID);
          SU.Append (Source   => result,
                     New_Item => elaborated_tag (FNode.Node, GR.depth));
 
-         if Node_ID /= FNode.Node.end_of_scope then
-            GR.pending.push (item => Node_ID);
-         end if;
+
+        --  if Node_ID /= FNode.Node.end_of_scope then
+        --    GR.pending.push (item => Node_ID);
+        --  end if;
 
          DOM.recursive_next_node (node_in_focus => FNode.Node,
                                   next_node     => Node_ID,
