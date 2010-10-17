@@ -15,10 +15,26 @@
 
 
 with Ada.Characters.Latin_1;
+with File_Handling;
 
 package body xml_writer is
 
    package Latin renames Ada.Characters.Latin_1;
+
+
+   ----------------
+   --  save_xml  --
+   ----------------
+
+   function save_xml (DOM : TDOM; filename : String)
+   return Boolean is
+      contents : constant SU.Unbounded_String := DOM.tagged_representation;
+      bytes : Natural;
+   begin
+      bytes := File_Handling.File_Put_Contents (filename => filename,
+                                                data     => contents);
+      return bytes > 0;
+   end save_xml;
 
 
    -----------------
@@ -107,7 +123,6 @@ package body xml_writer is
                                   output_text   : in out SU.Unbounded_String)
    is
       parent     : Acc_RecData;
---     copydepth  : Natural := GR.depth;
    begin
       next_node := Nodes.NO_INDEX_DEFINED;
       if node_in_focus.child_node_count > GR.kid_leaf.peek then
@@ -135,8 +150,7 @@ package body xml_writer is
          --  have any) so we can move back up one level.
          declare
             enode_id : constant Nodes.TNodeIndex := GR.open_tag.peek;
-             node_ref : constant Acc_RecData :=
-                                         DOM.node_reference (enode_id);
+            node_ref : constant Acc_RecData := DOM.node_reference (enode_id);
          begin
             GR.open_tag.pop;
             if node_ref.Node.end_of_scope /= node_ref.Node.index then

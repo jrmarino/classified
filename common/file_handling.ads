@@ -29,4 +29,11 @@ package File_Handling is
    --  will be altered to LF terminations.  For unix formats, there should be
    --  no difference between the file and the memory versions.
 
+
+   function File_Put_Contents (filename : String;
+                               data     : SU.Unbounded_String) return Natural;
+   --  Creates a file given data and a file name.  It will overwrite any
+   --  existing file with the same namw.   Returns 0 on failure, otherwise it
+   --  returns the number of bytes written to the disk.
+
 end File_Handling;

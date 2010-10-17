@@ -65,8 +65,9 @@ package xml_writer is
    --  Internally builds an XML file.
 
 
-   --  procedure save_xml (filename : in SU.Unbounded_String);
+   function save_xml (DOM : TDOM; filename : String) return Boolean;
    --  Saves the tagged representation as a file with the given name.
+   --  Returns True if successful.
 
 private
 

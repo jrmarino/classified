@@ -16,10 +16,47 @@
 
 with Ada.Strings.Unbounded.Text_IO;
 with Ada.Characters.Latin_1;
+with Ada.Directories;
 
 package body File_Handling is
 
    package SUTIO renames Ada.Strings.Unbounded.Text_IO;
+
+
+   -------------------------
+   --  File_Put_Contents  --
+   -------------------------
+
+   function File_Put_Contents (filename : String;
+                               data     : SU.Unbounded_String)
+   return Natural is
+      File_Handle : TIO.File_Type;
+   begin
+      if Ada.Directories.Exists (Name => filename) then
+         declare
+         begin
+            Ada.Directories.Delete_File (Name => filename);
+         exception
+            when others => return 0;
+         end;
+      end if;
+
+      declare
+      begin
+         TIO.Create (File => File_Handle,
+                     Mode => TIO.Out_File,
+                     Name => filename);
+
+         SUTIO.Put (File => File_Handle, U => data);
+         TIO.Close (File_Handle);
+      exception
+         when others => return 0;
+      end;
+      return SU.Length (data);
+
+   end File_Put_Contents;
+
+
 
    -------------------------
    --  File_Get_Contents  --
