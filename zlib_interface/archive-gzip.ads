@@ -51,7 +51,7 @@ package Archive.GZip is
 
    procedure compress (gzip              : in TGZip;
                        source_file       : in String;
-                       destination       : in String;
+                       target_file       : in String;
                        erase_source_file : in Boolean := True);
    --  Creates a new compressed version of the given source file.  The new
    --  file path (includes file name) is defined by the "destination" input.
@@ -79,7 +79,7 @@ package Archive.GZip is
 
    procedure decompress (gzip              : in TGZip;
                          source_file       : in String;
-                         destination       : in String;
+                         target_file       : in String;
                          erase_source_file : in Boolean := True);
    --  Creates a new decompressed version of the given source file.  The new
    --  file path (includes file name) is defined by the "destination" input.
@@ -149,10 +149,27 @@ private
 
 
    procedure low_level_compress (
-                  gzip                 : in TGZip;
-                  source_filename      : in String;
-                  destination_filename : in String);
-   --  Compresses data from an existing file and put it into a gzip-formatted
+                  gzip            : in TGZip;
+                  source_filename : in String;
+                  target_filename : in String);
+   --  Compresses data from an existing file and puts it into a gzip-formatted
    --  second file.
+
+
+   procedure low_level_decompress (
+                  gzip            : in TGZip;
+                  source_filename : in String;
+                  target_filename : in String);
+   --  Decompresses data from an existing file and puts the expanded binary
+   --  data into a second file with the name conveyed by destination_filename.
+
+
+   procedure low_level_decompress (
+                  gzip       : in TGZip;
+                  in_file    : in Binding_Zlib.gzFile;
+                  out_stream : in TZipStream);
+   --  Decompresses a stream of bytes into an open file descriptor.  All the
+   --  variations of decompressions eventually use this.
+
 
 end Archive.GZip;

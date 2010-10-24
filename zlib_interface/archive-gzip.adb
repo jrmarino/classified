@@ -57,51 +57,234 @@ package body Archive.GZip is
    end decompress;
 
 
+
+   ------------------------------
+   --  decompress (version 2)  --
+   ------------------------------
+
    procedure decompress (gzip              : in TGZip;
                          source_file       : in String;
                          erase_source_file : in Boolean := True)
    is
+      lensf  : constant Positive := source_file'Length;
+      errhd  : constant String   := "Decompress(File): ";
+      suffix : constant String   := SU.To_String (gzip.gz_suffix);
+      err1   : constant String   := "Source file name does not have " &
+                                    "gzip extension (e.g " & suffix & ")";
+      extlen : constant Positive := suffix'Length;
+      lndx  : Integer;
    begin
-   --  Creates a new uncompressed version of the given source file.  The new
-   --  file will be put in the same directory and have the same name with
-   --  the extension ".gz" removed from it.  By default, the source file will
-   --  be deleted, but this can be overridden.
-      null;
+      --  We are expecting the file to end in either ".gz" or ".tgz".  If this
+      --  isn't true, we need to eject.
+
+      if lensf < extlen + 1 then
+         Ada.Text_IO.Put_Line (errhd & err1);
+         return;
+      end if;
+
+      declare
+         sfl  : constant Integer := source_file'Last;
+         end3 : constant String  := source_file (sfl - extlen + 1 .. sfl);
+         end4 : String (1 .. extlen + 1);
+      begin
+         if lensf = extlen + 1 and then end3 /= suffix then
+            Ada.Text_IO.Put_Line (errhd & err1);
+            return;
+         end if;
+
+         end4 := source_file (sfl - extlen .. sfl);
+
+         if end3 = suffix then
+            lndx := sfl - extlen;
+         elsif end4 = ".t" & suffix (2 .. sfl) then
+            lndx := sfl - extlen - 1;
+         else
+            Ada.Text_IO.Put_Line (errhd & err1);
+            return;
+         end if;
+      end;
+
+      gzip.decompress (
+            source_file       => source_file,
+            target_file       => source_file (source_file'First .. lndx),
+            erase_source_file => erase_source_file);
+
    end decompress;
 
+
+   -----------------------------
+   --  decompress (verson 1)  --
+   -----------------------------
 
    procedure decompress (gzip              : in TGZip;
                          source_file       : in String;
-                         destination       : in String;
+                         target_file       : in String;
                          erase_source_file : in Boolean := True)
    is
+      errhd : constant String := "Decompress(File): ";
    begin
-   --  Creates a new decompressed version of the given source file.  The new
-   --  file path (includes file name) is defined by the "destination" input.
-   --  By default, the source file will be deleted, but this can be overridden.
-      null;
+      if not Ada.Directories.Exists (Name => source_file) then
+         Ada.Text_IO.Put_Line (errhd & "File does not exist.");
+         return;
+      end if;
+      if source_file = target_file then
+         Ada.Text_IO.Put_Line (errhd & "Target can't have the " &
+                               "same path as the source file.");
+         return;
+      end if;
+      gzip.low_level_decompress (source_filename => source_file,
+                                 target_filename => target_file);
+      if erase_source_file then
+         Ada.Directories.Delete_File (Name => source_file);
+      end if;
+
+   exception
+
+      when Ada.Directories.Name_Error => Ada.Text_IO.Put_Line (
+                         errhd & "Illegal file name " & source_file);
+      when Ada.Directories.Use_Error  => Ada.Text_IO.Put_Line (
+                         errhd & "Failed to delete " & source_file);
+
    end decompress;
 
 
 
+   ----------------------------------------
+   --  low_level_decompress (version 2)  --
+   ----------------------------------------
+
+   procedure low_level_decompress (
+                  gzip            : in TGZip;
+                  source_filename : in String;
+                  target_filename : in String)
+   is
+      ingzfile       : Binding_Zlib.gzFile;
+      FileHandle     : ASIO.File_Type;
+      target_stream  : TZipStream;
+      closure        : Binding_Zlib.intf;
+      mode           : constant String := "r";
+      errhd          : constant String := "Decompress(Stream->Stream): ";
+
+      Stream_Failure : exception;
+      File_Failure   : exception;
+      Gzopen_Failure : exception;
+      use type Binding_Zlib.voidp;
+   begin
+      ASIO.Create (
+            File => FileHandle,
+            Mode => ASIO.Out_File,
+            Name => target_filename);
+
+      target_stream := ASIO.Stream (FileHandle);
+
+      ingzfile := Binding_Zlib.gzopen (
+                     path => ICS.New_String (source_filename),
+                     mode => ICS.New_String (mode));
+      if ingzfile = Binding_Zlib.nullp then
+         Ada.Exceptions.Raise_Exception (
+               E       => Gzopen_Failure'Identity,
+               Message => "Failed to gzopen " & source_filename);
+      end if;
+
+      gzip.low_level_decompress (in_file    => ingzfile,
+                                 out_stream => target_stream);
+
+      closure := Binding_Zlib.gzclose_r (file => ingzfile);
+      if Integer (closure) /= Integer (Binding_Zlib.Z_OK) then
+         case closure is
+            when Binding_Zlib.Z_STREAM_ERROR =>
+                  Ada.Exceptions.Raise_Exception (
+                     E       => Stream_Failure'Identity,
+                     Message => "gzclose stream failure");
+            when Binding_Zlib.Z_ERRNO =>
+                  Ada.Exceptions.Raise_Exception (
+                     E       => File_Failure'Identity,
+                     Message => "gzclose file operation error");
+            when others => null;
+         end case;
+      end if;
+
+      ASIO.Close (File => FileHandle);
+      if ASIO.Is_Open (File => FileHandle) then
+         null;   --  to silence compiler about unreferenced FileHandle
+      end if;
+
+   exception
+
+      when Fail : Gzopen_Failure |
+                  Stream_Failure |
+                  File_Failure  => Ada.Text_IO.Put_Line (errhd &
+                                    Ada.Exceptions.Exception_Message (Fail));
+
+   end low_level_decompress;
 
 
 
+   ----------------------------------------
+   --  low_level_decompress (version 1)  --
+   ----------------------------------------
+
+   procedure low_level_decompress (
+                  gzip       : in TGZip;
+                  in_file    : in Binding_Zlib.gzFile;
+                  out_stream : in TZipStream)
+   is
+      use Ada.Streams;
+
+      buffer     : Stream_Element_Array (1 .. gzip.buffer_size);
+      caboose    : Stream_Element_Offset;
+      readlen    : Binding_Zlib.intf;
+      terminated : Boolean;
+      PtrBuffer  : constant Binding_Zlib.voidp :=
+                            Binding_Zlib.voidp (buffer'Address);
+      bufsize    : constant IC.unsigned :=
+                            IC.unsigned (gzip.buffer_size);
+      Read_Failure : exception;
+   begin
+
+      Maria :
+         loop
+            readlen := Binding_Zlib.gzread (
+                           file => in_file,
+                           buf  => PtrBuffer,
+                           len  => bufsize);
+            if Integer (readlen) < 0 then
+               declare
+                  error_code : aliased Binding_Zlib.intf;
+                  msg : constant String := ICS.Value (
+                                 Binding_Zlib.gzerror (
+                                    file   => in_file,
+                                    errnum => error_code'Access));
+               begin
+                  Ada.Exceptions.Raise_Exception (
+                     E       => Read_Failure'Identity,
+                     Message => "gzread error: " & msg);
+               end;
+            end if;
+            terminated := Integer (readlen) < Integer (bufsize);
+            caboose    := Ada.Streams.Stream_Element_Offset (readlen);
+
+            Ada.Streams.Write (
+                  Stream => out_stream.all,
+                  Item   => buffer (1 .. caboose));
+
+            exit Maria when terminated;
+
+         end loop Maria;
+
+   exception
+
+      when Fail : Read_Failure => Ada.Text_IO.Put_Line (
+                                   "Uncompress(gzFile->Stream): " &
+                                   Ada.Exceptions.Exception_Message (Fail));
+
+   end low_level_decompress;
 
 
 
-
-
-
-
-
-
-
-
-
-   ---------------------------
-   --  compress (version 2) --
-   ---------------------------
+   ----------------------------
+   --  compress (version 2)  --
+   ----------------------------
 
    procedure compress (gzip              : in TGZip;
                        source_file       : in String;
@@ -112,18 +295,18 @@ package body Archive.GZip is
    begin
       gzip.compress (
             source_file       => source_file,
-            destination       => dest_filename,
+            target_file       => dest_filename,
             erase_source_file => erase_source_file);
    end compress;
 
 
-   ---------------------------
-   --  compress (version 1) --
-   ---------------------------
+   ----------------------------
+   --  compress (version 1)  --
+   ----------------------------
 
    procedure compress (gzip              : in TGZip;
                        source_file       : in String;
-                       destination       : in String;
+                       target_file       : in String;
                        erase_source_file : in Boolean := True)
    is
    begin
@@ -132,8 +315,14 @@ package body Archive.GZip is
          return;
       end if;
 
-      gzip.low_level_compress (source_filename      => source_file,
-                               destination_filename => destination);
+      if source_file = target_file then
+         Ada.Text_IO.Put_Line ("Compress(File): Target can't have the " &
+                               "same path as the source file.");
+         return;
+      end if;
+
+      gzip.low_level_compress (source_filename => source_file,
+                               target_filename => target_file);
 
       if erase_source_file then
          Ada.Directories.Delete_File (Name => source_file);
@@ -153,9 +342,9 @@ package body Archive.GZip is
    ------------------------------------
 
    procedure low_level_compress (
-                  gzip                 : in TGZip;
-                  source_filename      : in String;
-                  destination_filename : in String)
+                  gzip            : in TGZip;
+                  source_filename : in String;
+                  target_filename : in String)
    is
       mode : constant String := 'w' & Ada.Strings.Fixed.Trim (
                Source => Integer'Image (Integer (gzip.compression_level)),
@@ -170,12 +359,12 @@ package body Archive.GZip is
       use type Binding_Zlib.voidp;
    begin
       outgzfile := Binding_Zlib.gzopen (
-                     path => ICS.New_String (destination_filename),
+                     path => ICS.New_String (target_filename),
                      mode => ICS.New_String (mode));
       if outgzfile = Binding_Zlib.nullp then
          Ada.Exceptions.Raise_Exception (
                E       => Gzopen_Failure'Identity,
-               Message => "Failed to gzopen " & source_filename);
+               Message => "Failed to gzopen " & target_filename);
       end if;
       ASIO.Open (
             File => FileHandle,
